@@ -1,0 +1,7 @@
+<Project>
+  <!-- Library projects under src/: centralize build output under repo out/ (gitignored) -->
+  <PropertyGroup>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\out\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\out\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Centralized coverlet configuration -->
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutput>$(MSBuildProjectDirectory)\TestResults\</CoverletOutput>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <Threshold>80</Threshold>
+    <ThresholdType>line</ThresholdType>
+    <ThresholdStat>total</ThresholdStat>
+  </PropertyGroup>
+</Project>

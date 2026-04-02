@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GodotGenerator.Domain</RootNamespace>
+    <AssemblyName>GodotGenerator.Domain</AssemblyName>
+    <Description>Core domain types for Godot Generator (no external dependencies).</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>
