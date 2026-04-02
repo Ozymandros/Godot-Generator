@@ -1,0 +1,42 @@
+@using Godot_Generator_Blazor.Models
+
+<label class="form-label" for="@Id">@Label</label>
+<select id="@Id" class="form-select" value="@Value" @onchange="OnChanged">
+    <option value="">(inherit global default)</option>
+    @foreach (var language in LanguageCatalog.Supported)
+    {
+        <option value="@language">@language</option>
+    }
+</select>
+
+@code {
+    /// <summary>
+    /// Gets or sets input id.
+    /// </summary>
+    [Parameter]
+    public string Id { get; set; } = "preferred-language";
+
+    /// <summary>
+    /// Gets or sets visible label.
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "Preferred language";
+
+    /// <summary>
+    /// Gets or sets selected value.
+    /// </summary>
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Raised when selected value changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    private Task OnChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString() ?? string.Empty;
+        return ValueChanged.InvokeAsync(value);
+    }
+}

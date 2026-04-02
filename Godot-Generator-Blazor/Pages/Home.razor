@@ -1,0 +1,86 @@
+@page "/"
+@using Godot_Generator_Blazor.Models
+@inject Godot_Generator_Blazor.State.GenerationPanelStateService PanelState
+@inject Godot_Generator_Blazor.State.GlobalConfigStateService GlobalConfig
+
+<PageTitle>Generation</PageTitle>
+
+<h1>Generation</h1>
+<p>Create Godot-ready outputs by modality. Panel language overrides global default when set.</p>
+
+@if (GlobalConfig.IsBusy)
+{
+    <p>Loading configuration...</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-lg-2 g-3">
+        @foreach (var panel in PanelState.All.OrderBy(p => p.Modality.ToString(), StringComparer.Ordinal))
+        {
+            <div class="col">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h2 class="h5">@panel.Modality</h2>
+
+                        <label class="form-label" for="@($"prompt-{panel.Modality}")">Prompt</label>
+                        <textarea
+                            id="@($"prompt-{panel.Modality}")"
+                            class="form-control"
+                            rows="4"
+                            @bind="panel.Prompt"
+                            aria-label="@($"{panel.Modality} prompt")"></textarea>
+
+                        <AdvancedOptions
+                            LanguageInputId="@($"lang-{panel.Modality}")"
+                            PreferredLanguage="@panel.PreferredLanguageOverride"
+                            PreferredLanguageChanged="@(value => panel.PreferredLanguageOverride = value)" />
+
+                        <div class="mt-3 d-flex gap-2">
+                            <button
+                                class="btn btn-primary"
+                                disabled="@panel.IsBusy"
+                                @onclick="() => SubmitAsync(panel)">
+                                @(panel.IsBusy ? "Generating..." : "Generate")
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(panel.Error))
+                        {
+                            <div class="alert alert-danger mt-3" role="alert">@panel.Error</div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(panel.ResponseText))
+                        {
+                            <label class="form-label mt-3" for="@($"output-{panel.Modality}")">Result</label>
+                            <textarea
+                                id="@($"output-{panel.Modality}")"
+                                class="form-control"
+                                rows="6"
+                                readonly
+                                aria-label="@($"{panel.Modality} result")">@panel.ResponseText</textarea>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>
+    /// Loads global config state used by generation panel fallback rules.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await GlobalConfig.LoadAsync();
+    }
+
+    /// <summary>
+    /// Submits one panel generation request.
+    /// </summary>
+    /// <param name="panel">Panel to execute.</param>
+    private async Task SubmitAsync(GenerationPanelModel panel)
+    {
+        await PanelState.SubmitAsync(panel, GlobalConfig.PreferredLanguage);
+    }
+}

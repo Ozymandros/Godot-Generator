@@ -4,7 +4,6 @@
     <Project Path="test/GodotGenerator.Infrastructure.Ai.Tests/GodotGenerator.Infrastructure.Ai.Tests.csproj" />
     <Project Path="test/GodotGenerator.Infrastructure.Persistence.Tests/GodotGenerator.Infrastructure.Persistence.Tests.csproj" />
   </Folder>
-  <Project Path="Godot-Generator-Avalonia/Godot-Generator-Avalonia.csproj" />
   <Folder Name="/src/">
     <Project Path="src/GodotGenerator.Api/GodotGenerator.Api.csproj" />
     <Project Path="src/GodotGenerator.Application/GodotGenerator.Application.csproj" />
@@ -12,4 +11,6 @@
     <Project Path="src/GodotGenerator.Infrastructure.Ai/GodotGenerator.Infrastructure.Ai.csproj" />
     <Project Path="src/GodotGenerator.Infrastructure.Persistence/GodotGenerator.Infrastructure.Persistence.csproj" />
   </Folder>
+  <Project Path="Godot-Generator-Avalonia/Godot-Generator-Avalonia.csproj" />
+  <Project Path="Godot-Generator-Blazor/Godot-Generator-Blazor.csproj" Id="adef89e6-e397-49bb-989e-c143898492d2" />
 </Solution>

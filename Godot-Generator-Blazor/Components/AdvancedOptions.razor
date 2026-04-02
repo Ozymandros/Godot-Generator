@@ -1,0 +1,33 @@
+<details class="mt-2">
+    <summary>Advanced options</summary>
+    <div class="mt-2">
+        <LanguageSelector
+            Id="@LanguageInputId"
+            Label="Preferred language (panel override)"
+            Value="@PreferredLanguage"
+            ValueChanged="OnPreferredLanguageChanged" />
+        <small class="text-muted">If empty, the global preferred language is used.</small>
+    </div>
+</details>
+
+@code {
+    /// <summary>
+    /// Gets or sets input id for the language selector.
+    /// </summary>
+    [Parameter]
+    public string LanguageInputId { get; set; } = "panel-language";
+
+    /// <summary>
+    /// Gets or sets panel preferred language override.
+    /// </summary>
+    [Parameter]
+    public string PreferredLanguage { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Raised when panel preferred language override changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> PreferredLanguageChanged { get; set; }
+
+    private Task OnPreferredLanguageChanged(string value) => PreferredLanguageChanged.InvokeAsync(value);
+}

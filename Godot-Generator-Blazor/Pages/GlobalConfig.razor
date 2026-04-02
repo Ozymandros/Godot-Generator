@@ -1,0 +1,57 @@
+@page "/global-config"
+@using Godot_Generator_Blazor.Models
+@inject Godot_Generator_Blazor.State.GlobalConfigStateService GlobalConfigState
+
+<PageTitle>Global configuration</PageTitle>
+
+<h1>Global configuration</h1>
+<p>Set defaults applied when panel advanced options do not provide overrides.</p>
+
+<div class="card">
+    <div class="card-body">
+        <LanguageSelector
+            Id="global-preferred-language"
+            Label="Preferred language (global default)"
+            Value="@GlobalConfigState.PreferredLanguage"
+            ValueChanged="OnPreferredLanguageChanged" />
+
+        <div class="mt-3">
+            <button class="btn btn-primary" disabled="@GlobalConfigState.IsBusy" @onclick="SaveAsync">
+                @(GlobalConfigState.IsBusy ? "Saving..." : "Save")
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(GlobalConfigState.Error))
+        {
+            <div class="alert alert-danger mt-3" role="alert">@GlobalConfigState.Error</div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Loads global configuration state.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await GlobalConfigState.LoadAsync();
+    }
+
+    /// <summary>
+    /// Updates preferred language selection in state.
+    /// </summary>
+    /// <param name="value">Selected language.</param>
+    private Task OnPreferredLanguageChanged(string value)
+    {
+        GlobalConfigState.SetPreferredLanguage(value);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Persists global configuration state.
+    /// </summary>
+    private async Task SaveAsync()
+    {
+        await GlobalConfigState.SaveAsync();
+    }
+}

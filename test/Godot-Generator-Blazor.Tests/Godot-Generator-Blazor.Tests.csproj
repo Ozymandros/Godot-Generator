@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Godot_Generator_Blazor.Tests</RootNamespace>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutput>$(MSBuildProjectDirectory)\TestResults\</CoverletOutput>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
+    <Include>[Godot-Generator-Blazor]Godot_Generator_Blazor.Services.*,[Godot-Generator-Blazor]Godot_Generator_Blazor.State.*,[Godot-Generator-Blazor]Godot_Generator_Blazor.Models.*</Include>
+    <Exclude>[GodotGenerator.*]*,[*]Godot_Generator_Blazor.Components.*,[*]Godot_Generator_Blazor.Pages.*,[*]Godot_Generator_Blazor.Layout.*,[*]Program.*</Exclude>
+    <ExcludeByFile>**/*.razor;**/Program.cs;**/obj/**/*</ExcludeByFile>
+    <Threshold>80</Threshold>
+    <ThresholdType>line</ThresholdType>
+    <ThresholdStat>total</ThresholdStat>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Godot-Generator-Blazor\Godot-Generator-Blazor.csproj" />
+    <ProjectReference Include="..\..\src\GodotGenerator.Api\GodotGenerator.Api.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="coverlet.msbuild" Version="3.2.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
