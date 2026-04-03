@@ -14,6 +14,17 @@ public static class StringConverters
     /// <summary>True when value is non-null (for visibility of detail panels).</summary>
     public static IValueConverter IsNotNull { get; } = new NotNullObjectToBoolConverter();
 
+    public static IValueConverter ToUpper { get; } = new ToUpperConverter();
+
+    private sealed class ToUpperConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            value?.ToString()?.ToUpperInvariant() ?? string.Empty;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
     private sealed class NotNullObjectToBoolConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not null;

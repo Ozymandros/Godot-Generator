@@ -17,19 +17,32 @@
 
     <Grid ColumnDefinitions="220,*">
         <Border Grid.Column="0" BorderBrush="#33000000" BorderThickness="0,0,1,0" Padding="8">
-            <ListBox ItemsSource="{Binding NavItems}"
-                     SelectedIndex="{Binding SelectedNavIndex}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="models:NavItem">
-                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,6">
-                            <materialIcons:MaterialIcon Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}"
-                                                        Width="24" Height="24"
-                                                        VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <DockPanel>
+                <Button DockPanel.Dock="Bottom" 
+                        Theme="{StaticResource MaterialFlatButton}"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Left"
+                        Padding="16,8"
+                        Command="{Binding OpenRepoCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <materialIcons:MaterialIcon Kind="Github" Width="24" Height="24"/>
+                        <TextBlock Text="Repository" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <ListBox ItemsSource="{Binding NavItems}"
+                         SelectedIndex="{Binding SelectedNavIndex}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:NavItem">
+                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,6">
+                                <materialIcons:MaterialIcon Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}"
+                                                            Width="24" Height="24"
+                                                            VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
         </Border>
         <ContentControl Grid.Column="1"
                         Content="{Binding CurrentPane}"

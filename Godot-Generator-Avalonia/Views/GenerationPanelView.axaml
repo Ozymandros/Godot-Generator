@@ -29,11 +29,11 @@
       </Border>
 
       <TextBox Text="{Binding Prompt}"
-               Watermark="Enter your prompt"
+               Watermark="{Binding PromptWatermark}"
                AcceptsReturn="True"
                TextWrapping="Wrap"
                MinHeight="140"
-               assists:TextFieldAssist.Label="Prompt"
+               assists:TextFieldAssist.Label="{Binding PromptLabel}"
                Theme="{StaticResource OutlineTextBox}"/>
 
       <StackPanel Spacing="4">

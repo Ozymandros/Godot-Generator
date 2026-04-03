@@ -8,7 +8,12 @@
              x:Class="Godot_Generator_Avalonia.Views.ConfigView"
              x:DataType="vm:ConfigViewModel">
   <DockPanel Margin="16">
-    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+    <StackPanel DockPanel.Dock="Top" Margin="24,12,24,24">
+      <TextBlock Text="Configuration" Theme="{StaticResource MaterialHeadline4TextBlock}" FontWeight="Bold" Margin="0,0,0,4"/>
+      <TextBlock Text="Manage your intelligence engines, models, and system prompts." Opacity="0.7" Theme="{StaticResource MaterialSubtitle1TextBlock}"/>
+    </StackPanel>
+
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="24,0,24,12">
       <Button Content="Reload from host"
               Theme="{StaticResource MaterialFlatButton}"
               Command="{Binding ReloadAllCommand}"
@@ -267,47 +272,67 @@
           </StackPanel>
         </TabItem.Header>
         <ScrollViewer>
-          <StackPanel Spacing="16" Margin="0,12,0,0" DataContext="{Binding Prompts}">
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-              <TextBlock Text="System Prompts Registry" Theme="{StaticResource MaterialHeadline5TextBlock}" />
-              <Button Grid.Column="1" Content="Reset defaults" 
-                      Theme="{StaticResource MaterialFlatButton}" 
-                      Command="{Binding ResetToDefaultsCommand}"/>
+          <StackPanel Spacing="24" Margin="24" DataContext="{Binding Prompts}">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="16">
+                 <materialIcons:MaterialIcon Kind="ScriptText" Foreground="#00C853" Width="32" Height="32"/>
+                 <TextBlock Text="System Prompts" VerticalAlignment="Center" Theme="{StaticResource MaterialHeadline5TextBlock}" FontWeight="Bold"/>
+              </StackPanel>
+
+              <Button Grid.Column="2" 
+                      Command="{Binding ResetToDefaultsCommand}"
+                      Theme="{StaticResource MaterialFlatButton}"
+                      Foreground="#FFAB91">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                       <materialIcons:MaterialIcon Kind="Refresh" Width="18" Height="18"/>
+                       <TextBlock Text="RESET TO DEFAULTS" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="12"/>
+                  </StackPanel>
+              </Button>
             </Grid>
 
-            <TextBlock TextWrapping="Wrap" Opacity="0.75" FontSize="13" Margin="0,0,0,16">
-                System prompts customize how the AI handles each generation modality.
-            </TextBlock>
+            <ItemsControl ItemsSource="{Binding PromptRows}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Margin="8" Padding="16" Background="#121212" CornerRadius="8" BorderBrush="#33FFFFFF" BorderThickness="1">
+                    <DockPanel>
+                      <Grid DockPanel.Dock="Top" Margin="0,0,0,16" ColumnDefinitions="Auto,*,Auto">
+                        <Border Grid.Column="0" CornerRadius="4" Padding="8,2" Background="#00C853">
+                          <TextBlock Text="{Binding ModalityKey, Converter={x:Static conv:StringConverters.ToUpper}}" 
+                                     FontSize="10" FontWeight="Bold" Foreground="White" LetterSpacing="1"/>
+                        </Border>
+                        <materialIcons:MaterialIcon Grid.Column="2" Kind="ContentSaveEditOutline" Opacity="0.5" Foreground="#00C853" Width="20" Height="20"/>
+                      </Grid>
 
-            <Grid RowDefinitions="Auto,*" ColumnDefinitions="140,*" Margin="4">
-              <TextBlock Grid.Column="0" Text="Modality" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
-              <TextBlock Grid.Column="1" Text="Prompt Content" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
-
-              <ItemsControl x:Name="PromptItemsList" Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding PromptRows}" Margin="0,12,0,0">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate>
-                    <Grid ColumnDefinitions="140,*" Margin="0,0,0,24">
-                      <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Top" FontWeight="Medium" Margin="0,8,0,0"/>
-                      <TextBox Grid.Column="1" Text="{Binding Text}" 
+                      <TextBox Text="{Binding Text}" 
                                AcceptsReturn="True" 
                                TextWrapping="Wrap" 
-                               MinHeight="80"
-                               Theme="{StaticResource OutlineTextBox}" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </Grid>
+                               MinHeight="220"
+                               Theme="{StaticResource OutlineTextBox}"
+                               BorderThickness="0"
+                               Background="Transparent"
+                               Padding="0"
+                               FontSize="13"/>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <Button Content="Save Prompt Changes" 
                     Command="{Binding SaveCommand}" 
                     Theme="{StaticResource MaterialFlatMidButton}" 
                     HorizontalAlignment="Right"
                     MinWidth="180"
-                    Margin="0,16,0,0"/>
-            
-            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
+                    Margin="0,16,8,0"/>
+
+            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" HorizontalAlignment="Right"/>
             <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
+                       HorizontalAlignment="Right"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
         </ScrollViewer>

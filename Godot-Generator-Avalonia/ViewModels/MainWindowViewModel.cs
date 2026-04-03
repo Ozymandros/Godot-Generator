@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Godot_Generator_Avalonia.Models;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -68,5 +69,34 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedNavIndexChanged(int value)
     {
         OnPropertyChanged(nameof(CurrentPane));
+    }
+
+    [RelayCommand]
+    private void OpenRepo()
+    {
+        try
+        {
+            var url = "https://github.com/Ozymandros/Godot-Generator-Avalonia";
+            if (OperatingSystem.IsWindows())
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                });
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                System.Diagnostics.Process.Start("xdg-open", url);
+            }
+            else if (OperatingSystem.IsMacOS())
+            {
+                System.Diagnostics.Process.Start("open", url);
+            }
+        }
+        catch
+        {
+            // best effort
+        }
     }
 }

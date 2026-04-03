@@ -48,6 +48,8 @@ public sealed class GeneratorApiClient(
             GenerationModality.Sprites => await api.GenerateSpritesAsync(request, cancellationToken).ConfigureAwait(false),
             GenerationModality.GodotUi => await api.GenerateGodotUiAsync(request, cancellationToken).ConfigureAwait(false),
             GenerationModality.GodotPhysics => await api.GenerateGodotPhysicsAsync(request, cancellationToken).ConfigureAwait(false),
+            GenerationModality.GodotProject => await api.GenerateGodotProjectAsync(request, cancellationToken).ConfigureAwait(false),
+            GenerationModality.Scenes => await api.CreateSceneAsync(request, cancellationToken).ConfigureAwait(false),
             _ => ApiResponse<Dictionary<string, object?>>.Fail("Unsupported modality."),
         };
 
@@ -208,6 +210,8 @@ public sealed class GeneratorApiClient(
     {
         GenerationModality.GodotUi => "godot-ui",
         GenerationModality.GodotPhysics => "godot-physics",
+        GenerationModality.GodotProject => "godot-project",
+        GenerationModality.Scenes => "scenes",
         _ => modality.ToString().ToLowerInvariant(),
     };
 

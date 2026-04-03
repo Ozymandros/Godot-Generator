@@ -34,7 +34,29 @@ public partial class GenerationPanelViewModel : ViewModelBase
     {
         GenerationModality.GodotUi => "Godot UI",
         GenerationModality.GodotPhysics => "Godot Physics",
+        GenerationModality.Scenes => "Create Scene",
+        GenerationModality.GodotProject => "Create Godot Project",
         _ => Modality.ToString(),
+    };
+
+    /// <summary>Label for the main prompt field.</summary>
+    public string PromptLabel => Modality switch
+    {
+        GenerationModality.GodotPhysics => "Physics Description",
+        GenerationModality.GodotUi => "UI Element Description",
+        GenerationModality.Scenes => "Scene Description",
+        GenerationModality.GodotProject => "Project Requirements",
+        _ => "Prompt",
+    };
+
+    /// <summary>Watermark for the main prompt field.</summary>
+    public string PromptWatermark => Modality switch
+    {
+        GenerationModality.GodotPhysics => "Enter physics simulation details...",
+        GenerationModality.GodotUi => "Enter UI layout or component description...",
+        GenerationModality.Scenes => "Describe the scene layout...",
+        GenerationModality.GodotProject => "Enter your project needs...",
+        _ => "Enter your prompt",
     };
 
     /// <summary>Combo items: empty string = use global default.</summary>

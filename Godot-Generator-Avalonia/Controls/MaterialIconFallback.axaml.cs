@@ -52,6 +52,7 @@ public partial class MaterialIconFallback : UserControl
             "RobotOutline" or "robot" or "providers" or "models" => "🤖",
             "ScriptTextOutline" or "prompts" => "📜",
             "KeyChain" or "secrets" => "🔑",
+            "Github" or "github" or "repo" => "🐙",
             "CircleMedium" or "default" => "•",
             _ => "•",
         };
