@@ -2,6 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Godot_Generator_Avalonia.App"
              xmlns:local="using:Godot_Generator_Avalonia"
+             xmlns:conv="using:Godot_Generator_Avalonia.Converters"
+             xmlns:converters="using:Godot_Generator_Avalonia.Converters"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:iconConv="using:Godot_Generator_Avalonia.Converters"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -10,6 +14,13 @@
     </Application.DataTemplates>
   
     <Application.Styles>
+        <materialIcons:MaterialIconStyles />
         <FluentTheme />
     </Application.Styles>
+
+    <Application.Resources>
+        <conv:PackIconKindConverter x:Key="PackIconKindConverter" />
+        <iconConv:MaterialIconNameToEnumConverter x:Key="MaterialIconNameToEnumConverter" />
+    </Application.Resources>
+
 </Application>

@@ -3,6 +3,7 @@ using Avalonia.Controls.Templates;
 using Godot_Generator_Avalonia.ViewModels;
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace Godot_Generator_Avalonia
 {
@@ -20,7 +21,7 @@ namespace Godot_Generator_Avalonia
                 return null;
 
             var name = param.GetType().FullName!.Replace("ViewModel", "View", StringComparison.Ordinal);
-            var type = Type.GetType(name);
+            var type = typeof(ViewLocator).Assembly.GetType(name);
 
             if (type != null)
             {

@@ -1,5 +1,8 @@
+using GodotGenerator.Application.Abstractions;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GodotGenerator.Application.DependencyInjection;
 
@@ -13,6 +16,10 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddGodotGeneratorApplication(this IServiceCollection services)
     {
+        services.TryAddSingleton<ILlmDiscoveryInfoProvider, DefaultLlmDiscoveryInfoProvider>();
+        services.TryAddSingleton<IGodotMcpToolCatalog, NullGodotMcpToolCatalog>();
+        services.TryAddSingleton<IGodotProjectPathValidator, PassThroughGodotProjectPathValidator>();
+        services.AddSingleton<IModalityTurnComposer, ModalityTurnComposer>();
         services.AddScoped<RunAgentTurnUseCase>();
         services.AddScoped<GetPreferenceUseCase>();
         services.AddScoped<SetPreferenceUseCase>();

@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Godot_Generator_Avalonia.ViewModels"
+             x:Class="Godot_Generator_Avalonia.Views.GenerationPanelView"
+             x:DataType="vm:GenerationPanelViewModel">
+  <ScrollViewer Margin="16">
+    <StackPanel Spacing="12">
+      <TextBlock Text="{Binding DisplayTitle}" FontSize="20" FontWeight="SemiBold"/>
+      <TextBox Text="{Binding Prompt}"
+               Watermark="Enter your prompt"
+               AcceptsReturn="True"
+               TextWrapping="Wrap"
+               MinHeight="140"/>
+      <TextBlock Text="Preferred language override (empty = use global default):"/>
+      <ComboBox ItemsSource="{Binding LanguageOptions}"
+                SelectedItem="{Binding LanguageOverride}"
+                MinWidth="240"/>
+      <Button Content="Generate"
+              Command="{Binding GenerateCommand}"
+              HorizontalAlignment="Left"
+              MinWidth="120"/>
+      <TextBlock Text="{Binding Error}" Foreground="IndianRed" TextWrapping="Wrap"/>
+      <TextBlock Text="Response" FontWeight="SemiBold"/>
+      <TextBlock Text="{Binding ResponseText}" TextWrapping="Wrap"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

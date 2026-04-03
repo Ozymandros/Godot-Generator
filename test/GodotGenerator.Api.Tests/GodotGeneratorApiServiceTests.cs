@@ -3,6 +3,7 @@ using GodotGenerator.Api.Dtos;
 using GodotGenerator.Api.Services;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -71,7 +72,10 @@ public sealed class GodotGeneratorApiServiceTests
         var setPref = new SetPreferenceUseCase(preferences, NullLogger<SetPreferenceUseCase>.Instance);
         var getKeys = new GetApiKeysUseCase(preferences, NullLogger<GetApiKeysUseCase>.Instance);
         var saveKeys = new SaveApiKeysUseCase(preferences, NullLogger<SaveApiKeysUseCase>.Instance);
-        var all = new GetAllConfigUseCase(getKeys, getPref);
+        var llmDiscovery = new DefaultLlmDiscoveryInfoProvider();
+        var all = new GetAllConfigUseCase(getKeys, getPref, llmDiscovery);
+        var composer = new ModalityTurnComposer();
+        var catalog = new NullGodotMcpToolCatalog();
 
         return new GodotGeneratorApiService(
             run,
@@ -80,6 +84,8 @@ public sealed class GodotGeneratorApiServiceTests
             getKeys,
             saveKeys,
             all,
+            composer,
+            catalog,
             NullLogger<GodotGeneratorApiService>.Instance);
     }
 

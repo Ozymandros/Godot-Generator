@@ -1,5 +1,6 @@
 #nullable enable
 using GodotGenerator.Application.Abstractions;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -41,11 +42,13 @@ public sealed class ApiKeyUseCasesTests
         var saveKeys = new SaveApiKeysUseCase(repo, NullLogger<SaveApiKeysUseCase>.Instance);
         await saveKeys.ExecuteAsync(new Dictionary<string, string?> { ["openai"] = "secret" });
 
-        var useCase = new GetAllConfigUseCase(getKeys, getPref);
+        var useCase = new GetAllConfigUseCase(getKeys, getPref, new DefaultLlmDiscoveryInfoProvider());
         var snapshot = await useCase.ExecuteAsync();
 
         Assert.Equal("openai", snapshot.Preferences["preferred_llm_provider"]);
         Assert.Contains("openai", snapshot.KeyNames);
+        Assert.Equal("openai", snapshot.DefaultLlmProvider);
+        Assert.Equal("gpt-4o-mini", snapshot.DefaultChatModelId);
     }
 
     /// <summary>

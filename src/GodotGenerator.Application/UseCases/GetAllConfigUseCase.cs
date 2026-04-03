@@ -1,4 +1,6 @@
 #nullable enable
+using GodotGenerator.Application.Abstractions;
+
 namespace GodotGenerator.Application.UseCases;
 
 /// <summary>
@@ -6,7 +8,8 @@ namespace GodotGenerator.Application.UseCases;
 /// </summary>
 public sealed class GetAllConfigUseCase(
     GetApiKeysUseCase getApiKeys,
-    GetPreferenceUseCase getPreference)
+    GetPreferenceUseCase getPreference,
+    ILlmDiscoveryInfoProvider llmDiscovery)
 {
     /// <summary>
     /// Builds a configuration snapshot for API-style discovery calls.
@@ -35,7 +38,8 @@ public sealed class GetAllConfigUseCase(
             preferences[key] = await getPreference.ExecuteAsync(key, cancellationToken).ConfigureAwait(false);
         }
 
-        return new AllConfigSnapshot(preferences, keyNames);
+        var (provider, modelId) = llmDiscovery.GetDefaultChatModel();
+        return new AllConfigSnapshot(preferences, keyNames, provider, modelId);
     }
 }
 
@@ -44,6 +48,10 @@ public sealed class GetAllConfigUseCase(
 /// </summary>
 /// <param name="Preferences">Configured preference values.</param>
 /// <param name="KeyNames">Configured API key service names.</param>
+/// <param name="DefaultLlmProvider">Default LLM provider label from host configuration.</param>
+/// <param name="DefaultChatModelId">Default chat model id from host configuration.</param>
 public sealed record AllConfigSnapshot(
     IReadOnlyDictionary<string, string?> Preferences,
-    IReadOnlyList<string> KeyNames);
+    IReadOnlyList<string> KeyNames,
+    string DefaultLlmProvider,
+    string DefaultChatModelId);

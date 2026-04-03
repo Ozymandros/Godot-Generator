@@ -1,6 +1,7 @@
 #nullable enable
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
 using Microsoft.Extensions.Logging;
@@ -17,12 +18,19 @@ namespace GodotGenerator.Infrastructure.Ai.Services;
 public sealed class AiOrchestrationService(
     IKernelFactory kernelFactory,
     IOptions<OrchestrationOptions> orchestrationOptions,
+    IGodotProjectPathValidator godotProjectPathValidator,
     ILogger<AiOrchestrationService> logger) : IAiOrchestrationService
 {
     /// <inheritdoc />
     public async Task<AgentTurnResult> RunTurnAsync(AgentTurnRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var validation = await TryValidateGodotProjectPathAsync(request, cancellationToken).ConfigureAwait(false);
+        if (validation is not null)
+        {
+            return validation;
+        }
+
         CancellationToken effectiveCancellationToken = cancellationToken;
         CancellationTokenSource? timeoutCts = null;
         try
@@ -81,6 +89,45 @@ public sealed class AiOrchestrationService(
         {
             timeoutCts?.Dispose();
         }
+    }
+
+    /// <summary>
+    /// When <see cref="ModalityTurnComposer.GodotProjectPathOptionKey"/> is set, validates the path via the Godot plugin before the LLM runs.
+    /// </summary>
+    private async Task<AgentTurnResult?> TryValidateGodotProjectPathAsync(
+        AgentTurnRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Options is null ||
+            !request.Options.TryGetValue(ModalityTurnComposer.GodotProjectPathOptionKey, out var raw) ||
+            raw is null)
+        {
+            return null;
+        }
+
+        var path = raw switch
+        {
+            string s => s.Trim(),
+            _ => raw.ToString()?.Trim(),
+        };
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var valid = await godotProjectPathValidator
+            .IsValidGodotProjectRootAsync(path, cancellationToken)
+            .ConfigureAwait(false);
+        if (valid)
+        {
+            return null;
+        }
+
+        return new AgentTurnResult(
+            false,
+            "The provided Godot project path is not valid (expected project.godot at the root).",
+            path);
     }
 
     /// <summary>

@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
@@ -14,12 +14,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotGenerator.Infrastructure.Persistence", "src\GodotGenerator.Infrastructure.Persistence\GodotGenerator.Infrastructure.Persistence.csproj", "{F96441DF-0FBB-47A2-8885-2F439DF2BDF7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotGenerator.Infrastructure.Ai", "src\GodotGenerator.Infrastructure.Ai\GodotGenerator.Infrastructure.Ai.csproj", "{EE1AFC87-602F-4B3E-9AC2-64DD0D22D9C9}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotMcp.Plugin", "..\Godot-MCP-SK-Plugin\src\GodotMcp.Plugin\GodotMcp.Plugin.csproj", "{F744188B-E585-427D-89E3-978C2CB0F7C4}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotMcp.Core", "..\Godot-MCP-SK-Plugin\src\GodotMcp.Core\GodotMcp.Core.csproj", "{B3B26924-35DC-409B-8DA2-BA0C0B753B86}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GodotMcp.Infrastructure", "..\Godot-MCP-SK-Plugin\src\GodotMcp.Infrastructure\GodotMcp.Infrastructure.csproj", "{336DD8DF-30FF-43BD-BD39-0A697D83AA75}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{0C88DD14-F956-CE84-757C-A364CCF449FC}"
 EndProject
@@ -107,42 +101,6 @@ Global
 		{EE1AFC87-602F-4B3E-9AC2-64DD0D22D9C9}.Release|x64.Build.0 = Release|Any CPU
 		{EE1AFC87-602F-4B3E-9AC2-64DD0D22D9C9}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE1AFC87-602F-4B3E-9AC2-64DD0D22D9C9}.Release|x86.Build.0 = Release|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Debug|x64.Build.0 = Debug|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Debug|x86.Build.0 = Debug|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Release|x64.ActiveCfg = Release|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Release|x64.Build.0 = Release|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Release|x86.ActiveCfg = Release|Any CPU
-		{F744188B-E585-427D-89E3-978C2CB0F7C4}.Release|x86.Build.0 = Release|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Debug|x64.Build.0 = Debug|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Debug|x86.Build.0 = Debug|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Release|x64.ActiveCfg = Release|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Release|x64.Build.0 = Release|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Release|x86.ActiveCfg = Release|Any CPU
-		{B3B26924-35DC-409B-8DA2-BA0C0B753B86}.Release|x86.Build.0 = Release|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Debug|x64.Build.0 = Debug|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Debug|x86.Build.0 = Debug|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Release|Any CPU.Build.0 = Release|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Release|x64.ActiveCfg = Release|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Release|x64.Build.0 = Release|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Release|x86.ActiveCfg = Release|Any CPU
-		{336DD8DF-30FF-43BD-BD39-0A697D83AA75}.Release|x86.Build.0 = Release|Any CPU
 		{5B91E29D-FE32-4738-A696-8DC17E1829CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5B91E29D-FE32-4738-A696-8DC17E1829CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B91E29D-FE32-4738-A696-8DC17E1829CD}.Debug|x64.ActiveCfg = Debug|Any CPU

@@ -1,3 +1,4 @@
+using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
@@ -24,9 +25,11 @@ public sealed class AiOrchestrationServiceTests
             .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("godot-mcp not available"));
 
+        var validator = new Mock<IGodotProjectPathValidator>();
         var sut = new AiOrchestrationService(
             factory.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
+            validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
         var result = await sut.RunTurnAsync(new AgentTurnRequest("ping"));
 
@@ -46,9 +49,11 @@ public sealed class AiOrchestrationServiceTests
             .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("underlying details"));
 
+        var validator = new Mock<IGodotProjectPathValidator>();
         var sut = new AiOrchestrationService(
             factory.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions { GenericFailureMessage = "Something went wrong." }),
+            validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
 
         var result = await sut.RunTurnAsync(new AgentTurnRequest("ping", PreferredModelId: "gpt-4o"));
@@ -73,9 +78,11 @@ public sealed class AiOrchestrationServiceTests
             .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(longMessage));
 
+        var validator = new Mock<IGodotProjectPathValidator>();
         var sut = new AiOrchestrationService(
             factory.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
+            validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
 
         var result = await sut.RunTurnAsync(new AgentTurnRequest("ping"));

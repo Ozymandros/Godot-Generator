@@ -42,7 +42,10 @@ public static class ServiceCollectionExtensions
         services.AddGodotMcp(configuration);
 
         services.AddSingleton<IKernelFactory, GodotKernelFactory>();
+        services.AddSingleton<GodotGenerator.Application.Abstractions.IGodotProjectPathValidator, GodotProjectPathValidator>();
         services.AddSingleton<IAiOrchestrationService, AiOrchestrationService>();
+        services.AddSingleton<GodotGenerator.Application.Abstractions.ILlmDiscoveryInfoProvider, LlmDiscoveryInfoProvider>();
+        services.AddSingleton<GodotGenerator.Application.Abstractions.IGodotMcpToolCatalog, GodotMcpToolCatalog>();
         services.AddGodotGeneratorApplication();
         return services;
     }

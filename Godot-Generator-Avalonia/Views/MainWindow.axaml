@@ -1,20 +1,38 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ma="using:Material.Avalonia"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:Godot_Generator_Avalonia.ViewModels"
+        xmlns:models="using:Godot_Generator_Avalonia.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
         x:Class="Godot_Generator_Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Godot_Generator_Avalonia">
+        Title="Godot Generator"
+        Width="1100"
+        Height="720">
 
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
-
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
+    <Grid ColumnDefinitions="220,*">
+        <Border Grid.Column="0" BorderBrush="#33000000" BorderThickness="0,0,1,0" Padding="8">
+            <ListBox ItemsSource="{Binding NavItems}"
+                     SelectedIndex="{Binding SelectedNavIndex}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:NavItem">
+                        <Grid ColumnDefinitions="32,*" Margin="4" VerticalAlignment="Center">
+                            <!-- Material icon control using Material.Icons.Avalonia -->
+                            <materialIcons:MaterialIcon Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}" />
+                            <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+        <ContentControl Grid.Column="1"
+                        Content="{Binding CurrentPane}"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch"/>
+    </Grid>
 </Window>

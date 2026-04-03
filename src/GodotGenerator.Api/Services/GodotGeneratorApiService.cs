@@ -2,6 +2,8 @@
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Application.Dtos;
+using GodotGenerator.Application.Abstractions;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.Logging;
 
@@ -17,6 +19,8 @@ public sealed class GodotGeneratorApiService(
     GetApiKeysUseCase getApiKeys,
     SaveApiKeysUseCase saveApiKeys,
     GetAllConfigUseCase getAllConfig,
+    IModalityTurnComposer modalityTurnComposer,
+    IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
 {
     /// <inheritdoc />
@@ -109,13 +113,29 @@ public sealed class GodotGeneratorApiService(
     public async Task<ApiResponse<Dictionary<string, object?>>> GetAllConfigAsync(CancellationToken cancellationToken = default)
     {
         var snapshot = await getAllConfig.ExecuteAsync(cancellationToken).ConfigureAwait(false);
+        var toolNames = await godotToolCatalog.ListRegisteredToolNamesAsync(cancellationToken).ConfigureAwait(false);
+        var providers = new List<object>
+        {
+            new Dictionary<string, object?>
+            {
+                ["name"] = snapshot.DefaultLlmProvider,
+                ["defaultChatModelId"] = snapshot.DefaultChatModelId,
+            },
+        };
+
+        var models = new Dictionary<string, object?>
+        {
+            [snapshot.DefaultLlmProvider] = new[] { snapshot.DefaultChatModelId },
+        };
+
         return ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>
         {
             ["preferences"] = snapshot.Preferences,
             ["keys"] = snapshot.KeyNames,
-            ["providers"] = Array.Empty<object>(),
-            ["models"] = new Dictionary<string, object?>(),
+            ["providers"] = providers,
+            ["models"] = models,
             ["prompts"] = new Dictionary<string, object?>(),
+            ["godotToolNames"] = toolNames,
         });
     }
 
@@ -138,10 +158,13 @@ public sealed class GodotGeneratorApiService(
                 provider = await getPreference.ExecuteAsync(providerPreferenceKey, cancellationToken).ConfigureAwait(false);
             }
 
-            var turnRequest = new AgentTurnRequest(
-                Prompt: request.Prompt,
-                SystemPrompt: request.SystemPrompt,
-                PreferredModelId: request.PreferredModelId);
+            var turnRequest = modalityTurnComposer.Compose(
+                modality,
+                request.Prompt,
+                request.SystemPrompt,
+                request.ProjectName,
+                request.PreferredModelId,
+                request.Options);
 
             var turn = await runAgentTurn.ExecuteAsync(turnRequest, cancellationToken).ConfigureAwait(false);
             if (!turn.Success)
