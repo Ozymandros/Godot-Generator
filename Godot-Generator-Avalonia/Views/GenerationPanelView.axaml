@@ -1,27 +1,83 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Godot_Generator_Avalonia.ViewModels"
+             xmlns:assists="clr-namespace:Material.Styles.Assists;assembly=Material.Styles"
              x:Class="Godot_Generator_Avalonia.Views.GenerationPanelView"
              x:DataType="vm:GenerationPanelViewModel">
   <ScrollViewer Margin="16">
-    <StackPanel Spacing="12">
-      <TextBlock Text="{Binding DisplayTitle}" FontSize="20" FontWeight="SemiBold"/>
+    <StackPanel Spacing="16">
+      <TextBlock Text="{Binding DisplayTitle}" 
+                 Theme="{StaticResource MaterialHeadline5TextBlock}"
+                 Margin="0,0,0,8"/>
+      
+      <Border BorderBrush="{DynamicResource MaterialDividerBrush}" 
+              BorderThickness="1" 
+              CornerRadius="8" 
+              Padding="12"
+              Background="{DynamicResource MaterialPaperBrush}">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Effective runtime settings" FontWeight="SemiBold" Margin="0,0,0,4"/>
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Provider: " FontWeight="Medium"/>
+            <Run Text="{Binding EffectiveProvider}"/>
+          </TextBlock>
+          <TextBlock TextWrapping="Wrap">
+            <Run Text="Model: " FontWeight="Medium"/>
+            <Run Text="{Binding EffectiveModelId}"/>
+          </TextBlock>
+        </StackPanel>
+      </Border>
+
       <TextBox Text="{Binding Prompt}"
                Watermark="Enter your prompt"
                AcceptsReturn="True"
                TextWrapping="Wrap"
-               MinHeight="140"/>
-      <TextBlock Text="Preferred language override (empty = use global default):"/>
-      <ComboBox ItemsSource="{Binding LanguageOptions}"
-                SelectedItem="{Binding LanguageOverride}"
-                MinWidth="240"/>
-      <Button Content="Generate"
-              Command="{Binding GenerateCommand}"
-              HorizontalAlignment="Left"
-              MinWidth="120"/>
-      <TextBlock Text="{Binding Error}" Foreground="IndianRed" TextWrapping="Wrap"/>
-      <TextBlock Text="Response" FontWeight="SemiBold"/>
-      <TextBlock Text="{Binding ResponseText}" TextWrapping="Wrap"/>
+               MinHeight="140"
+               assists:TextFieldAssist.Label="Prompt"
+               Theme="{StaticResource OutlineTextBox}"/>
+
+      <StackPanel Spacing="4">
+        <TextBlock Text="Preferred language override (empty = use global default):" 
+                   Opacity="0.7" FontSize="12"/>
+        <ComboBox ItemsSource="{Binding LanguageOptions}"
+                  SelectedItem="{Binding LanguageOverride}"
+                  MinWidth="240"
+                  HorizontalAlignment="Left"/>
+      </StackPanel>
+
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <Button Content="Generate"
+                Command="{Binding GenerateCommand}"
+                Theme="{StaticResource MaterialFlatMidButton}"
+                MinWidth="120"/>
+        <Button Content="Cancel"
+                Command="{Binding CancelCommand}"
+                Theme="{StaticResource MaterialFlatButton}"
+                MinWidth="120"
+                Foreground="{DynamicResource MaterialSecondaryMidBrush}"/>
+      </StackPanel>
+
+      <ProgressBar IsIndeterminate="True" 
+                   IsVisible="{Binding IsBusy}" 
+                   Margin="0,8"
+                   Foreground="{DynamicResource MaterialPrimaryMidBrush}"/>
+      
+      <TextBlock Text="{Binding Error}" 
+                 Foreground="{DynamicResource MaterialSecondaryMidBrush}" 
+                 TextWrapping="Wrap"
+                 IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+      <TextBlock Text="Response" Theme="{StaticResource MaterialHeadline6TextBlock}" Margin="0,16,0,0" />
+      
+      <Border BorderBrush="{DynamicResource MaterialDividerBrush}" 
+              BorderThickness="1" 
+              CornerRadius="8" 
+              Padding="12"
+              Background="{DynamicResource MaterialPaperBrush}">
+        <SelectableTextBlock Text="{Binding ResponseText}" 
+                            TextWrapping="Wrap" 
+                            Opacity="0.85"/>
+      </Border>
     </StackPanel>
   </ScrollViewer>
 </UserControl>

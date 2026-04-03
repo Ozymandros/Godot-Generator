@@ -1,4 +1,3 @@
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Godot_Generator_Avalonia.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +20,7 @@ public partial class ConfigViewModel : ViewModelBase
         General = new SettingsGeneralViewModel(scopeFactory);
         Providers = new SettingsProvidersViewModel(scopeFactory);
         Models = new SettingsModelsViewModel(scopeFactory);
-        Prompts = new SettingsPromptsViewModel();
+        Prompts = new SettingsPromptsViewModel(scopeFactory);
         Secrets = new SettingsSecretsViewModel(scopeFactory);
         _ = ReloadAllAsync();
     }
@@ -83,6 +82,7 @@ public partial class ConfigViewModel : ViewModelBase
                 General.SetError(err);
                 Providers.SetError(err);
                 Models.SetError(err);
+                Prompts.SetError(err);
                 Secrets.SetError(err);
                 return;
             }
@@ -90,6 +90,7 @@ public partial class ConfigViewModel : ViewModelBase
             General.ApplySnapshot(snap);
             Providers.ApplySnapshot(snap);
             Models.ApplySnapshot(snap);
+            Prompts.ApplySnapshot(snap);
             await Secrets.LoadFromSnapshotAsync(snap).ConfigureAwait(true);
         }
         catch (Exception ex)
@@ -100,6 +101,7 @@ public partial class ConfigViewModel : ViewModelBase
             General.SetError(err);
             Providers.SetError(err);
             Models.SetError(err);
+            Prompts.SetError(err);
             Secrets.SetError(err);
         }
         finally

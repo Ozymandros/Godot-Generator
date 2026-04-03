@@ -12,6 +12,7 @@ namespace Godot_Generator_Avalonia.ViewModels;
 public partial class GenerationPanelViewModel : ViewModelBase
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private CancellationTokenSource? _runCts;
 
     /// <summary>
     /// Creates a panel for the given modality.
@@ -54,12 +55,21 @@ public partial class GenerationPanelViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
     private bool _isBusy;
+
+    [ObservableProperty]
+    private string _effectiveProvider = string.Empty;
+
+    [ObservableProperty]
+    private string _effectiveModelId = string.Empty;
 
     /// <summary>Runs generation via the API client.</summary>
     [RelayCommand(CanExecute = nameof(CanGenerate))]
     private async Task GenerateAsync()
     {
+        _runCts?.Dispose();
+        _runCts = new CancellationTokenSource();
         IsBusy = true;
         Error = null;
         ResponseText = null;
@@ -67,9 +77,14 @@ public partial class GenerationPanelViewModel : ViewModelBase
         {
             using var scope = _scopeFactory.CreateScope();
             var api = scope.ServiceProvider.GetRequiredService<IGeneratorApiClient>();
+            var (provider, modelId) = await api
+                .GetEffectiveProviderModelAsync(Modality, _runCts.Token)
+                .ConfigureAwait(true);
+            EffectiveProvider = provider ?? "(default)";
+            EffectiveModelId = modelId ?? "(default)";
             var global = await api.GetGlobalPreferredLanguageAsync().ConfigureAwait(true);
             var (ok, message, err) = await api
-                .GenerateAsync(Modality, Prompt, LanguageOverride, global)
+                .GenerateAsync(Modality, Prompt, LanguageOverride, global, _runCts.Token)
                 .ConfigureAwait(true);
             if (!ok)
             {
@@ -89,5 +104,12 @@ public partial class GenerationPanelViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanCancel))]
+    private void Cancel()
+    {
+        _runCts?.Cancel();
+    }
+
     private bool CanGenerate() => !IsBusy;
+    private bool CanCancel() => IsBusy;
 }

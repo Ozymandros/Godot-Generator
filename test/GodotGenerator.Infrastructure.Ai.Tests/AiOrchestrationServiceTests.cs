@@ -27,8 +27,10 @@ public sealed class AiOrchestrationServiceTests
             .ThrowsAsync(new InvalidOperationException("godot-mcp not available"));
 
         var validator = new Mock<IGodotProjectPathValidator>();
+        var router = CreateSupportedRouter();
         var sut = new AiOrchestrationService(
             factory.Object,
+            router.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
             validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
@@ -51,8 +53,10 @@ public sealed class AiOrchestrationServiceTests
             .ThrowsAsync(new InvalidOperationException("underlying details"));
 
         var validator = new Mock<IGodotProjectPathValidator>();
+        var router = CreateSupportedRouter();
         var sut = new AiOrchestrationService(
             factory.Object,
+            router.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions { GenericFailureMessage = "Something went wrong." }),
             validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
@@ -80,8 +84,10 @@ public sealed class AiOrchestrationServiceTests
             .ThrowsAsync(new InvalidOperationException(longMessage));
 
         var validator = new Mock<IGodotProjectPathValidator>();
+        var router = CreateSupportedRouter();
         var sut = new AiOrchestrationService(
             factory.Object,
+            router.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
             validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
@@ -106,8 +112,10 @@ public sealed class AiOrchestrationServiceTests
             .ThrowsAsync(new InvalidOperationException("API key for provider 'openai' is not configured. Set it in Settings > Secrets."));
 
         var validator = new Mock<IGodotProjectPathValidator>();
+        var router = CreateSupportedRouter();
         var sut = new AiOrchestrationService(
             factory.Object,
+            router.Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
             validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
@@ -116,5 +124,36 @@ public sealed class AiOrchestrationServiceTests
 
         Assert.False(result.Success);
         Assert.Equal("API key for provider 'openai' is not configured. Set it in Settings > Secrets.", result.Message);
+    }
+
+    [Fact]
+    public async Task RunTurnAsync_returns_failure_for_unsupported_provider()
+    {
+        var factory = new Mock<IKernelFactory>(MockBehavior.Strict);
+        var validator = new Mock<IGodotProjectPathValidator>();
+        var router = new Mock<IProviderCapabilityRouter>();
+        string? reason;
+        router.Setup(r => r.Supports("anthropic", It.IsAny<string?>(), out reason!))
+            .Returns(false);
+
+        var sut = new AiOrchestrationService(
+            factory.Object,
+            router.Object,
+            Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
+            validator.Object,
+            NullLogger<AiOrchestrationService>.Instance);
+
+        var result = await sut.RunTurnAsync(new AgentTurnRequest("ping", Provider: "anthropic"));
+        Assert.False(result.Success);
+        Assert.Contains("Unsupported", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static Mock<IProviderCapabilityRouter> CreateSupportedRouter()
+    {
+        var router = new Mock<IProviderCapabilityRouter>();
+        string? reason = null;
+        router.Setup(r => r.Supports(It.IsAny<string?>(), It.IsAny<string?>(), out reason))
+            .Returns(true);
+        return router;
     }
 }

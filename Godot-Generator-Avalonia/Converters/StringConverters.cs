@@ -11,6 +11,17 @@ public static class StringConverters
 {
     public static IValueConverter IsNotNullOrEmpty { get; } = new NotNullOrEmptyStringToBoolConverter();
 
+    /// <summary>True when value is non-null (for visibility of detail panels).</summary>
+    public static IValueConverter IsNotNull { get; } = new NotNullObjectToBoolConverter();
+
+    private sealed class NotNullObjectToBoolConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not null;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
     private sealed class NotNullOrEmptyStringToBoolConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)

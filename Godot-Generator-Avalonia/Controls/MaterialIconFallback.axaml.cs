@@ -38,15 +38,21 @@ public partial class MaterialIconFallback : UserControl
     {
         var text = key switch
         {
-            "settings" => "⚙",
-            "text_fields" => "📝",
-            "code" => "</>",
-            "image" => "🖼",
-            "music_note" => "🎵",
-            "movie" => "🎬",
-            "grid_on" => "▦",
-            "widgets" => "▦",
-            "build" => "🔧",
+            "CogOutline" or "settings" => "⚙",
+            "FileDocumentOutline" or "text" => "📝",
+            "Xml" or "code" => "</>",
+            "ImageOutline" or "image" => "🖼",
+            "VolumeHigh" or "audio" => "🔊",
+            "MovieOutline" or "movie" or "video" => "🎬",
+            "Grid" or "grid" or "sprites" => "▦",
+            "PaletteOutline" or "godot_ui" => "🎨",
+            "Atom" or "godot_physics" => "⚛",
+            "ViewDashboardOutline" or "scenes" => "📊",
+            "Unity" or "godot_project" => "📽",
+            "RobotOutline" or "robot" or "providers" or "models" => "🤖",
+            "ScriptTextOutline" or "prompts" => "📜",
+            "KeyChain" or "secrets" => "🔑",
+            "CircleMedium" or "default" => "•",
             _ => "•",
         };
 

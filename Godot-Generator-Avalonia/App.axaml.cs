@@ -30,6 +30,9 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
 
+        // Explicitly ensuring Material Icon assemblies are loaded for the converters if needed.
+        _ = typeof(Material.Icons.Avalonia.MaterialIcon).Assembly;
+
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppContext.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: true)

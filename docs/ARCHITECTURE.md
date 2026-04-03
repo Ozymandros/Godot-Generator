@@ -2,6 +2,16 @@
 
 This repository provides backend libraries and integration pieces to connect Semantic Kernel with a Godot MCP server plugin. The design is intentionally modular so the AI orchestration layer can be reused across different frontends.
 
+In-process interaction model (non-negotiable for parity pass)
+
+- Single process runtime:
+  - Avalonia Presentation -> API facade -> Application use cases/policies -> Infrastructure services.
+- Explicitly excluded:
+  - IPC
+  - server host
+  - network transport between these layers.
+- Startup remains permissive (no mandatory API keys), while generation is strict (missing provider key fails with actionable message).
+
 Core components
 
 - `GodotGenerator.Application` - DTOs and application contract abstractions.
@@ -28,3 +38,4 @@ Notes for maintainers
 
 - Keep KernelFactory small and testable. Register plugin/tool adapters in extension methods that are easy to stub for unit tests.
 - When adding new providers or MCP features, add unit tests and update the coverage gate if needed.
+- Keep modality/provider/model precedence logic centralized in one policy helper to avoid drift across UI/API/infra.

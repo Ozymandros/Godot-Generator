@@ -13,4 +13,6 @@ public enum GenerationModality
     Sprites,
     GodotUi,
     GodotPhysics,
+    Scenes,
+    GodotProject,
 }

@@ -63,9 +63,20 @@ public sealed class GodotKernelFactory(
         }
     }
 
-    private static string ResolveProvider(string? provider) =>
+    /// <summary>
+    /// Resolves the provider for the kernel creation, applying optional request-level overrides.
+    /// </summary>
+    /// <param name="provider">Optional provider from the caller.</param>
+    /// <returns>The effective provider to use for the kernel.</returns>
+    private string ResolveProvider(string? provider) =>
         string.IsNullOrWhiteSpace(provider) ? "openai" : provider.Trim().ToLowerInvariant();
 
+    /// <summary>
+    /// Builds a cache key for the kernel creation, applying optional request-level overrides.
+    /// </summary>
+    /// <param name="provider">Provider identifier used for the cache key.</param>
+    /// <param name="modelId">Model id used for the cache key.</param>
+    /// <returns>The effective cache key to use for the kernel.</returns>
     private static string BuildCacheKey(string provider, string modelId) => $"{provider}::{modelId}";
 
     /// <summary>

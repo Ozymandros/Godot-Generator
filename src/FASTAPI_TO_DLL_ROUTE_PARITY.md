@@ -16,8 +16,14 @@ This matrix maps Unity FastAPI router behaviors to transport-agnostic DLL servic
 Semantics preserved in DLL:
 - prompt validation (`Prompt` must be non-empty),
 - preferred provider fallback from preferences,
+- preferred model fallback from preferences,
 - normalized success/error envelope payload,
 - modality-specific operation names.
+
+Route hardening checklist (required for parity completion):
+- request override > preference > host default precedence is deterministic,
+- response payload includes resolved provider and model metadata,
+- actionable missing-key and unsupported-provider/model errors are safe for UI display.
 
 ## Preferences Router (`/prefs`)
 
@@ -46,4 +52,9 @@ Semantics preserved in DLL:
   - preferences,
   - API key status,
   - lightweight capability metadata.
+
+Contract completeness checklist:
+- includes prompts section semantics (read-only or CRUD depending on phase),
+- includes provider/model summaries aligned to runtime policy,
+- never exposes secret values (names/index only).
 

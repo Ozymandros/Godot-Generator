@@ -17,6 +17,7 @@ namespace GodotGenerator.Infrastructure.Ai.Services;
 /// </summary>
 public sealed class AiOrchestrationService(
     IKernelFactory kernelFactory,
+    IProviderCapabilityRouter providerCapabilityRouter,
     IOptions<OrchestrationOptions> orchestrationOptions,
     IGodotProjectPathValidator godotProjectPathValidator,
     ILogger<AiOrchestrationService> logger) : IAiOrchestrationService
@@ -40,6 +41,10 @@ public sealed class AiOrchestrationService(
                 timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(orchestrationOptions.Value.TurnTimeoutSeconds));
                 effectiveCancellationToken = timeoutCts.Token;
+            }
+            if (!providerCapabilityRouter.Supports(request.Provider, request.Modality, out var reason))
+            {
+                return new AgentTurnResult(false, reason ?? "Unsupported provider/modality combination.");
             }
 
             var kernel = await kernelFactory

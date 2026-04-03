@@ -32,4 +32,9 @@ public interface IGeneratorApiClient
 
     /// <summary>Saves API keys in batch (empty value removes).</summary>
     Task<bool> SaveApiKeysAsync(IReadOnlyDictionary<string, string?> keys, CancellationToken cancellationToken = default);
+
+    /// <summary>Resolves effective provider/model for a modality using configured preferences and host defaults.</summary>
+    Task<(string? Provider, string? ModelId)> GetEffectiveProviderModelAsync(
+        GenerationModality modality,
+        CancellationToken cancellationToken = default);
 }

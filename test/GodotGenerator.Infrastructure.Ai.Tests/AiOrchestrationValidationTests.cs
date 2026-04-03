@@ -31,6 +31,7 @@ public sealed class AiOrchestrationValidationTests
 
         var sut = new AiOrchestrationService(
             factory.Object,
+            CreateSupportedRouter().Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
             validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
@@ -68,6 +69,7 @@ public sealed class AiOrchestrationValidationTests
 
         var sut = new AiOrchestrationService(
             factory.Object,
+            CreateSupportedRouter().Object,
             Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
             validator.Object,
             NullLogger<AiOrchestrationService>.Instance);
@@ -85,5 +87,14 @@ public sealed class AiOrchestrationValidationTests
         factory.Verify(
             f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    private static Mock<IProviderCapabilityRouter> CreateSupportedRouter()
+    {
+        var router = new Mock<IProviderCapabilityRouter>();
+        string? reason = null;
+        router.Setup(r => r.Supports(It.IsAny<string?>(), It.IsAny<string?>(), out reason))
+            .Returns(true);
+        return router;
     }
 }

@@ -16,18 +16,19 @@ public partial class MainWindowViewModel : ViewModelBase
     /// </summary>
     public MainWindowViewModel(IServiceScopeFactory scopeFactory)
     {
-        // Use exact Material.Icons enum names where possible to ensure icons resolve
         NavItems = new List<NavItem>
         {
-            new NavItem("Settings", "Config"),
-            new NavItem("CommentText", "Text"),
-            new NavItem("Code", "Code"),
-            new NavItem("Image", "Image"),
-            new NavItem("MusicNote", "Audio"),
-            new NavItem("Movie", "Video"),
-            new NavItem("GridOn", "Sprites"),
-            new NavItem("Widgets", "Godot UI"),
-            new NavItem("Build", "Godot Physics"),
+            new NavItem("CogOutline", "Config"),
+            new NavItem("ViewDashboardOutline", "Scenes"),
+            new NavItem("Xml", "Code"),
+            new NavItem("FileDocumentOutline", "Text"),
+            new NavItem("ImageOutline", "Image"),
+            new NavItem("Grid", "Sprites"),
+            new NavItem("VolumeHigh", "Audio"),
+            new NavItem("MovieOutline", "Video"),
+            new NavItem("PaletteOutline", "Godot UI"),
+            new NavItem("Atom", "Godot Physics"),
+            new NavItem("Unity", "Godot Project"),
         };
 
         Config = new ConfigViewModel(scopeFactory);
@@ -51,14 +52,16 @@ public partial class MainWindowViewModel : ViewModelBase
     public object CurrentPane => SelectedNavIndex switch
     {
         0 => Config,
-        1 => _panels[GenerationModality.Text],
+        1 => _panels[GenerationModality.Scenes],
         2 => _panels[GenerationModality.Code],
-        3 => _panels[GenerationModality.Image],
-        4 => _panels[GenerationModality.Audio],
-        5 => _panels[GenerationModality.Video],
-        6 => _panels[GenerationModality.Sprites],
-        7 => _panels[GenerationModality.GodotUi],
-        8 => _panels[GenerationModality.GodotPhysics],
+        3 => _panels[GenerationModality.Text],
+        4 => _panels[GenerationModality.Image],
+        5 => _panels[GenerationModality.Sprites],
+        6 => _panels[GenerationModality.Audio],
+        7 => _panels[GenerationModality.Video],
+        8 => _panels[GenerationModality.GodotUi],
+        9 => _panels[GenerationModality.GodotPhysics],
+        10 => _panels[GenerationModality.GodotProject],
         _ => Config,
     };
 

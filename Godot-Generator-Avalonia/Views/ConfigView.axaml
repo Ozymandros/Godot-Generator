@@ -2,139 +2,383 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Godot_Generator_Avalonia.ViewModels"
              xmlns:conv="using:Godot_Generator_Avalonia.Converters"
+             xmlns:cfg="using:GodotGenerator.Application.Configuration"
+             xmlns:assists="clr-namespace:Material.Styles.Assists;assembly=Material.Styles"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="Godot_Generator_Avalonia.Views.ConfigView"
              x:DataType="vm:ConfigViewModel">
-  <DockPanel Margin="12">
-    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
       <Button Content="Reload from host"
+              Theme="{StaticResource MaterialFlatButton}"
               Command="{Binding ReloadAllCommand}"
               IsEnabled="{Binding !IsReloading}"/>
-      <TextBlock Text="{Binding ShellErrorMessage}" Foreground="#C42B1C" VerticalAlignment="Center"
+      <TextBlock Text="{Binding ShellErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}" VerticalAlignment="Center"
                  IsVisible="{Binding ShellErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
     </StackPanel>
-    <TabControl SelectedIndex="{Binding SelectedSettingsTab}">
-      <TabItem Header="General">
+
+    <TabControl SelectedIndex="{Binding SelectedSettingsTab}" 
+                 Theme="{StaticResource MaterialTabControl}">
+      <TabItem>
+        <TabItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <materialIcons:MaterialIcon Kind="CogOutline" Width="18" Height="18"/>
+            <TextBlock Text="General" VerticalAlignment="Center"/>
+          </StackPanel>
+        </TabItem.Header>
         <ScrollViewer>
-          <StackPanel Spacing="12" MaxWidth="560" Margin="0,8,0,0"
-                      DataContext="{Binding General}">
-            <TextBlock Text="General" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock Text="Default preferred language (used when a panel override is empty):" TextWrapping="Wrap"/>
-            <ComboBox ItemsSource="{Binding LanguageOptions}"
-                      SelectedItem="{Binding SelectedLanguage}"
-                      MinWidth="220"/>
+          <StackPanel Spacing="16" MaxWidth="720" Margin="0,8,0,0" DataContext="{Binding General}">
+            <TextBlock Text="General Settings" Theme="{StaticResource MaterialHeadline5TextBlock}"/>
+            
+            <TextBox Text="{Binding BackendUrl}" 
+                     Watermark="http://127.0.0.1:35421" 
+                     assists:TextFieldAssist.Label="Backend URL" 
+                     Theme="{StaticResource OutlineTextBox}" />
+            
+            <TextBox Text="{Binding OutputBasePath}" 
+                     Watermark="./output" 
+                     assists:TextFieldAssist.Label="Base path (output)" 
+                     Theme="{StaticResource OutlineTextBox}" />
+
             <StackPanel Spacing="4">
-              <TextBlock Text="Host defaults (read-only)" FontWeight="SemiBold"/>
-              <TextBlock TextWrapping="Wrap">
-                <Run Text="Default LLM provider: "/>
+              <TextBlock Text="Default preferred language:" Opacity="0.7" FontSize="12"/>
+              <ComboBox ItemsSource="{Binding LanguageOptions}"
+                        SelectedItem="{Binding SelectedLanguage}"
+                        MinWidth="220"/>
+            </StackPanel>
+
+            <TextBlock Text="Preferred Intelligence Providers" Theme="{StaticResource MaterialHeadline6TextBlock}" Margin="0,8,0,0"/>
+
+            <!-- LLM / Code / UI / Physics -->
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+              <ComboBox Grid.Column="0" Margin="0,0,8,8"
+                        ItemsSource="{Binding ProviderOptions}"
+                        IsEditable="True"
+                        Text="{Binding LlmProvider}"
+                        assists:ComboBoxAssist.Label="LLM (Text/Code/Godot) Provider"/>
+              <ComboBox Grid.Column="1" Margin="0,0,0,8"
+                        ItemsSource="{Binding LlmModelOptions}"
+                        IsEditable="True"
+                        Text="{Binding LlmModel}"
+                        assists:ComboBoxAssist.Label="LLM Model"/>
+            </Grid>
+
+            <!-- Image -->
+            <Grid ColumnDefinitions="*,*">
+              <ComboBox Grid.Column="0" Margin="0,0,8,8"
+                        ItemsSource="{Binding ProviderOptions}"
+                        IsEditable="True"
+                        Text="{Binding ImageProvider}"
+                        assists:ComboBoxAssist.Label="Image Provider"/>
+              <ComboBox Grid.Column="1" Margin="0,0,0,8"
+                        ItemsSource="{Binding ImageModelOptions}"
+                        IsEditable="True"
+                        Text="{Binding ImageModel}"
+                        assists:ComboBoxAssist.Label="Image Model"/>
+            </Grid>
+            
+            <Separator Height="1" Margin="0,8" Background="{DynamicResource MaterialDividerBrush}" />
+
+            <StackPanel Spacing="4">
+              <TextBlock Text="Host defaults (read-only)" Theme="{StaticResource MaterialSubtitle1TextBlock}"/>
+              <TextBlock Foreground="{DynamicResource MaterialDividerBrush}">
+                <Run Text="Default LLM: " FontWeight="Medium"/>
                 <Run Text="{Binding DefaultLlmProvider}"/>
               </TextBlock>
-              <TextBlock TextWrapping="Wrap">
-                <Run Text="Default chat model id: "/>
+              <TextBlock Foreground="{DynamicResource MaterialDividerBrush}">
+                <Run Text="Default Chat ID: " FontWeight="Medium"/>
                 <Run Text="{Binding DefaultChatModelId}"/>
               </TextBlock>
-              <TextBlock TextWrapping="Wrap">
-                <Run Text="Registered Godot MCP tools: "/>
-                <Run Text="{Binding GodotToolCount}"/>
-              </TextBlock>
             </StackPanel>
-            <Button Content="Save language" Command="{Binding SaveCommand}" HorizontalAlignment="Left"/>
-            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#C42B1C"
+
+            <Button Content="Save All Changes" 
+                    Command="{Binding SaveCommand}" 
+                    Theme="{StaticResource MaterialFlatMidButton}" 
+                    HorizontalAlignment="Left"
+                    MinWidth="150"
+                    Margin="0,12,0,0"/>
+            
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MaterialDividerBrush}"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
-      <TabItem Header="Providers">
-        <ScrollViewer>
-          <StackPanel Spacing="10" MaxWidth="560" Margin="0,8,0,0"
-                      DataContext="{Binding Providers}">
-            <TextBlock Text="Preferred providers" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock Text="OpenAI-compatible host identifiers. Leave blank to use host defaults where applicable." TextWrapping="Wrap" Opacity="0.8"/>
-            <TextBlock Text="LLM"/>
-            <TextBox Text="{Binding LlmProvider}" Watermark="preferred_llm_provider"/>
-            <TextBlock Text="Image"/>
-            <TextBox Text="{Binding ImageProvider}" Watermark="preferred_image_provider"/>
-            <TextBlock Text="Audio"/>
-            <TextBox Text="{Binding AudioProvider}" Watermark="preferred_audio_provider"/>
-            <TextBlock Text="Video"/>
-            <TextBox Text="{Binding VideoProvider}" Watermark="preferred_video_provider"/>
-            <Button Content="Save providers" Command="{Binding SaveCommand}" HorizontalAlignment="Left"/>
-            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#C42B1C"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
+      <TabItem>
+        <TabItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <materialIcons:MaterialIcon Kind="RobotOutline" Width="18" Height="18"/>
+            <TextBlock Text="Providers" VerticalAlignment="Center"/>
           </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-      <TabItem Header="Models">
-        <ScrollViewer>
-          <StackPanel Spacing="10" MaxWidth="560" Margin="0,8,0,0"
-                      DataContext="{Binding Models}">
-            <TextBlock Text="Preferred models" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock TextWrapping="Wrap" Opacity="0.8">
-              Host default chat model (from appsettings): <Run Text="{Binding HostDefaultChatModelId}"/>
-            </TextBlock>
-            <TextBlock Text="LLM model id"/>
-            <TextBox Text="{Binding LlmModel}" Watermark="preferred_llm_model"/>
-            <TextBlock Text="Image model id"/>
-            <TextBox Text="{Binding ImageModel}" Watermark="preferred_image_model"/>
-            <TextBlock Text="Audio model id"/>
-            <TextBox Text="{Binding AudioModel}" Watermark="preferred_audio_model"/>
-            <TextBlock Text="Video model id"/>
-            <TextBox Text="{Binding VideoModel}" Watermark="preferred_video_model"/>
-            <Button Content="Save models" Command="{Binding SaveCommand}" HorizontalAlignment="Left"/>
-            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#C42B1C"
-                       IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-      <TabItem Header="Prompts">
-        <ScrollViewer>
-          <StackPanel Spacing="8" MaxWidth="560" Margin="0,8,0,0"
-                      DataContext="{Binding Prompts}">
-            <TextBlock Text="Prompts" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock Text="{Binding InfoMessage}" TextWrapping="Wrap"/>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-      <TabItem Header="Secrets">
-        <ScrollViewer>
-          <StackPanel Spacing="12" Margin="0,8,0,0" DataContext="{Binding Secrets}">
-            <TextBlock Text="API keys" FontSize="18" FontWeight="SemiBold"/>
-            <TextBlock Text="Secrets are never shown after load. Enter a new value to replace, or use Remove to clear a stored key." TextWrapping="Wrap" Opacity="0.8"/>
-            <ItemsControl ItemsSource="{Binding Rows}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:ApiKeyRowViewModel">
-                  <Border BorderBrush="#33000000" BorderThickness="1" CornerRadius="4" Padding="8" Margin="0,0,0,8">
-                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
-                      <StackPanel Grid.Column="0" Grid.Row="0" Orientation="Horizontal" Spacing="8">
-                        <TextBlock Text="{Binding ServiceName}" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                        <TextBlock Text="(configured)" Opacity="0.7"
-                                   IsVisible="{Binding HasConfiguredKey}"/>
-                      </StackPanel>
-                      <Button Grid.Column="1" Grid.Row="0" Content="Remove"
-                              Command="{Binding RemoveCommand}"
-                              HorizontalAlignment="Right"/>
-                      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="New secret" Margin="0,8,0,2"/>
-                      <TextBox Grid.Row="2" Grid.ColumnSpan="2"
-                               PasswordChar="*"
-                               Text="{Binding NewKeyValue}"
-                               Watermark="Leave empty until you replace"/>
-                    </Grid>
-                  </Border>
+        </TabItem.Header>
+        <Grid Margin="0,12,0,0" ColumnDefinitions="280,*">
+          <DockPanel Grid.Column="0" Margin="0,0,16,0">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Stretch" Spacing="8" Margin="0,0,0,12">
+              <TextBlock Text="Engines" Theme="{StaticResource MaterialSubtitle1TextBlock}" VerticalAlignment="Center" />
+              <Button Content="+" 
+                      Theme="{StaticResource MaterialFlatButton}" 
+                      Command="{Binding Providers.AddProviderCommand}" 
+                      Padding="8,2" />
+            </StackPanel>
+            <ListBox ItemsSource="{Binding Providers.Entries}"
+                     SelectedItem="{Binding Providers.SelectedEntry}"
+                     Theme="{StaticResource MaterialCardListBox}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="cfg:ProviderRegistryEntry">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="{Binding Id}" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <TextBox Width="200" Text="{Binding NewServiceName}" Watermark="Service name"/>
-              <Button Content="Add service" Command="{Binding AddRowCommand}"/>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+          <ScrollViewer Grid.Column="1">
+            <StackPanel Spacing="12" DataContext="{Binding Providers}"
+                        IsVisible="{Binding SelectedEntry, Converter={x:Static conv:StringConverters.IsNotNull}}">
+              <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBlock Text="{Binding SelectedEntry.Id}" Theme="{StaticResource MaterialHeadline6TextBlock}"/>
+                <Button Grid.Column="1" Content="Deregister" Command="{Binding DeregisterCommand}"
+                        Theme="{StaticResource MaterialFlatButton}"
+                        Foreground="{DynamicResource MaterialSecondaryMidBrush}"/>
+              </Grid>
+              <StackPanel Spacing="16">
+                <TextBox Text="{Binding SelectedEntry.Id}" 
+                         assists:TextFieldAssist.Label="Unique provider ID"
+                         Theme="{StaticResource OutlineTextBox}"/>
+                <TextBox Text="{Binding SelectedEntry.KeyStoreHandle}" 
+                         assists:TextFieldAssist.Label="Key store handle"
+                         Theme="{StaticResource OutlineTextBox}"/>
+                <TextBox Text="{Binding SelectedEntry.Endpoint}" 
+                         assists:TextFieldAssist.Label="Intelligence API endpoint"
+                         Theme="{StaticResource OutlineTextBox}"/>
+                
+                <TextBlock Text="Capabilities" Theme="{StaticResource MaterialSubtitle1TextBlock}" Margin="0,8,0,0"/>
+                <WrapPanel Orientation="Horizontal">
+                    <CheckBox Content="OpenAI compat" IsChecked="{Binding SelectedEntry.OpenAiCompatibility}" Margin="0,0,16,8"/>
+                    <CheckBox Content="Auth required" IsChecked="{Binding SelectedEntry.AuthenticationRequired}" Margin="0,0,16,8"/>
+                    <CheckBox Content="Vision" IsChecked="{Binding SelectedEntry.Vision}" Margin="0,0,16,8"/>
+                    <CheckBox Content="Streaming" IsChecked="{Binding SelectedEntry.Streaming}" Margin="0,0,16,8"/>
+                    <CheckBox Content="Functions" IsChecked="{Binding SelectedEntry.FunctionCalling}" Margin="0,0,16,8"/>
+                    <CheckBox Content="Generic Tools" IsChecked="{Binding SelectedEntry.GenericToolUse}" Margin="0,0,16,8"/>
+                </WrapPanel>
+
+                <TextBox Text="{Binding ModalitiesString}" 
+                         assists:TextFieldAssist.Label="Enabled modalities" 
+                         Watermark="llm, image, audio"
+                         Theme="{StaticResource OutlineTextBox}"/>
+              </StackPanel>
+              <Button Content="Commit changes" 
+                      Theme="{StaticResource MaterialFlatMidButton}"
+                      Command="{Binding CommitCommand}" 
+                      HorizontalAlignment="Right"
+                      Margin="0,16,0,0"/>
+              
+              <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MaterialDividerBrush}" Margin="0,4"/>
+              <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
+                         IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
             </StackPanel>
-            <Button Content="Save new secrets" Command="{Binding SaveCommand}" HorizontalAlignment="Left"/>
-            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#C42B1C"
+          </ScrollViewer>
+        </Grid>
+      </TabItem>
+      <TabItem>
+        <TabItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <materialIcons:MaterialIcon Kind="RobotOutline" Width="18" Height="18"/>
+            <TextBlock Text="Models" VerticalAlignment="Center"/>
+          </StackPanel>
+        </TabItem.Header>
+        <ScrollViewer>
+          <StackPanel Spacing="16" MaxWidth="800" Margin="0,12,0,0"
+                      DataContext="{Binding Models}">
+            <TextBlock Text="Model Endpoints" Theme="{StaticResource MaterialHeadline5TextBlock}"/>
+            
+            <StackPanel Spacing="4">
+              <TextBlock Text="Provider filter" Opacity="0.7" FontSize="12"/>
+              <ComboBox ItemsSource="{Binding ProviderFilterOptions}"
+                        SelectedItem="{Binding SelectedProviderFilter}"
+                        MinWidth="280"/>
+            </StackPanel>
+            
+            <TextBlock TextWrapping="Wrap" Opacity="0.85">
+              Host default chat model: <Run Text="{Binding HostDefaultChatModelId}" FontWeight="Medium"/>
+            </TextBlock>
+
+            <Border BorderBrush="{DynamicResource MaterialDividerBrush}" 
+                    BorderThickness="1" 
+                    CornerRadius="8" 
+                    Padding="12"
+                    Background="{DynamicResource MaterialPaperBrush}">
+              <Grid RowDefinitions="Auto,*" ColumnDefinitions="2*,2*,*,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Friendly name" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="Engine value" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Modality" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
+                <TextBlock Grid.Row="0" Grid.Column="3" Text=" "/>
+                
+                <ItemsControl x:Name="ModelRowsList" Grid.Row="1" Grid.ColumnSpan="4" ItemsSource="{Binding Rows}" Margin="0,8,0,0">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="cfg:ModelRegistryEntry">
+                      <Grid ColumnDefinitions="2*,2*,*,Auto" Margin="0,4,0,4">
+                        <TextBlock Grid.Column="0" Text="{Binding FriendlyName}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="1" Text="{Binding EngineValue}" VerticalAlignment="Center" Opacity="0.7" FontSize="11"/>
+                        <TextBlock Grid.Column="2" Text="{Binding Modality}" VerticalAlignment="Center"/>
+                        <Button Grid.Column="3" Content="Remove"
+                                Theme="{StaticResource MaterialFlatButton}"
+                                Foreground="{DynamicResource MaterialSecondaryMidBrush}"
+                                Command="{Binding #ModelRowsList.DataContext.RemoveModelCommand}"
+                                CommandParameter="{Binding}"/>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Grid>
+            </Border>
+
+            <TextBlock Text="Register New Endpoint" Theme="{StaticResource MaterialHeadline6TextBlock}" Margin="0,16,0,0"/>
+
+            <Grid ColumnDefinitions="*,*,*,Auto">
+              <TextBox Grid.Column="0" Margin="0,0,8,0" 
+                       Text="{Binding NewFriendlyName}" 
+                       assists:TextFieldAssist.Label="Friendly name"
+                       Theme="{StaticResource OutlineTextBox}"/>
+              <TextBox Grid.Column="1" Margin="0,0,8,0" 
+                       Text="{Binding NewEngineValue}" 
+                       assists:TextFieldAssist.Label="Engine value"
+                       Theme="{StaticResource OutlineTextBox}"/>
+              <ComboBox Grid.Column="2" Margin="0,0,8,0" 
+                        ItemsSource="{Binding ModalityOptions}" 
+                        SelectedItem="{Binding NewModality}"
+                        assists:ComboBoxAssist.Label="Modality"/>
+              <Button Grid.Column="3" Content="Add to provider" 
+                      Theme="{StaticResource MaterialFlatMidButton}"
+                      Command="{Binding AddToProviderCommand}"/>
+            </Grid>
+
+            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray" Margin="0,4"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
         </ScrollViewer>
+      </TabItem>
+      <TabItem>
+        <TabItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <materialIcons:MaterialIcon Kind="ScriptTextOutline" Width="18" Height="18"/>
+            <TextBlock Text="Prompts" VerticalAlignment="Center"/>
+          </StackPanel>
+        </TabItem.Header>
+        <ScrollViewer>
+          <StackPanel Spacing="16" Margin="0,12,0,0" DataContext="{Binding Prompts}">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+              <TextBlock Text="System Prompts Registry" Theme="{StaticResource MaterialHeadline5TextBlock}" />
+              <Button Grid.Column="1" Content="Reset defaults" 
+                      Theme="{StaticResource MaterialFlatButton}" 
+                      Command="{Binding ResetToDefaultsCommand}"/>
+            </Grid>
+
+            <TextBlock TextWrapping="Wrap" Opacity="0.75" FontSize="13" Margin="0,0,0,16">
+                System prompts customize how the AI handles each generation modality.
+            </TextBlock>
+
+            <Grid RowDefinitions="Auto,*" ColumnDefinitions="140,*" Margin="4">
+              <TextBlock Grid.Column="0" Text="Modality" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
+              <TextBlock Grid.Column="1" Text="Prompt Content" FontWeight="SemiBold" Theme="{StaticResource MaterialSubtitle2TextBlock}"/>
+
+              <ItemsControl x:Name="PromptItemsList" Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding PromptRows}" Margin="0,12,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="140,*" Margin="0,0,0,24">
+                      <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Top" FontWeight="Medium" Margin="0,8,0,0"/>
+                      <TextBox Grid.Column="1" Text="{Binding Text}" 
+                               AcceptsReturn="True" 
+                               TextWrapping="Wrap" 
+                               MinHeight="80"
+                               Theme="{StaticResource OutlineTextBox}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Grid>
+
+            <Button Content="Save Prompt Changes" 
+                    Command="{Binding SaveCommand}" 
+                    Theme="{StaticResource MaterialFlatMidButton}" 
+                    HorizontalAlignment="Right"
+                    MinWidth="180"
+                    Margin="0,16,0,0"/>
+            
+            <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem>
+        <TabItem.Header>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <materialIcons:MaterialIcon Kind="KeyChain" Width="18" Height="18"/>
+            <TextBlock Text="Secrets" VerticalAlignment="Center"/>
+          </StackPanel>
+        </TabItem.Header>
+        <Grid>
+          <ScrollViewer>
+            <StackPanel Spacing="12" Margin="0,8,0,0" DataContext="{Binding Secrets}">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="Intelligence keys" FontSize="18" FontWeight="SemiBold"/>
+                <Button Grid.Column="1" Content="Store new secret" Command="{Binding OpenStoreDialogCommand}"/>
+              </Grid>
+              <TextBlock Text="Secrets are never shown after load. Replace by entering a new value." TextWrapping="Wrap" Opacity="0.8"/>
+              <Border BorderBrush="#33000000" BorderThickness="1" CornerRadius="4" Padding="8">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Service handle" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="1" Text="Active secret" FontWeight="SemiBold"/>
+                  </Grid>
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="vm:ApiKeyRowViewModel">
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                          <StackPanel>
+                            <TextBlock Text="{Binding ServiceName}" FontWeight="SemiBold"/>
+                            <TextBlock Text="(configured)" Opacity="0.7" IsVisible="{Binding HasConfiguredKey}"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" MinWidth="200">
+                            <TextBlock Text="New value" Opacity="0.7" FontSize="11"/>
+                            <TextBox PasswordChar="*" Text="{Binding NewKeyValue}" Watermark="Replace"/>
+                          </StackPanel>
+                        </Grid>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Save replacements" Command="{Binding SaveCommand}"/>
+              </StackPanel>
+              <TextBlock Text="{Binding StatusMessage}" Foreground="Gray"/>
+              <TextBlock Text="{Binding ErrorMessage}" Foreground="#C42B1C"
+                         IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
+            </StackPanel>
+          </ScrollViewer>
+          <Border Background="#AA000000" IsVisible="{Binding Secrets.IsStoreDialogOpen}">
+            <Border Background="#FF1E1E24" CornerRadius="8" Padding="16" MaxWidth="420" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <StackPanel Spacing="16" DataContext="{Binding Secrets}">
+                <TextBlock Text="New global secret" FontSize="16" FontWeight="SemiBold"/>
+                <StackPanel Spacing="4">
+                  <TextBlock Text="Service ID"/>
+                  <TextBox Text="{Binding DialogServiceId}"/>
+                </StackPanel>
+                <StackPanel Spacing="4">
+                  <TextBlock Text="Key value"/>
+                  <TextBox PasswordChar="*" Text="{Binding DialogKeyValue}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                  <Button Content="Cancel" Command="{Binding CancelStoreDialogCommand}"/>
+                  <Button Content="Store key" Command="{Binding StoreFromDialogCommand}"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </Border>
+        </Grid>
       </TabItem>
     </TabControl>
   </DockPanel>

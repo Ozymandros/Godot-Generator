@@ -1,15 +1,17 @@
+using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Godot_Generator_Avalonia.Models;
 using Godot_Generator_Avalonia.Services;
 using GodotGenerator.Application;
+using GodotGenerator.Application.Configuration;
+using GodotGenerator.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Godot_Generator_Avalonia.ViewModels;
 
-/// <summary>
-/// Preferred provider ids (OpenAI-compatible host strings).
-/// </summary>
+/// <summary>Provider registry: list + detail form with commit and deregister.</summary>
 public partial class SettingsProvidersViewModel : ViewModelBase
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -19,17 +21,13 @@ public partial class SettingsProvidersViewModel : ViewModelBase
         _scopeFactory = scopeFactory;
     }
 
-    [ObservableProperty]
-    private string _llmProvider = string.Empty;
+    public ObservableCollection<ProviderRegistryEntry> Entries { get; } = new();
 
     [ObservableProperty]
-    private string _imageProvider = string.Empty;
+    private ProviderRegistryEntry? _selectedEntry;
 
     [ObservableProperty]
-    private string _audioProvider = string.Empty;
-
-    [ObservableProperty]
-    private string _videoProvider = string.Empty;
+    private string _modalitiesString = string.Empty;
 
     [ObservableProperty]
     private string? _statusMessage;
@@ -37,45 +35,102 @@ public partial class SettingsProvidersViewModel : ViewModelBase
     [ObservableProperty]
     private string? _errorMessage;
 
-    /// <summary>Applies snapshot preferences.</summary>
     public void ApplySnapshot(SettingsSnapshot snap)
     {
         ErrorMessage = null;
-        LlmProvider = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredLlmProvider) ?? string.Empty;
-        ImageProvider = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredImageProvider) ?? string.Empty;
-        AudioProvider = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredAudioProvider) ?? string.Empty;
-        VideoProvider = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredVideoProvider) ?? string.Empty;
+        Entries.Clear();
+        foreach (var p in snap.ProviderRegistry)
+        {
+            Entries.Add(CloneEntry(p));
+        }
+
+        SelectedEntry = Entries.FirstOrDefault();
+    }
+
+    partial void OnSelectedEntryChanged(ProviderRegistryEntry? value)
+    {
+        ModalitiesString = value is null ? string.Empty : string.Join(", ", value.Modalities);
+    }
+
+    partial void OnModalitiesStringChanged(string value)
+    {
+        if (SelectedEntry is null)
+        {
+            return;
+        }
+
+        SelectedEntry.Modalities = value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
     }
 
     public void SetError(string message) => ErrorMessage = message;
 
     [RelayCommand]
-    private async Task SaveAsync()
+    private void AddProvider()
+    {
+        var entry = new ProviderRegistryEntry
+        {
+            Id = "new-provider",
+            KeyStoreHandle = "new-provider",
+            Modalities = new List<string> { "llm" },
+            AuthenticationRequired = true,
+            Streaming = true,
+            FunctionCalling = true,
+            GenericToolUse = true,
+        };
+        Entries.Add(entry);
+        SelectedEntry = entry;
+    }
+
+    [RelayCommand]
+    private void Deregister()
+    {
+        if (SelectedEntry is null)
+        {
+            return;
+        }
+
+        Entries.Remove(SelectedEntry);
+        SelectedEntry = Entries.FirstOrDefault();
+    }
+
+    [RelayCommand]
+    private async Task CommitAsync()
     {
         StatusMessage = null;
         ErrorMessage = null;
-        using var scope = _scopeFactory.CreateScope();
-        var api = scope.ServiceProvider.GetRequiredService<IGeneratorApiClient>();
-        var pairs = new (string Key, string? Value)[]
+        var doc = new ProviderRegistryDocument { Version = 1, Providers = Entries.ToList() };
+        var err = ConfigurationRegistryService.ValidateProviderRegistry(doc);
+        if (err is not null)
         {
-            (PreferenceKeys.PreferredLlmProvider, NullIfEmpty(LlmProvider)),
-            (PreferenceKeys.PreferredImageProvider, NullIfEmpty(ImageProvider)),
-            (PreferenceKeys.PreferredAudioProvider, NullIfEmpty(AudioProvider)),
-            (PreferenceKeys.PreferredVideoProvider, NullIfEmpty(VideoProvider)),
-        };
-
-        foreach (var (key, value) in pairs)
-        {
-            var ok = await api.SetPreferenceAsync(key, value).ConfigureAwait(true);
-            if (!ok)
-            {
-                StatusMessage = $"Save failed for {key}.";
-                return;
-            }
+            ErrorMessage = err;
+            return;
         }
 
-        StatusMessage = "Saved.";
+        var json = ConfigurationRegistryService.Serialize(doc);
+        using var scope = _scopeFactory.CreateScope();
+        var api = scope.ServiceProvider.GetRequiredService<IGeneratorApiClient>();
+        var ok = await api.SetPreferenceAsync(PreferenceKeys.ProvidersRegistryV1, json).ConfigureAwait(true);
+        StatusMessage = ok ? "Providers saved." : "Save failed.";
+        if (!ok)
+        {
+            ErrorMessage = "Failed to persist provider registry.";
+        }
     }
 
-    private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    private static ProviderRegistryEntry CloneEntry(ProviderRegistryEntry p) =>
+        new()
+        {
+            Id = p.Id,
+            KeyStoreHandle = p.KeyStoreHandle,
+            Endpoint = p.Endpoint,
+            OpenAiCompatibility = p.OpenAiCompatibility,
+            AuthenticationRequired = p.AuthenticationRequired,
+            Vision = p.Vision,
+            Streaming = p.Streaming,
+            FunctionCalling = p.FunctionCalling,
+            GenericToolUse = p.GenericToolUse,
+            Modalities = new List<string>(p.Modalities),
+        };
 }

@@ -36,4 +36,28 @@ public static class PreferenceKeys
 
     /// <summary>Default video model id preference.</summary>
     public const string PreferredVideoModel = "preferred_video_model";
+
+    /// <summary>JSON document: registered intelligence providers (versioned).</summary>
+    public const string ProvidersRegistryV1 = "providers.registry.v1";
+
+    /// <summary>JSON document: registered models per provider (versioned).</summary>
+    public const string ModelsRegistryV1 = "models.registry.v1";
+
+    /// <summary>JSON document: system prompts by modality key (versioned).</summary>
+    public const string PromptsSystemV1 = "prompts.system.v1";
+
+    /// <summary>Optional backend base URL (stored for future remote transport; in-process may ignore).</summary>
+    public const string AppBackendUrl = "app.backend_url";
+
+    /// <summary>Base path for generated output (relative or absolute).</summary>
+    public const string AppOutputBasePath = "app.output_base_path";
+
+    /// <summary>Legacy per-panel prompt keys (migrated into <see cref="PromptsSystemV1"/> on read).</summary>
+    public const string PromptsTextLegacy = "prompts.text";
+
+    public const string PromptsCodeLegacy = "prompts.code";
+
+    public const string PromptsGodotUiLegacy = "prompts.godot_ui";
+
+    public const string PromptsGodotPhysicsLegacy = "prompts.godot_physics";
 }

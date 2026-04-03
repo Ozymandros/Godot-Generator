@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:ma="using:Material.Avalonia"
+        xmlns:ma="clr-namespace:Material.Avalonia;assembly=Material.Avalonia"
         xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:vm="using:Godot_Generator_Avalonia.ViewModels"
         xmlns:models="using:Godot_Generator_Avalonia.Models"
+        xmlns:controls="using:Godot_Generator_Avalonia.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="720"
@@ -20,12 +21,12 @@
                      SelectedIndex="{Binding SelectedNavIndex}">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="models:NavItem">
-                        <Grid ColumnDefinitions="32,*" Margin="4" VerticalAlignment="Center">
-                            <!-- Material icon control using Material.Icons.Avalonia -->
-                            <materialIcons:MaterialIcon Grid.Column="0" Width="20" Height="20" VerticalAlignment="Center" HorizontalAlignment="Center"
-                                                       Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}" />
-                            <TextBlock Grid.Column="1" Text="{Binding Label}" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,6">
+                            <materialIcons:MaterialIcon Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}"
+                                                        Width="24" Height="24"
+                                                        VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                        </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

@@ -21,12 +21,11 @@ public class GeneratorApiClientTests
             {
                 ["preferences"] = new Dictionary<string, string?> { [PreferenceKeys.PreferredLanguage] = "rust" },
                 ["keys"] = new List<string> { "svc" },
-                ["providers"] = new List<object>
-                {
-                    new Dictionary<string, object?> { ["name"] = "p1", ["defaultChatModelId"] = "m1" },
-                },
+                ["providers"] = new List<object>(),
                 ["models"] = new Dictionary<string, object?>(),
                 ["prompts"] = new Dictionary<string, object?>(),
+                ["defaultLlmProvider"] = "p1",
+                ["defaultChatModelId"] = "m1",
                 ["godotToolNames"] = new List<string> { "tool_x" },
             }));
 
@@ -97,8 +96,8 @@ public class GeneratorApiClientTests
                     r.Provider == "stability" &&
                     r.PreferredModelId == "sdxl" &&
                     r.Options != null &&
-                    r.Options.TryGetValue("preferred_language", out var lang) &&
-                    (lang as string) == "csharp"),
+                    r.Options.ContainsKey("preferred_language") &&
+                    (r.Options["preferred_language"] as string) == "csharp"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

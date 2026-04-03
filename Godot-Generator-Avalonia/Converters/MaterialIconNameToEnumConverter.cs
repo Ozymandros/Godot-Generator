@@ -22,18 +22,26 @@ namespace Godot_Generator_Avalonia.Converters
             // Explicit common mappings to handle differences between friendly names and enum members
             var explicitMap = new System.Collections.Generic.Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
             {
-                { "text", new[] { "CommentTextOutline", "TextFields", "TextBox", "TextField", "Text" } },
-                { "text_fields", new[] { "CommentTextOutline", "TextFields", "TextBox", "TextField", "Text" } },
-                { "Text", new[] { "TextFields", "TextBox", "TextField", "Text" } },
-                { "code", new[] { "Code", "CodeBraces", "CodeOff" } },
-                { "image", new[] { "Image", "ImageOutlined", "ImageSearch" } },
-                { "music_note", new[] { "MusicNote", "MusicOff" } },
-                { "musicnote", new[] { "MusicNote", "MusicOff" } },
-                { "movie", new[] { "Movie", "MovieCreation" } },
-                { "grid_on", new[] { "GridOn", "ViewModule" } },
-                { "widgets", new[] { "Widgets", "Widget" } },
-                { "build", new[] { "Build", "BuildCircle" } },
-                { "settings", new[] { "Settings", "SettingsOutline", "Cog" } },
+                { "text", new[] { "FileDocumentOutline", "TextBox", "Text" } },
+                { "code", new[] { "Xml", "CodeBraces", "Code" } },
+                { "image", new[] { "ImageOutline", "Image", "ImageOutlined" } },
+                { "audio", new[] { "VolumeHigh", "MusicNote", "Music" } },
+                { "video", new[] { "MovieOutline", "Movie" } },
+                { "sprites", new[] { "Grid", "GridView", "GridOn" } },
+                { "godot_ui", new[] { "PaletteOutline", "Widgets" } },
+                { "godot_physics", new[] { "Atom", "ScrewMachineFlatHead" } },
+                { "scenes", new[] { "ViewDashboardOutline", "ViewDashboard" } },
+                { "godot_project", new[] { "Unity", "Projector" } },
+                { "config", new[] { "CogOutline", "Settings", "Cog" } },
+                { "settings", new[] { "CogOutline", "Settings", "SettingsOutline", "Cog" } },
+                { "cog", new[] { "CogOutline", "Settings", "Cog", "Gear" } },
+                { "providers", new[] { "RobotOutline", "Robot" } },
+                { "models", new[] { "RobotOutline", "Robot" } },
+                { "prompts", new[] { "ScriptTextOutline", "ScriptText" } },
+                { "secrets", new[] { "KeyChain", "ShieldKey" } },
+                { "text_short", new[] { "TextShort", "CommentTextOutline" } },
+                { "code_braces", new[] { "CodeBraces", "Code" } },
+                { "screw_machine_flat_head", new[] { "ScrewMachineFlatHead", "Wrench", "Tools" } },
             };
             string keyStr = key ?? string.Empty;
             if (explicitMap.TryGetValue(keyStr, out var candidates))

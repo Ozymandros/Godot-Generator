@@ -1,15 +1,17 @@
+using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Godot_Generator_Avalonia.Models;
 using Godot_Generator_Avalonia.Services;
 using GodotGenerator.Application;
+using GodotGenerator.Application.Configuration;
+using GodotGenerator.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Godot_Generator_Avalonia.ViewModels;
 
-/// <summary>
-/// Preferred model ids per modality.
-/// </summary>
+/// <summary>Per-provider model registry with add/remove rows.</summary>
 public partial class SettingsModelsViewModel : ViewModelBase
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -19,17 +21,23 @@ public partial class SettingsModelsViewModel : ViewModelBase
         _scopeFactory = scopeFactory;
     }
 
-    [ObservableProperty]
-    private string _llmModel = string.Empty;
+    public ObservableCollection<string> ProviderFilterOptions { get; } = new();
 
     [ObservableProperty]
-    private string _imageModel = string.Empty;
+    private string _selectedProviderFilter = string.Empty;
+
+    public ObservableCollection<ModelRegistryEntry> Rows { get; } = new();
 
     [ObservableProperty]
-    private string _audioModel = string.Empty;
+    private string _newFriendlyName = string.Empty;
 
     [ObservableProperty]
-    private string _videoModel = string.Empty;
+    private string _newEngineValue = string.Empty;
+
+    [ObservableProperty]
+    private string _newModality = "llm";
+
+    public IReadOnlyList<string> ModalityOptions { get; } = new[] { "llm", "image", "audio", "video" };
 
     [ObservableProperty]
     private string _hostDefaultChatModelId = string.Empty;
@@ -40,46 +48,122 @@ public partial class SettingsModelsViewModel : ViewModelBase
     [ObservableProperty]
     private string? _errorMessage;
 
-    /// <summary>Applies snapshot.</summary>
     public void ApplySnapshot(SettingsSnapshot snap)
     {
         ErrorMessage = null;
         HostDefaultChatModelId = snap.DefaultChatModelId;
-        LlmModel = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredLlmModel) ?? string.Empty;
-        ImageModel = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredImageModel) ?? string.Empty;
-        AudioModel = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredAudioModel) ?? string.Empty;
-        VideoModel = snap.Preferences.GetValueOrDefault(PreferenceKeys.PreferredVideoModel) ?? string.Empty;
+        _allModels = snap.ModelsByProvider.Values.SelectMany(x => x).Select(CloneRow).ToList();
+        ProviderFilterOptions.Clear();
+        foreach (var id in snap.ProviderRegistry.Select(p => p.Id).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase))
+        {
+            ProviderFilterOptions.Add(id);
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedProviderFilter) || !ProviderFilterOptions.Contains(SelectedProviderFilter))
+        {
+            SelectedProviderFilter = ProviderFilterOptions.FirstOrDefault() ?? string.Empty;
+        }
+
+        RefreshRowsForFilter();
     }
 
     public void SetError(string message) => ErrorMessage = message;
 
+    partial void OnSelectedProviderFilterChanged(string value) => RefreshRowsForFilter();
+
+    private List<ModelRegistryEntry> _allModels = new();
+
+    private void RefreshRowsForFilter()
+    {
+        Rows.Clear();
+        var pid = SelectedProviderFilter.Trim();
+        foreach (var m in _allModels.Where(x => string.Equals(x.ProviderId, pid, StringComparison.OrdinalIgnoreCase)))
+        {
+            Rows.Add(m);
+        }
+    }
+
     [RelayCommand]
-    private async Task SaveAsync()
+    private async Task AddToProviderAsync()
     {
         StatusMessage = null;
         ErrorMessage = null;
-        using var scope = _scopeFactory.CreateScope();
-        var api = scope.ServiceProvider.GetRequiredService<IGeneratorApiClient>();
-        var pairs = new (string Key, string? Value)[]
+        var pid = SelectedProviderFilter.Trim();
+        if (string.IsNullOrEmpty(pid))
         {
-            (PreferenceKeys.PreferredLlmModel, NullIfEmpty(LlmModel)),
-            (PreferenceKeys.PreferredImageModel, NullIfEmpty(ImageModel)),
-            (PreferenceKeys.PreferredAudioModel, NullIfEmpty(AudioModel)),
-            (PreferenceKeys.PreferredVideoModel, NullIfEmpty(VideoModel)),
-        };
-
-        foreach (var (key, value) in pairs)
-        {
-            var ok = await api.SetPreferenceAsync(key, value).ConfigureAwait(true);
-            if (!ok)
-            {
-                StatusMessage = $"Save failed for {key}.";
-                return;
-            }
+            ErrorMessage = "Select a provider first.";
+            return;
         }
 
-        StatusMessage = "Saved.";
+        var friendly = NewFriendlyName.Trim();
+        var engine = NewEngineValue.Trim();
+        if (string.IsNullOrEmpty(friendly) || string.IsNullOrEmpty(engine))
+        {
+            ErrorMessage = "Friendly name and engine value are required.";
+            return;
+        }
+
+        var row = new ModelRegistryEntry
+        {
+            ProviderId = pid,
+            FriendlyName = friendly,
+            EngineValue = engine,
+            Modality = NewModality.Trim().ToLowerInvariant(),
+        };
+
+        _allModels.RemoveAll(x =>
+            string.Equals(x.ProviderId, row.ProviderId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.EngineValue, row.EngineValue, StringComparison.OrdinalIgnoreCase));
+        _allModels.Add(row);
+        await PersistRegistryAsync().ConfigureAwait(true);
+        NewFriendlyName = string.Empty;
+        NewEngineValue = string.Empty;
+        RefreshRowsForFilter();
+        StatusMessage = "Model added.";
     }
 
-    private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+    [RelayCommand]
+    private async Task RemoveModelAsync(ModelRegistryEntry? row)
+    {
+        if (row is null)
+        {
+            return;
+        }
+
+        _allModels.RemoveAll(x =>
+            string.Equals(x.ProviderId, row.ProviderId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.EngineValue, row.EngineValue, StringComparison.OrdinalIgnoreCase));
+        await PersistRegistryAsync().ConfigureAwait(true);
+        RefreshRowsForFilter();
+        StatusMessage = "Model removed.";
+    }
+
+    private async Task PersistRegistryAsync()
+    {
+        var doc = new ModelRegistryDocument { Version = 1, Models = _allModels.Select(CloneRow).ToList() };
+        var err = ConfigurationRegistryService.ValidateModelRegistry(doc);
+        if (err is not null)
+        {
+            ErrorMessage = err;
+            return;
+        }
+
+        var json = ConfigurationRegistryService.Serialize(doc);
+        using var scope = _scopeFactory.CreateScope();
+        var api = scope.ServiceProvider.GetRequiredService<IGeneratorApiClient>();
+        var ok = await api.SetPreferenceAsync(PreferenceKeys.ModelsRegistryV1, json).ConfigureAwait(true);
+        if (!ok)
+        {
+            ErrorMessage = "Failed to save model registry.";
+        }
+    }
+
+    private static ModelRegistryEntry CloneRow(ModelRegistryEntry m) =>
+        new()
+        {
+            ProviderId = m.ProviderId,
+            FriendlyName = m.FriendlyName,
+            EngineValue = m.EngineValue,
+            Modality = m.Modality,
+        };
 }

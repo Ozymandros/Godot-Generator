@@ -4,6 +4,8 @@ using Godot_Generator_Avalonia.Models;
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Application;
+using GodotGenerator.Application.Configuration;
+using GodotGenerator.Application.Orchestration;
 using Microsoft.Extensions.Logging;
 
 namespace Godot_Generator_Avalonia.Services;
@@ -123,6 +125,15 @@ public sealed class GeneratorApiClient(
         return saveResult.Success;
     }
 
+    /// <inheritdoc />
+    public async Task<(string? Provider, string? ModelId)> GetEffectiveProviderModelAsync(
+        GenerationModality modality,
+        CancellationToken cancellationToken = default)
+    {
+        var (provider, model) = await ResolveEffectiveProviderAndModelAsync(modality, cancellationToken).ConfigureAwait(false);
+        return (provider, model);
+    }
+
     /// <summary>Panel override wins over global default.</summary>
     public static string ResolvePreferredLanguage(string? preferredLanguageOverride, string? globalPreferredLanguage)
     {
@@ -163,17 +174,8 @@ public sealed class GeneratorApiClient(
         GenerationModality modality,
         CancellationToken cancellationToken)
     {
-        var (providerKey, modelKey) = modality switch
-        {
-            GenerationModality.Image or GenerationModality.Sprites =>
-                (PreferenceKeys.PreferredImageProvider, PreferenceKeys.PreferredImageModel),
-            GenerationModality.Audio =>
-                (PreferenceKeys.PreferredAudioProvider, PreferenceKeys.PreferredAudioModel),
-            GenerationModality.Video =>
-                (PreferenceKeys.PreferredVideoProvider, PreferenceKeys.PreferredVideoModel),
-            _ =>
-                (PreferenceKeys.PreferredLlmProvider, PreferenceKeys.PreferredLlmModel),
-        };
+        var modalityKey = ToPolicyModalityKey(modality);
+        var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(modalityKey);
 
         var provider = await ReadPreferenceValueAsync(providerKey, cancellationToken).ConfigureAwait(false);
         var modelId = await ReadPreferenceValueAsync(modelKey, cancellationToken).ConfigureAwait(false);
@@ -202,13 +204,250 @@ public sealed class GeneratorApiClient(
     private static string? NullIfWhitespace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    private static string ToPolicyModalityKey(GenerationModality modality) => modality switch
+    {
+        GenerationModality.GodotUi => "godot-ui",
+        GenerationModality.GodotPhysics => "godot-physics",
+        _ => modality.ToString().ToLowerInvariant(),
+    };
+
     private static SettingsSnapshot ParseSettingsSnapshot(Dictionary<string, object?> data)
     {
         var prefs = ParsePreferences(data.GetValueOrDefault("preferences"));
         var keyNames = ParseStringList(data.GetValueOrDefault("keys"));
-        var (defProvider, defModel) = ParseDefaultProviderModel(data.GetValueOrDefault("providers"));
         var tools = ParseStringList(data.GetValueOrDefault("godotToolNames"));
-        return new SettingsSnapshot(prefs, keyNames, defProvider, defModel, tools);
+        var (legacyProvider, legacyModel) = ParseDefaultProviderModel(data.GetValueOrDefault("providers"));
+        var defProvider = GetStringProperty(data, "defaultLlmProvider") ?? legacyProvider;
+        var defModel = GetStringProperty(data, "defaultChatModelId") ?? legacyModel;
+        var providers = ParseProviderRegistryEntries(data.GetValueOrDefault("providers"));
+        var models = ParseModelsByProvider(data.GetValueOrDefault("models"));
+        var prompts = ParsePromptsMap(data.GetValueOrDefault("prompts"));
+        return new SettingsSnapshot(
+            prefs,
+            keyNames,
+            defProvider,
+            defModel,
+            tools,
+            providers,
+            models,
+            prompts);
+    }
+
+    private static string? GetStringProperty(Dictionary<string, object?> data, string key)
+    {
+        if (!data.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string s => s,
+            _ => value.ToString(),
+        };
+    }
+
+    private static IReadOnlyList<ProviderRegistryEntry> ParseProviderRegistryEntries(object? o)
+    {
+        if (o is string || o is not IEnumerable enumerable)
+        {
+            return Array.Empty<ProviderRegistryEntry>();
+        }
+
+        var list = new List<ProviderRegistryEntry>();
+        foreach (var item in enumerable)
+        {
+            if (item is null)
+            {
+                continue;
+            }
+
+            var dict = ToStringObjectDictionary(item);
+            if (dict is null)
+            {
+                continue;
+            }
+
+            if (dict.ContainsKey("id") || dict.ContainsKey("name"))
+            {
+                list.Add(MapProviderDict(dict));
+            }
+        }
+
+        return list;
+    }
+
+    private static ProviderRegistryEntry MapProviderDict(Dictionary<string, object?> d)
+    {
+        var id = GetDictString(d, "id");
+        if (string.IsNullOrEmpty(id))
+        {
+            id = GetDictString(d, "name") ?? string.Empty;
+        }
+
+        return new ProviderRegistryEntry
+        {
+            Id = id,
+            KeyStoreHandle = GetDictString(d, "keyStoreHandle") ?? id,
+            Endpoint = GetDictString(d, "endpoint"),
+            OpenAiCompatibility = GetDictBool(d, "openAiCompatibility"),
+            AuthenticationRequired = GetDictBool(d, "authenticationRequired", defaultValue: true),
+            Vision = GetDictBool(d, "vision"),
+            Streaming = GetDictBool(d, "streaming", defaultValue: true),
+            FunctionCalling = GetDictBool(d, "functionCalling", defaultValue: true),
+            GenericToolUse = GetDictBool(d, "genericToolUse", defaultValue: true),
+            Modalities = ParseModalitiesList(d.GetValueOrDefault("modalities")),
+        };
+    }
+
+    private static List<string> ParseModalitiesList(object? o)
+    {
+        if (o is string || o is not IEnumerable enumerable)
+        {
+            return [];
+        }
+
+        var acc = new List<string>();
+        foreach (var item in enumerable)
+        {
+            if (item is string s && !string.IsNullOrWhiteSpace(s))
+            {
+                acc.Add(s.Trim());
+            }
+            else if (item is not null)
+            {
+                var t = item.ToString();
+                if (!string.IsNullOrWhiteSpace(t))
+                {
+                    acc.Add(t.Trim());
+                }
+            }
+        }
+
+        return acc;
+    }
+
+    private static IReadOnlyDictionary<string, IReadOnlyList<ModelRegistryEntry>> ParseModelsByProvider(object? o)
+    {
+        if (o is not IDictionary dict)
+        {
+            return new Dictionary<string, IReadOnlyList<ModelRegistryEntry>>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var result = new Dictionary<string, IReadOnlyList<ModelRegistryEntry>>(StringComparer.OrdinalIgnoreCase);
+        foreach (DictionaryEntry entry in dict)
+        {
+            var key = entry.Key?.ToString();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            if (entry.Value is string || entry.Value is not IEnumerable rowEnumerable)
+            {
+                result[key] = Array.Empty<ModelRegistryEntry>();
+                continue;
+            }
+
+            var rows = new List<ModelRegistryEntry>();
+            foreach (var item in rowEnumerable)
+            {
+                var rowDict = ToStringObjectDictionary(item);
+                if (rowDict is null)
+                {
+                    continue;
+                }
+
+                rows.Add(new ModelRegistryEntry
+                {
+                    ProviderId = GetDictString(rowDict, "providerId") ?? key,
+                    FriendlyName = GetDictString(rowDict, "friendlyName") ?? string.Empty,
+                    EngineValue = GetDictString(rowDict, "engineValue") ?? string.Empty,
+                    Modality = GetDictString(rowDict, "modality") ?? "llm",
+                });
+            }
+
+            result[key] = rows;
+        }
+
+        return result;
+    }
+
+    private static IReadOnlyDictionary<string, string?> ParsePromptsMap(object? o)
+    {
+        if (o is not IDictionary dict)
+        {
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var map = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (DictionaryEntry entry in dict)
+        {
+            var key = entry.Key?.ToString();
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            map[key] = entry.Value switch
+            {
+                null => null,
+                string s => s,
+                _ => entry.Value.ToString(),
+            };
+        }
+
+        return map;
+    }
+
+    private static Dictionary<string, object?>? ToStringObjectDictionary(object? item)
+    {
+        switch (item)
+        {
+            case Dictionary<string, object?> d:
+                return d.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+            case IReadOnlyDictionary<string, object?> ro:
+                return ro.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+            case IDictionary id:
+                var map = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                foreach (DictionaryEntry e in id)
+                {
+                    map[e.Key?.ToString() ?? string.Empty] = e.Value;
+                }
+
+                return map;
+            default:
+                return null;
+        }
+    }
+
+    private static string? GetDictString(Dictionary<string, object?> d, string key)
+    {
+        if (!d.TryGetValue(key, out var value) || value is null)
+        {
+            return null;
+        }
+
+        return value switch
+        {
+            string s => s,
+            _ => value.ToString(),
+        };
+    }
+
+    private static bool GetDictBool(Dictionary<string, object?> d, string key, bool defaultValue = false)
+    {
+        if (!d.TryGetValue(key, out var value) || value is null)
+        {
+            return defaultValue;
+        }
+
+        return value switch
+        {
+            bool b => b,
+            string s => bool.TryParse(s, out var x) && x,
+            _ => defaultValue,
+        };
     }
 
     private static IReadOnlyDictionary<string, string?> ParsePreferences(object? o)
