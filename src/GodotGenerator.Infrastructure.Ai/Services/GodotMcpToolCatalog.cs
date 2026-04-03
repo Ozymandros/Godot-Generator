@@ -19,7 +19,7 @@ public sealed class GodotMcpToolCatalog(
         try
         {
             var kernel = await kernelFactory
-                .GetOrCreateKernelAsync(null, cancellationToken)
+                .GetOrCreateKernelAsync(provider: null, preferredModelId: null, cancellationToken)
                 .ConfigureAwait(false);
             return CollectFunctionNames(kernel);
         }

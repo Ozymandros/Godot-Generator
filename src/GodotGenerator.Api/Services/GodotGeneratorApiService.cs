@@ -3,6 +3,7 @@ using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Application.Abstractions;
+using GodotGenerator.Application;
 using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.Logging;
@@ -25,35 +26,35 @@ public sealed class GodotGeneratorApiService(
 {
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateTextAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("text", "preferred_llm_provider", request, cancellationToken);
+        GenerateByModalityAsync("text", PreferenceKeys.PreferredLlmProvider, PreferenceKeys.PreferredLlmModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateCodeAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("code", "preferred_llm_provider", request, cancellationToken);
+        GenerateByModalityAsync("code", PreferenceKeys.PreferredLlmProvider, PreferenceKeys.PreferredLlmModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateImageAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("image", "preferred_image_provider", request, cancellationToken);
+        GenerateByModalityAsync("image", PreferenceKeys.PreferredImageProvider, PreferenceKeys.PreferredImageModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateAudioAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("audio", "preferred_audio_provider", request, cancellationToken);
+        GenerateByModalityAsync("audio", PreferenceKeys.PreferredAudioProvider, PreferenceKeys.PreferredAudioModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateVideoAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("video", "preferred_video_provider", request, cancellationToken);
+        GenerateByModalityAsync("video", PreferenceKeys.PreferredVideoProvider, PreferenceKeys.PreferredVideoModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateSpritesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("sprites", "preferred_image_provider", request, cancellationToken);
+        GenerateByModalityAsync("sprites", PreferenceKeys.PreferredImageProvider, PreferenceKeys.PreferredImageModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotUiAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("godot-ui", "preferred_llm_provider", request, cancellationToken);
+        GenerateByModalityAsync("godot-ui", PreferenceKeys.PreferredLlmProvider, PreferenceKeys.PreferredLlmModel, request, cancellationToken);
 
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotPhysicsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
-        GenerateByModalityAsync("godot-physics", "preferred_llm_provider", request, cancellationToken);
+        GenerateByModalityAsync("godot-physics", PreferenceKeys.PreferredLlmProvider, PreferenceKeys.PreferredLlmModel, request, cancellationToken);
 
     /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)
@@ -142,6 +143,7 @@ public sealed class GodotGeneratorApiService(
     private async Task<ApiResponse<Dictionary<string, object?>>> GenerateByModalityAsync(
         string modality,
         string providerPreferenceKey,
+        string modelPreferenceKey,
         GenerateRequest request,
         CancellationToken cancellationToken)
     {
@@ -158,13 +160,19 @@ public sealed class GodotGeneratorApiService(
                 provider = await getPreference.ExecuteAsync(providerPreferenceKey, cancellationToken).ConfigureAwait(false);
             }
 
+            var preferredModelId = request.PreferredModelId;
+            if (string.IsNullOrWhiteSpace(preferredModelId))
+            {
+                preferredModelId = await getPreference.ExecuteAsync(modelPreferenceKey, cancellationToken).ConfigureAwait(false);
+            }
+
             var turnRequest = modalityTurnComposer.Compose(
                 modality,
                 request.Prompt,
                 request.SystemPrompt,
                 request.ProjectName,
-                request.PreferredModelId,
-                request.Options);
+                preferredModelId,
+                request.Options) with { Provider = provider };
 
             var turn = await runAgentTurn.ExecuteAsync(turnRequest, cancellationToken).ConfigureAwait(false);
             if (!turn.Success)

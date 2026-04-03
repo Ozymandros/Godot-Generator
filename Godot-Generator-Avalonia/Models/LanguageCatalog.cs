@@ -1,3 +1,5 @@
+using GodotGenerator.Application;
+
 namespace Godot_Generator_Avalonia.Models;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Godot_Generator_Avalonia.Models;
 public static class LanguageCatalog
 {
     /// <summary>Preference key persisted via the API layer.</summary>
-    public const string PreferredLanguagePreferenceKey = "preferred_language";
+    public const string PreferredLanguagePreferenceKey = PreferenceKeys.PreferredLanguage;
 
     /// <summary>Supported generation language identifiers.</summary>
     public static readonly IReadOnlyList<string> Supported = new[]

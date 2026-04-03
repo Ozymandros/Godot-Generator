@@ -1,4 +1,5 @@
 #nullable enable
+using GodotGenerator.Application;
 using GodotGenerator.Application.Abstractions;
 
 namespace GodotGenerator.Application.UseCases;
@@ -22,20 +23,30 @@ public sealed class GetAllConfigUseCase(
 
         var preferenceKeys = new[]
         {
-            "preferred_llm_provider",
-            "preferred_image_provider",
-            "preferred_audio_provider",
-            "preferred_video_provider",
-            "preferred_llm_model",
-            "preferred_image_model",
-            "preferred_audio_model",
-            "preferred_locale",
+            PreferenceKeys.PreferredLlmProvider,
+            PreferenceKeys.PreferredImageProvider,
+            PreferenceKeys.PreferredAudioProvider,
+            PreferenceKeys.PreferredVideoProvider,
+            PreferenceKeys.PreferredLlmModel,
+            PreferenceKeys.PreferredImageModel,
+            PreferenceKeys.PreferredAudioModel,
+            PreferenceKeys.PreferredVideoModel,
+            PreferenceKeys.PreferredLanguage,
         };
 
         var preferences = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var key in preferenceKeys)
         {
             preferences[key] = await getPreference.ExecuteAsync(key, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (string.IsNullOrWhiteSpace(preferences.GetValueOrDefault(PreferenceKeys.PreferredLanguage)))
+        {
+            var legacyLocale = await getPreference.ExecuteAsync(PreferenceKeys.PreferredLocaleLegacy, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(legacyLocale))
+            {
+                preferences[PreferenceKeys.PreferredLanguage] = legacyLocale;
+            }
         }
 
         var (provider, modelId) = llmDiscovery.GetDefaultChatModel();

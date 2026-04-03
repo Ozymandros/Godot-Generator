@@ -1,3 +1,4 @@
+using Godot_Generator_Avalonia.Models;
 using Godot_Generator_Avalonia.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -11,8 +12,8 @@ public class GenerationPanelViewModelTests
     {
         var services = new ServiceCollection();
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
-        var vmUi = new GenerationPanelViewModel(scopeFactory, Models.GenerationModality.GodotUi);
-        var vmPhysics = new GenerationPanelViewModel(scopeFactory, Models.GenerationModality.GodotPhysics);
+        var vmUi = new GenerationPanelViewModel(scopeFactory, GenerationModality.GodotUi);
+        var vmPhysics = new GenerationPanelViewModel(scopeFactory, GenerationModality.GodotPhysics);
 
         Assert.Equal("Godot UI", vmUi.DisplayTitle);
         Assert.Equal("Godot Physics", vmPhysics.DisplayTitle);

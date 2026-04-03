@@ -23,9 +23,7 @@ public sealed class LlmOptions
     /// <summary>
     /// API key for the OpenAI-compatible endpoint.
     /// </summary>
-    [Required]
-    [MinLength(1)]
-    public string ApiKey { get; set; } = "";
+    public string? ApiKey { get; set; }
 
     /// <summary>
     /// Optional org id for OpenAI.

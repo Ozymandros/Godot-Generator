@@ -23,25 +23,24 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(services);
 
+        // Validate shape/annotations at bind time but do not force validation at startup.
+        // The API key is a user secret required only when actually creating kernels / calling LLMs.
+        // Kernel creation (GodotKernelFactory) will enforce that an API key exists when needed.
         services
             .AddOptions<LlmOptions>()
             .Bind(configuration.GetSection(LlmOptions.SectionName))
             .ValidateDataAnnotations()
             .Validate(
                 options => !string.IsNullOrWhiteSpace(options.ChatModelId),
-                $"{LlmOptions.SectionName}:ChatModelId is required.")
-            .Validate(
-                options => !string.IsNullOrWhiteSpace(options.ApiKey),
-                $"{LlmOptions.SectionName}:ApiKey is required.")
-            .ValidateOnStart();
+                $"{LlmOptions.SectionName}:ChatModelId is required.");
         services
             .AddOptions<OrchestrationOptions>()
             .Bind(configuration.GetSection(OrchestrationOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+            .ValidateDataAnnotations();
         services.AddGodotMcp(configuration);
 
         services.AddSingleton<IKernelFactory, GodotKernelFactory>();
+        services.AddSingleton<IProviderSecretResolver, PreferenceProviderSecretResolver>();
         services.AddSingleton<GodotGenerator.Application.Abstractions.IGodotProjectPathValidator, GodotProjectPathValidator>();
         services.AddSingleton<IAiOrchestrationService, AiOrchestrationService>();
         services.AddSingleton<GodotGenerator.Application.Abstractions.ILlmDiscoveryInfoProvider, LlmDiscoveryInfoProvider>();

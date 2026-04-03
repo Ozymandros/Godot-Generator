@@ -8,21 +8,12 @@ using Xunit;
 
 namespace GodotGenerator.Ui.Tests;
 
-public class MainWindowViewModelTests
+public class ConfigViewModelTests
 {
     [Fact]
-    public void NavItems_HaveExpectedCount()
+    public void Child_sections_are_initialized()
     {
         var services = new ServiceCollection();
-        RegisterMinimalApiMocks(services);
-        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
-        var vm = new MainWindowViewModel(scopeFactory);
-        Assert.NotNull(vm.NavItems);
-        Assert.Equal(9, vm.NavItems.Count);
-    }
-
-    private static void RegisterMinimalApiMocks(ServiceCollection services)
-    {
         var mock = new Mock<IGodotGeneratorApiService>();
         mock.Setup(a => a.GetAllConfigAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>
@@ -31,7 +22,7 @@ public class MainWindowViewModelTests
                 ["keys"] = new List<string>(),
                 ["providers"] = new List<object>
                 {
-                    new Dictionary<string, object?> { ["name"] = "openai", ["defaultChatModelId"] = "gpt-4o-mini" },
+                    new Dictionary<string, object?> { ["name"] = "x", ["defaultChatModelId"] = "y" },
                 },
                 ["models"] = new Dictionary<string, object?>(),
                 ["prompts"] = new Dictionary<string, object?>(),
@@ -39,5 +30,14 @@ public class MainWindowViewModelTests
             }));
         services.AddScoped(_ => mock.Object);
         services.AddScoped<IGeneratorApiClient, GeneratorApiClient>();
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+
+        var vm = new ConfigViewModel(scopeFactory);
+
+        Assert.NotNull(vm.General);
+        Assert.NotNull(vm.Providers);
+        Assert.NotNull(vm.Models);
+        Assert.NotNull(vm.Prompts);
+        Assert.NotNull(vm.Secrets);
     }
 }

@@ -49,6 +49,31 @@ public sealed class GodotGeneratorApiServiceTests
     }
 
     /// <summary>
+    /// Verifies provider and model preferences propagate into orchestration input.
+    /// </summary>
+    [Fact]
+    public async Task GenerateImageAsync_propagates_effective_provider_and_model_to_turn_request()
+    {
+        var repo = new InMemoryPreferenceRepository();
+        await repo.SetAsync("preferred_image_provider", "stability");
+        await repo.SetAsync("preferred_image_model", "sdxl");
+
+        AgentTurnRequest? captured = null;
+        var ai = new Mock<IAiOrchestrationService>();
+        ai.Setup(x => x.RunTurnAsync(It.IsAny<AgentTurnRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<AgentTurnRequest, CancellationToken>((req, _) => captured = req)
+            .ReturnsAsync(new AgentTurnResult(true, "ok"));
+
+        var api = CreateApiService(repo, ai.Object);
+        var result = await api.GenerateImageAsync(new GenerateRequest("paint"));
+
+        Assert.True(result.Success);
+        Assert.NotNull(captured);
+        Assert.Equal("stability", captured!.Provider);
+        Assert.Equal("sdxl", captured.PreferredModelId);
+    }
+
+    /// <summary>
     /// Verifies key save and retrieval are consistent.
     /// </summary>
     [Fact]

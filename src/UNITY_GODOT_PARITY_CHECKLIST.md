@@ -5,10 +5,10 @@ Living tracker: Unity reference is [Ozymandros/Unity-Generator](https://github.c
 | Unity / reference area | Godot target | Status | Notes |
 |------------------------|--------------|--------|--------|
 | Multi-modality generation (text/code/image/audio/video/sprites + engine-specific) | Same modalities; Godot UI / Godot Physics replace Unity UI / Physics | partial | API facade routes all modalities; orchestration gains modality-aware prompts + options |
-| `GET /api/management/all` discovery | `GetAllConfigAsync` + preferences | partial | Snapshot includes LLM provider/model from config; rich registry TBD |
+| `GET /api/management/all` discovery | `GetAllConfigAsync` + preferences | partial | Snapshot includes LLM provider/model from config; Avalonia Settings tabs bind to snapshot + preferences; rich registry TBD |
 | Provider/model CRUD | Preferences + config | partial | Single OpenAI-compatible stack today; extend as multi-provider |
 | API keys management | `GetApiKeys` / `SaveApiKeys` | implemented | JSON store |
-| Preferences (locale, models) | `GetPreference` / `SetPreference` | implemented | Includes preferred language |
+| Preferences (locale, models) | `GetPreference` / `SetPreference` | implemented | Canonical key `preferred_language` in `PreferenceKeys`; legacy `preferred_locale` merged into snapshot when canonical is unset |
 | Generation options in body | `GenerateRequest.Options` → orchestration | implemented | e.g. `preferred_language`, optional `godot_project_path` |
 | Unity project finalize + ZIP job | Godot export/package workflow | missing | Future: MCP-driven packaging |
 | MCP tool exploitation | SK + `RegisterGodotTools` | partial | Auto tool calls; optional `validate_godot_project` pre-phase; tool list diagnostics |

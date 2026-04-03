@@ -11,7 +11,11 @@ public interface IKernelFactory
     /// <summary>
     /// Returns a shared kernel for a model, initializing the Godot MCP plugin on first use.
     /// </summary>
+    /// <param name="provider">Optional provider/service key used for credential resolution.</param>
     /// <param name="preferredModelId">Optional model id override for this kernel.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task<Kernel> GetOrCreateKernelAsync(string? preferredModelId = null, CancellationToken cancellationToken = default);
+    Task<Kernel> GetOrCreateKernelAsync(
+        string? provider = null,
+        string? preferredModelId = null,
+        CancellationToken cancellationToken = default);
 }

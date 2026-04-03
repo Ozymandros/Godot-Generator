@@ -12,10 +12,10 @@ namespace GodotGenerator.Infrastructure.Ai.Tests;
 public sealed class OptionsValidationTests
 {
     /// <summary>
-    /// Ensures <see cref="LlmOptions"/> fails validation when the API key is missing.
+    /// Ensures <see cref="LlmOptions"/> remains valid when the API key is omitted.
     /// </summary>
     [Fact]
-    public void LlmOptions_without_api_key_is_invalid()
+    public void LlmOptions_without_api_key_is_valid()
     {
         var options = new LlmOptions
         {
@@ -26,8 +26,7 @@ public sealed class OptionsValidationTests
         var results = new List<ValidationResult>();
         var isValid = Validator.TryValidateObject(options, new ValidationContext(options), results, validateAllProperties: true);
 
-        Assert.False(isValid);
-        Assert.Contains(results, r => r.MemberNames.Contains(nameof(LlmOptions.ApiKey)));
+        Assert.True(isValid);
     }
 
     /// <summary>

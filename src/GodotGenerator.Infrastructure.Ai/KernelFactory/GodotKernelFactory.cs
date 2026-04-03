@@ -15,18 +15,24 @@ namespace GodotGenerator.Infrastructure.Ai.KernelFactory;
 public sealed class GodotKernelFactory(
     IServiceProvider rootServices,
     IOptions<LlmOptions> llmOptions,
+    Services.IProviderSecretResolver providerSecretResolver,
     ILoggerFactory loggerFactory,
     ILogger<GodotKernelFactory> logger) : IKernelFactory
 {
     private readonly SemaphoreSlim _initLock = new(1, 1);
-    private readonly Dictionary<string, Kernel> _kernelsByModel = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Kernel> _kernelsByProviderAndModel = new(StringComparer.Ordinal);
     private bool _pluginInitialized;
 
     /// <inheritdoc />
-    public async Task<Kernel> GetOrCreateKernelAsync(string? preferredModelId = null, CancellationToken cancellationToken = default)
+    public async Task<Kernel> GetOrCreateKernelAsync(
+        string? provider = null,
+        string? preferredModelId = null,
+        CancellationToken cancellationToken = default)
     {
+        var effectiveProvider = ResolveProvider(provider);
         var modelId = ResolveModelId(preferredModelId);
-        if (_kernelsByModel.TryGetValue(modelId, out var cached))
+        var cacheKey = BuildCacheKey(effectiveProvider, modelId);
+        if (_kernelsByProviderAndModel.TryGetValue(cacheKey, out var cached))
         {
             return cached;
         }
@@ -34,18 +40,21 @@ public sealed class GodotKernelFactory(
         await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_kernelsByModel.TryGetValue(modelId, out cached))
+            if (_kernelsByProviderAndModel.TryGetValue(cacheKey, out cached))
             {
                 return cached;
             }
 
-            var llm = llmOptions.Value;
-            EnsureApiKeyConfigured(llm.ApiKey);
+            var apiKey = await ResolveApiKeyAsync(effectiveProvider, cancellationToken).ConfigureAwait(false);
+            EnsureApiKeyConfigured(apiKey, effectiveProvider);
             await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-            var kernel = BuildKernel(llm.ApiKey, modelId);
-            _kernelsByModel[modelId] = kernel;
-            logger.LogInformation("Kernel ready with Godot MCP tools registered for model {ModelId}.", modelId);
+            var kernel = BuildKernel(apiKey!, modelId);
+            _kernelsByProviderAndModel[cacheKey] = kernel;
+            logger.LogInformation(
+                "Kernel ready with Godot MCP tools for provider {Provider}, model {ModelId}.",
+                effectiveProvider,
+                modelId);
             return kernel;
         }
         finally
@@ -53,6 +62,11 @@ public sealed class GodotKernelFactory(
             _initLock.Release();
         }
     }
+
+    private static string ResolveProvider(string? provider) =>
+        string.IsNullOrWhiteSpace(provider) ? "openai" : provider.Trim().ToLowerInvariant();
+
+    private static string BuildCacheKey(string provider, string modelId) => $"{provider}::{modelId}";
 
     /// <summary>
     /// Resolves the model id for kernel creation, applying optional request-level overrides.
@@ -75,7 +89,8 @@ public sealed class GodotKernelFactory(
     /// Ensures an API key exists before attempting provider initialization.
     /// </summary>
     /// <param name="apiKey">Configured API key value.</param>
-    private static void EnsureApiKeyConfigured(string apiKey)
+    /// <param name="provider">Provider identifier used for the error message.</param>
+    private static void EnsureApiKeyConfigured(string? apiKey, string provider)
     {
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
@@ -83,7 +98,25 @@ public sealed class GodotKernelFactory(
         }
 
         throw new InvalidOperationException(
-            "Llm:ApiKey is not configured. Set user secrets or environment for development.");
+            $"API key for provider '{provider}' is not configured. Set it in Settings > Secrets.");
+    }
+
+    private async Task<string?> ResolveApiKeyAsync(string provider, CancellationToken cancellationToken)
+    {
+        var key = await providerSecretResolver.ResolveApiKeyAsync(provider, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            return key;
+        }
+
+        // Backward-compatible fallback for existing local config.
+        if (string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase))
+        {
+            var configured = llmOptions.Value.ApiKey;
+            return string.IsNullOrWhiteSpace(configured) ? null : configured.Trim();
+        }
+
+        return null;
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+#nullable enable
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
@@ -22,7 +23,7 @@ public sealed class AiOrchestrationServiceTests
     {
         var factory = new Mock<IKernelFactory>();
         factory
-            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("godot-mcp not available"));
 
         var validator = new Mock<IGodotProjectPathValidator>();
@@ -46,7 +47,7 @@ public sealed class AiOrchestrationServiceTests
     {
         var factory = new Mock<IKernelFactory>();
         factory
-            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("underlying details"));
 
         var validator = new Mock<IGodotProjectPathValidator>();
@@ -62,7 +63,7 @@ public sealed class AiOrchestrationServiceTests
         Assert.Equal("Something went wrong.", result.Message);
         Assert.Contains("underlying details", result.Detail ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         factory.Verify(
-            f => f.GetOrCreateKernelAsync("gpt-4o", It.IsAny<CancellationToken>()),
+            f => f.GetOrCreateKernelAsync(null, "gpt-4o", It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -75,7 +76,7 @@ public sealed class AiOrchestrationServiceTests
         var longMessage = new string('x', 800);
         var factory = new Mock<IKernelFactory>();
         factory
-            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException(longMessage));
 
         var validator = new Mock<IGodotProjectPathValidator>();
@@ -91,5 +92,29 @@ public sealed class AiOrchestrationServiceTests
         Assert.NotNull(result.Detail);
         Assert.Equal(503, result.Detail!.Length);
         Assert.EndsWith("...", result.Detail, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies missing provider key errors are returned as actionable user-safe messages.
+    /// </summary>
+    [Fact]
+    public async Task RunTurnAsync_returns_actionable_message_for_missing_provider_key()
+    {
+        var factory = new Mock<IKernelFactory>();
+        factory
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("API key for provider 'openai' is not configured. Set it in Settings > Secrets."));
+
+        var validator = new Mock<IGodotProjectPathValidator>();
+        var sut = new AiOrchestrationService(
+            factory.Object,
+            Microsoft.Extensions.Options.Options.Create(new OrchestrationOptions()),
+            validator.Object,
+            NullLogger<AiOrchestrationService>.Instance);
+
+        var result = await sut.RunTurnAsync(new AgentTurnRequest("ping"));
+
+        Assert.False(result.Success);
+        Assert.Equal("API key for provider 'openai' is not configured. Set it in Settings > Secrets.", result.Message);
     }
 }

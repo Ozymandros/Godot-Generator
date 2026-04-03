@@ -43,7 +43,7 @@ public sealed class AiOrchestrationService(
             }
 
             var kernel = await kernelFactory
-                .GetOrCreateKernelAsync(request.PreferredModelId, effectiveCancellationToken)
+                .GetOrCreateKernelAsync(request.Provider, request.PreferredModelId, effectiveCancellationToken)
                 .ConfigureAwait(false);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
 
@@ -80,6 +80,12 @@ public sealed class AiOrchestrationService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Agent turn failed");
+            if (ex is InvalidOperationException ioe &&
+                ioe.Message.Contains("API key for provider", StringComparison.OrdinalIgnoreCase))
+            {
+                return new AgentTurnResult(false, ioe.Message);
+            }
+
             var safeMessage = string.IsNullOrWhiteSpace(orchestrationOptions.Value.GenericFailureMessage)
                 ? "Agent turn failed. Check logs for details."
                 : orchestrationOptions.Value.GenericFailureMessage;
