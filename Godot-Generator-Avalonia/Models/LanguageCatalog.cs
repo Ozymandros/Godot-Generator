@@ -13,13 +13,7 @@ public static class LanguageCatalog
     /// <summary>Supported generation language identifiers.</summary>
     public static readonly IReadOnlyList<string> Supported = new[]
     {
-        "csharp",
         "gdscript",
-        "typescript",
-        "javascript",
-        "python",
-        "rust",
-        "go",
-        "java",
+        "csharp",
     };
 }

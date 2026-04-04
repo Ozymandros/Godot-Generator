@@ -45,6 +45,31 @@
                   HorizontalAlignment="Left"/>
       </StackPanel>
 
+      <Expander Header="Advanced Configuration Overrides" Margin="0,4">
+          <StackPanel Spacing="16" Margin="4,8">
+              <StackPanel Spacing="4">
+                  <TextBlock Text="Temperature (Creativity)" Opacity="0.7" FontSize="12"/>
+                  <Grid ColumnDefinitions="*,Auto">
+                      <Slider Value="{Binding Temperature}" Minimum="0" Maximum="2" SmallChange="0.1" LargeChange="0.5" />
+                      <TextBlock Grid.Column="1" Text="{Binding Temperature, StringFormat=\{0:F1\}}" VerticalAlignment="Center" Width="40" TextAlignment="Right"/>
+                  </Grid>
+              </StackPanel>
+
+              <TextBox Text="{Binding ApiKeyOverride}" 
+                       PasswordChar="*" 
+                       Watermark="sk-..." 
+                       assists:TextFieldAssist.Label="API Key (Optional Override)"
+                       Theme="{StaticResource OutlineTextBox}"/>
+
+              <TextBox Text="{Binding SystemPromptOverride}" 
+                       AcceptsReturn="True" 
+                       TextWrapping="Wrap" 
+                       MinHeight="80" 
+                       assists:TextFieldAssist.Label="System Prompt Override (Optional)"
+                       Theme="{StaticResource OutlineTextBox}"/>
+          </StackPanel>
+      </Expander>
+
       <StackPanel Orientation="Horizontal" Spacing="12">
         <Button Content="Generate"
                 Command="{Binding GenerateCommand}"

@@ -49,6 +49,7 @@ public partial class MaterialIconFallback : UserControl
             "Atom" or "godot_physics" => "⚛",
             "ViewDashboardOutline" or "scenes" => "📊",
             "Unity" or "godot_project" => "📽",
+            "GestureTapButton" or "animations" => "🕺",
             "RobotOutline" or "robot" or "providers" or "models" => "🤖",
             "ScriptTextOutline" or "prompts" => "📜",
             "KeyChain" or "secrets" => "🔑",

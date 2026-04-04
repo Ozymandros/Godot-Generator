@@ -85,7 +85,10 @@ public class GeneratorApiClientTests
             Godot_Generator_Avalonia.Models.GenerationModality.Image,
             "draw",
             preferredLanguageOverride: "",
-            globalPreferredLanguage: "csharp");
+            globalPreferredLanguage: "csharp",
+            temperature: 1.2,
+            apiKeyOverride: "key123",
+            systemPromptOverride: "override123");
 
         Assert.True(ok);
         Assert.Equal("ok", message);
@@ -95,7 +98,11 @@ public class GeneratorApiClientTests
                 It.Is<GenerateRequest>(r =>
                     r.Provider == "stability" &&
                     r.PreferredModelId == "sdxl" &&
+                    r.ApiKey == "key123" &&
+                    r.SystemPrompt == "override123" &&
                     r.Options != null &&
+                    r.Options.ContainsKey("temperature") &&
+                    (double)r.Options["temperature"]! == 1.2 &&
                     r.Options.ContainsKey("preferred_language") &&
                     (r.Options["preferred_language"] as string) == "csharp"),
                 It.IsAny<CancellationToken>()),

@@ -25,6 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new NavItem("FileDocumentOutline", "Text"),
             new NavItem("ImageOutline", "Image"),
             new NavItem("Grid", "Sprites"),
+            new NavItem("GestureTapButton", "Animations"),
             new NavItem("VolumeHigh", "Audio"),
             new NavItem("MovieOutline", "Video"),
             new NavItem("PaletteOutline", "Godot UI"),
@@ -63,6 +64,7 @@ public partial class MainWindowViewModel : ViewModelBase
         8 => _panels[GenerationModality.GodotUi],
         9 => _panels[GenerationModality.GodotPhysics],
         10 => _panels[GenerationModality.GodotProject],
+        11 => _panels[GenerationModality.Animations],
         _ => Config,
     };
 
@@ -71,6 +73,9 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(CurrentPane));
     }
 
+    /// <summary>
+    /// Opens the project repository in the default system browser.
+    /// </summary>
     [RelayCommand]
     private void OpenRepo()
     {

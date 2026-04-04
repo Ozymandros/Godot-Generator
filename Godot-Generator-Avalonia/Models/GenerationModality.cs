@@ -15,4 +15,5 @@ public enum GenerationModality
     GodotPhysics,
     Scenes,
     GodotProject,
+    Animations,
 }

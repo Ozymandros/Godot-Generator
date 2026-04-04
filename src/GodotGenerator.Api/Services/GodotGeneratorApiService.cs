@@ -68,6 +68,10 @@ public sealed class GodotGeneratorApiService(
         GenerateByModalityAsync("scenes", request, cancellationToken);
 
     /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateAnimationsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("animations", request, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -207,6 +211,7 @@ public sealed class GodotGeneratorApiService(
             "godot-physics" => "godot-physics",
             "godot-project" => "godot-project",
             "scenes" => "scenes",
+            "animations" => "animations",
             _ => "text",
         };
     }

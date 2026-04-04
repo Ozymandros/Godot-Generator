@@ -13,6 +13,9 @@ public interface IGeneratorApiClient
         string prompt,
         string? preferredLanguageOverride,
         string? globalPreferredLanguage,
+        double temperature = 0.7,
+        string? apiKeyOverride = null,
+        string? systemPromptOverride = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>Loads the persisted global preferred language.</summary>

@@ -38,6 +38,9 @@ public interface IGodotGeneratorApiService
     /// <summary>Creates a Godot scene.</summary>
     Task<ApiResponse<Dictionary<string, object?>>> CreateSceneAsync(GenerateRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Generates Godot animations.</summary>
+    Task<ApiResponse<Dictionary<string, object?>>> GenerateAnimationsAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Gets a preference value by key.</summary>
     Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default);
 

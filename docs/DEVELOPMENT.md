@@ -17,6 +17,11 @@ Project structure
 - `GodotGenerator.Infrastructure.Persistence` - persistence helpers for preferences and small storage.
 - `Godot-Generator-Avalonia` - primary desktop shell (MVVM) and in-process service client.
 
+UI notes
+- The main window uses left navigation plus a settings shell and generation panels.
+- Generation panels support shared overrides for language, temperature, API key, and system prompt.
+- Tabs and panels should preserve the material icon style already used in the shell.
+
 DI patterns
 
 - Use `IServiceCollection` extension methods to register large groups of related services (Kernel wiring, provider adapters). Keep DI wiring in a single place per project: `DependencyInjection` folder.
@@ -33,11 +38,13 @@ Parity implementation notes
 - Settings shell must load without secrets and must not display secret plaintext.
 - Generation-time key validation is required; startup-time key validation is prohibited.
 - Treat this parity pass as feature-evidence driven: each feature requires tests + docs evidence.
+- If a new modality is added, update the enum, routing, prompt defaults, sidebar navigation, and tests together.
 
 Adding new providers / tools
 
 1. Write adapters that translate between the provider API and Semantic Kernel tool interfaces.
 2. Add registration methods to the DI extension so the provider is registered conditionally in production and can be swapped in tests.
+3. Update `GenerationPanelViewModel`, `GeneratorApiClient`, and the Avalonia views when adding new generation overrides or UI affordances.
 
 Code quality
 

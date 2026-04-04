@@ -36,6 +36,7 @@ public partial class GenerationPanelViewModel : ViewModelBase
         GenerationModality.GodotPhysics => "Godot Physics",
         GenerationModality.Scenes => "Create Scene",
         GenerationModality.GodotProject => "Create Godot Project",
+        GenerationModality.Animations => "Godot Animations",
         _ => Modality.ToString(),
     };
 
@@ -46,6 +47,7 @@ public partial class GenerationPanelViewModel : ViewModelBase
         GenerationModality.GodotUi => "UI Element Description",
         GenerationModality.Scenes => "Scene Description",
         GenerationModality.GodotProject => "Project Requirements",
+        GenerationModality.Animations => "Animation Description",
         _ => "Prompt",
     };
 
@@ -56,6 +58,7 @@ public partial class GenerationPanelViewModel : ViewModelBase
         GenerationModality.GodotUi => "Enter UI layout or component description...",
         GenerationModality.Scenes => "Describe the scene layout...",
         GenerationModality.GodotProject => "Enter your project needs...",
+        GenerationModality.Animations => "Describe keyframes or state behaviors...",
         _ => "Enter your prompt",
     };
 
@@ -68,6 +71,15 @@ public partial class GenerationPanelViewModel : ViewModelBase
     /// <summary>Per-panel language override (empty = use global).</summary>
     [ObservableProperty]
     private string _languageOverride = string.Empty;
+
+    [ObservableProperty]
+    private double _temperature = 0.7;
+
+    [ObservableProperty]
+    private string? _apiKeyOverride;
+
+    [ObservableProperty]
+    private string? _systemPromptOverride;
 
     [ObservableProperty]
     private string? _responseText;
@@ -106,7 +118,15 @@ public partial class GenerationPanelViewModel : ViewModelBase
             EffectiveModelId = modelId ?? "(default)";
             var global = await api.GetGlobalPreferredLanguageAsync().ConfigureAwait(true);
             var (ok, message, err) = await api
-                .GenerateAsync(Modality, Prompt, LanguageOverride, global, _runCts.Token)
+                .GenerateAsync(
+                    Modality, 
+                    Prompt, 
+                    LanguageOverride, 
+                    global, 
+                    temperature: Temperature,
+                    apiKeyOverride: ApiKeyOverride,
+                    systemPromptOverride: SystemPromptOverride,
+                    cancellationToken: _runCts.Token)
                 .ConfigureAwait(true);
             if (!ok)
             {

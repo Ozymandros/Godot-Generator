@@ -1,6 +1,6 @@
 # Architecture Overview
 
-This repository provides backend libraries and integration pieces to connect Semantic Kernel with a Godot MCP server plugin. The design is intentionally modular so the AI orchestration layer can be reused across different frontends.
+This repository provides backend libraries and integration pieces to connect Semantic Kernel with a Godot MCP server plugin. The design is intentionally modular so the AI orchestration layer can be reused across different frontends. The current solution also includes an Avalonia desktop shell that consumes the same application contracts in-process.
 
 In-process interaction model (non-negotiable for parity pass)
 
@@ -12,11 +12,14 @@ In-process interaction model (non-negotiable for parity pass)
   - network transport between these layers.
 - Startup remains permissive (no mandatory API keys), while generation is strict (missing provider key fails with actionable message).
 
+Supported generation modalities include text, code, image, audio, video, sprites, Godot UI, Godot physics, scenes, Godot project bootstrapping, and animations.
+
 Core components
 
 - `GodotGenerator.Application` - DTOs and application contract abstractions.
 - `GodotGenerator.Infrastructure.Ai` - Semantic Kernel adapters, KernelFactory, AI orchestration services, and Godot MCP plugin integrations.
 - `GodotGenerator.Infrastructure.Persistence` - Lightweight persistence helpers (preferences, small SQLite stores) used by the UI host.
+- `Godot-Generator-Avalonia` - desktop MVVM shell, converters, and settings/generation panels.
 
 Kernel integration
 
@@ -37,5 +40,5 @@ CI
 Notes for maintainers
 
 - Keep KernelFactory small and testable. Register plugin/tool adapters in extension methods that are easy to stub for unit tests.
-- When adding new providers or MCP features, add unit tests and update the coverage gate if needed.
+- When adding new providers, modalities, or panel overrides, add unit tests and update the coverage gate if needed.
 - Keep modality/provider/model precedence logic centralized in one policy helper to avoid drift across UI/API/infra.

@@ -23,6 +23,9 @@ public sealed class GeneratorApiClient(
         string prompt,
         string? preferredLanguageOverride,
         string? globalPreferredLanguage,
+        double temperature = 0.7,
+        string? apiKeyOverride = null,
+        string? systemPromptOverride = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(prompt))
@@ -36,7 +39,9 @@ public sealed class GeneratorApiClient(
             Prompt: prompt.Trim(),
             Provider: provider,
             PreferredModelId: preferredModelId,
-            Options: BuildOptions(effectiveLanguage));
+            ApiKey: apiKeyOverride,
+            SystemPrompt: systemPromptOverride,
+            Options: BuildOptions(effectiveLanguage, temperature));
 
         ApiResponse<Dictionary<string, object?>> result = modality switch
         {
@@ -50,6 +55,7 @@ public sealed class GeneratorApiClient(
             GenerationModality.GodotPhysics => await api.GenerateGodotPhysicsAsync(request, cancellationToken).ConfigureAwait(false),
             GenerationModality.GodotProject => await api.GenerateGodotProjectAsync(request, cancellationToken).ConfigureAwait(false),
             GenerationModality.Scenes => await api.CreateSceneAsync(request, cancellationToken).ConfigureAwait(false),
+            GenerationModality.Animations => await api.GenerateAnimationsAsync(request, cancellationToken).ConfigureAwait(false),
             _ => ApiResponse<Dictionary<string, object?>>.Fail("Unsupported modality."),
         };
 
@@ -147,17 +153,19 @@ public sealed class GeneratorApiClient(
         return string.IsNullOrWhiteSpace(globalPreferredLanguage) ? string.Empty : globalPreferredLanguage.Trim();
     }
 
-    private static IReadOnlyDictionary<string, object?> BuildOptions(string effectiveLanguage)
+    private static IReadOnlyDictionary<string, object?> BuildOptions(string effectiveLanguage, double temperature)
     {
-        if (string.IsNullOrWhiteSpace(effectiveLanguage))
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
-            return new Dictionary<string, object?>(StringComparer.Ordinal);
+            ["temperature"] = temperature,
+        };
+
+        if (!string.IsNullOrWhiteSpace(effectiveLanguage))
+        {
+            options["preferred_language"] = effectiveLanguage;
         }
 
-        return new Dictionary<string, object?>(StringComparer.Ordinal)
-        {
-            ["preferred_language"] = effectiveLanguage,
-        };
+        return options;
     }
 
     private static string ExtractMessage(IReadOnlyDictionary<string, object?>? data)
@@ -211,6 +219,7 @@ public sealed class GeneratorApiClient(
         GenerationModality.GodotUi => "godot-ui",
         GenerationModality.GodotPhysics => "godot-physics",
         GenerationModality.GodotProject => "godot-project",
+        GenerationModality.Animations => "animations",
         GenerationModality.Scenes => "scenes",
         _ => modality.ToString().ToLowerInvariant(),
     };
