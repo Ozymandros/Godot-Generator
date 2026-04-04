@@ -17,6 +17,7 @@ Key information
 - Test framework: xUnit + Moq
 - Coverage: coverlet.msbuild + reportgenerator (global gate 80%)
 - Frontend: Avalonia desktop shell with material icon support and per-panel generation overrides
+- Desktop shell: classic top MenuBar plus left navigation for quick access to settings and generation panels
 
 Where to start
 - Architecture overview: `docs/ARCHITECTURE.md`

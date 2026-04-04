@@ -15,38 +15,98 @@
         Width="1100"
         Height="720">
 
-    <Grid ColumnDefinitions="220,*">
-        <Border Grid.Column="0" BorderBrush="#33000000" BorderThickness="0,0,1,0" Padding="8">
-            <DockPanel>
-                <Button DockPanel.Dock="Bottom" 
-                        Theme="{StaticResource MaterialFlatButton}"
-                        HorizontalAlignment="Stretch"
-                        HorizontalContentAlignment="Left"
-                        Padding="16,8"
-                        Command="{Binding OpenRepoCommand}">
-                    <StackPanel Orientation="Horizontal" Spacing="10">
-                        <materialIcons:MaterialIcon Kind="Github" Width="24" Height="24"/>
-                        <TextBlock Text="Repository" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
-                <ListBox ItemsSource="{Binding NavItems}"
-                         SelectedIndex="{Binding SelectedNavIndex}">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="models:NavItem">
-                            <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,6">
-                                <materialIcons:MaterialIcon Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}"
-                                                            Width="24" Height="24"
-                                                            VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </DockPanel>
-        </Border>
-        <ContentControl Grid.Column="1"
-                        Content="{Binding CurrentPane}"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch"/>
+    <Grid RowDefinitions="Auto,*">
+        <Menu Grid.Row="0" VerticalAlignment="Top">
+            <!-- File -->
+            <MenuItem Header="_File">
+                <MenuItem Header="New Project" Command="{Binding NewProjectCommand}" InputGesture="Ctrl+N"/>
+                <MenuItem Header="Open Project..." Command="{Binding OpenProjectCommand}" InputGesture="Ctrl+O"/>
+                <Separator/>
+                <MenuItem Header="Exit" Command="{Binding ExitApplicationCommand}" InputGesture="Alt+F4"/>
+            </MenuItem>
+
+            <!-- View -->
+            <MenuItem Header="_View">
+                <MenuItem Header="Reload" Command="{Binding ReloadConfigurationCommand}"/>
+                <MenuItem Header="Force Reload" Command="{Binding ForceReloadCommand}"/>
+                <MenuItem Header="Toggle Developer Tools" Command="{Binding ToggleDevToolsCommand}"/>
+                <Separator/>
+                <MenuItem Header="Reset Zoom" Command="{Binding ResetZoomCommand}"/>
+                <MenuItem Header="Zoom In" Command="{Binding ZoomInCommand}" InputGesture="Ctrl+OemPlus"/>
+                <MenuItem Header="Zoom Out" Command="{Binding ZoomOutCommand}" InputGesture="Ctrl+OemMinus"/>
+                <Separator/>
+                <MenuItem Header="Toggle Fullscreen" Command="{Binding ToggleFullscreenCommand}" InputGesture="F11"/>
+            </MenuItem>
+
+            <!-- Edit -->
+            <MenuItem Header="_Edit">
+                <MenuItem Header="Undo" Command="{Binding UndoCommand}" InputGesture="Ctrl+Z"/>
+                <MenuItem Header="Redo" Command="{Binding RedoCommand}" InputGesture="Ctrl+Y"/>
+                <Separator/>
+                <MenuItem Header="Cut" Command="{Binding CutCommand}" InputGesture="Ctrl+X"/>
+                <MenuItem Header="Copy" Command="{Binding CopyCommand}" InputGesture="Ctrl+C"/>
+                <MenuItem Header="Paste" Command="{Binding PasteCommand}" InputGesture="Ctrl+V"/>
+                <MenuItem Header="Delete" Command="{Binding DeleteCommand}" InputGesture="Delete"/>
+                <Separator/>
+                <MenuItem Header="Select All" Command="{Binding SelectAllCommand}" InputGesture="Ctrl+A"/>
+            </MenuItem>
+
+            <!-- Tools -->
+            <MenuItem Header="_Tools">
+                <MenuItem Header="Developer Tools" Command="{Binding ToggleDevToolsCommand}" InputGesture="F12"/>
+                <Separator/>
+                <MenuItem Header="Reload" Command="{Binding ReloadConfigurationCommand}"/>
+                <MenuItem Header="Force Reload" Command="{Binding ForceReloadCommand}"/>
+            </MenuItem>
+
+            <!-- Window -->
+            <MenuItem Header="_Window">
+                <MenuItem Header="Minimize" Command="{Binding MinimizeCommand}"/>
+                <MenuItem Header="Close" Command="{Binding CloseWindowCommand}"/>
+            </MenuItem>
+
+            <!-- Help -->
+            <MenuItem Header="_Help">
+                <MenuItem Header="User Guide" Command="{Binding OpenUserGuideCommand}"/>
+                <Separator/>
+                <MenuItem Header="About Godot Generator" Command="{Binding AboutCommand}"/>
+            </MenuItem>
+        </Menu>
+
+        <Grid Grid.Row="1" ColumnDefinitions="220,*">
+            <Border Grid.Column="0" BorderBrush="#33000000" BorderThickness="0,0,1,0" Padding="8">
+                <Grid RowDefinitions="*,Auto">
+                    <ListBox ItemsSource="{Binding NavItems}"
+                             SelectedIndex="{Binding SelectedNavIndex}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:NavItem">
+                                <StackPanel Orientation="Horizontal" Spacing="10" Margin="8,6">
+                                    <materialIcons:MaterialIcon Kind="{Binding IconKey, Converter={StaticResource MaterialIconNameToEnumConverter}}"
+                                                                Width="24" Height="24"
+                                                                VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Label}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Button Grid.Row="1"
+                            Theme="{StaticResource MaterialFlatButton}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Left"
+                            Padding="16,8"
+                            Command="{Binding OpenRepoCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <materialIcons:MaterialIcon Kind="Github" Width="24" Height="24"/>
+                            <TextBlock Text="Repository" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+            </Border>
+            <ContentControl Grid.Column="1"
+                            Content="{Binding CurrentPane}"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Stretch"/>
+        </Grid>
     </Grid>
 </Window>

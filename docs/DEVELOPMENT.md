@@ -19,6 +19,7 @@ Project structure
 
 UI notes
 - The main window uses left navigation plus a settings shell and generation panels.
+- The main window also includes a classic top `MenuBar` with File/Edit/View/Tools/Window/Help entries for parity with the reference app.
 - Generation panels support shared overrides for language, temperature, API key, and system prompt.
 - Tabs and panels should preserve the material icon style already used in the shell.
 

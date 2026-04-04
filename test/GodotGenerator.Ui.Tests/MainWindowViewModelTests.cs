@@ -18,7 +18,20 @@ public class MainWindowViewModelTests
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
         var vm = new MainWindowViewModel(scopeFactory);
         Assert.NotNull(vm.NavItems);
-        Assert.Equal(9, vm.NavItems.Count);
+        Assert.Equal(12, vm.NavItems.Count);
+    }
+
+    [Fact]
+    public void SelectNavigationCommand_ChangesSelectedIndex()
+    {
+        var services = new ServiceCollection();
+        RegisterMinimalApiMocks(services);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        var vm = new MainWindowViewModel(scopeFactory);
+
+        vm.ShowAnimationsCommand.Execute(null);
+
+        Assert.Equal(6, vm.SelectedNavIndex);
     }
 
     private static void RegisterMinimalApiMocks(ServiceCollection services)
