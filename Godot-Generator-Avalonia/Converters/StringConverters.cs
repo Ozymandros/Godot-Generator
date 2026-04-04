@@ -25,6 +25,30 @@ public static class StringConverters
             throw new NotSupportedException();
     }
 
+    public static IValueConverter ModalityToBrush { get; } = new ModalityToBrushConverter();
+
+    private sealed class ModalityToBrushConverter : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
+        {
+            var modality = value?.ToString()?.ToLowerInvariant();
+            return modality switch
+            {
+                "llm" => Avalonia.Media.Brush.Parse("#2196F3"), // Blue
+                "image" => Avalonia.Media.Brush.Parse("#9C27B0"), // Purple
+                "audio" => Avalonia.Media.Brush.Parse("#FF9800"), // Orange
+                "video" => Avalonia.Media.Brush.Parse("#F44336"), // Red
+                "sprites" => Avalonia.Media.Brush.Parse("#4CAF50"), // Green
+                "godot-ui" or "godot_ui" => Avalonia.Media.Brush.Parse("#00BCD4"), // Cyan
+                "godot-physics" or "godot_physics" => Avalonia.Media.Brush.Parse("#607D8B"), // Blue Grey
+                _ => Avalonia.Media.Brush.Parse("#757575"), // Grey
+            };
+        }
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
     private sealed class NotNullObjectToBoolConverter : IValueConverter
     {
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture) => value is not null;

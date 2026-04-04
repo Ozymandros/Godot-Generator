@@ -83,13 +83,17 @@ public static class ConfigurationRegistryService
             Models =
             [
                 new() { ProviderId = Constants.ProviderOpenAi, FriendlyName = "GPT-4o", EngineValue = Constants.ModelGpt4O, Modality = "llm" },
+                new() { ProviderId = Constants.ProviderOpenAi, FriendlyName = "GPT-4o mini", EngineValue = "gpt-4o-mini", Modality = "llm" },
                 new() { ProviderId = Constants.ProviderAnthropic, FriendlyName = "Claude 3.5 Sonnet", EngineValue = Constants.ModelClaude35Sonnet, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderGoogle, FriendlyName = "Gemini 1.5 Pro", EngineValue = Constants.ModelGemini15Pro, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderGoogle, FriendlyName = "Gemini 1.5 Flash", EngineValue = Constants.ModelGemini15Flash, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderGroq, FriendlyName = "Llama 3 70B", EngineValue = Constants.ModelLlama370B, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderDeepSeek, FriendlyName = "DeepSeek Coder", EngineValue = Constants.ModelDeepSeekCoder, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderDeepSeek, FriendlyName = "DeepSeek Chat", EngineValue = Constants.ModelDeepSeekChat, Modality = "llm" },
-                new() { ProviderId = Constants.ProviderStability, FriendlyName = "SDXL", EngineValue = "stable-diffusion-xl-1024-v1-0", Modality = "image" },
+                new() { ProviderId = Constants.ProviderStability, FriendlyName = "SDXL 1.0", EngineValue = "stable-diffusion-xl-1024-v1-0", Modality = "image" },
+                new() { ProviderId = Constants.ProviderStability, FriendlyName = "SDXL Sprites", EngineValue = "stable-diffusion-xl-1024-v1-0", Modality = "sprites" },
+                new() { ProviderId = Constants.ProviderStability, FriendlyName = "SD 1.5", EngineValue = "stable-diffusion-v1-5", Modality = "image" },
+                new() { ProviderId = Constants.ProviderElevenLabs, FriendlyName = "Eleven English v1", EngineValue = "eleven_monolingual_v1", Modality = "audio" },
                 new() { ProviderId = Constants.ProviderElevenLabs, FriendlyName = "Eleven Multilingual v2", EngineValue = "eleven_multilingual_v2", Modality = "audio" },
             ]
         };
@@ -135,6 +139,10 @@ public static class ConfigurationRegistryService
         SetIfEmpty("code", preferences.GetValueOrDefault(PromptsCodeLegacy));
         SetIfEmpty("godot-ui", preferences.GetValueOrDefault(PromptsGodotUiLegacy));
         SetIfEmpty("godot-physics", preferences.GetValueOrDefault(PromptsGodotPhysicsLegacy));
+        SetIfEmpty("audio", preferences.GetValueOrDefault("prompts.audio.legacy"));
+        SetIfEmpty("sprites", preferences.GetValueOrDefault("prompts.sprites.legacy"));
+        SetIfEmpty("scenes", preferences.GetValueOrDefault("prompts.scenes.legacy")); // Placeholder for future mapping
+        SetIfEmpty("godot-project", preferences.GetValueOrDefault("prompts.project.legacy"));
 
         return document;
     }
