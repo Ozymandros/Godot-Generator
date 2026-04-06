@@ -1,0 +1,46 @@
+@* Typed field wrapper (Unity-Generator SmartField — mutatis mutandis). *@
+
+<div class="smart-field" style="@FieldWidthStyle">
+<BaseField Label="@Label" Help="@Help" Required="@Required" ValidationMessage="@ValidationMessage">
+    @if (FieldType == SmartFieldType.Multiline)
+    {
+        <FluentTextArea @bind-Value="Value" Rows="@(Rows ?? 5)" Placeholder="@Placeholder" Disabled="@Disabled" />
+    }
+    else if (FieldType == SmartFieldType.Password)
+    {
+        <FluentTextField @bind-Value="Value" Placeholder="@Placeholder" Disabled="@Disabled" TextFieldType="TextFieldType.Password" />
+    }
+    else
+    {
+        <FluentTextField @bind-Value="Value" Placeholder="@Placeholder" Disabled="@Disabled" />
+    }
+</BaseField>
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public SmartFieldType FieldType { get; set; } = SmartFieldType.Text;
+
+    [Parameter] public int? Rows { get; set; }
+
+    /// <summary>CSS length for the control; sets <c>--smart-field-width</c>. If omitted, <c>--app-smart-field-width-default</c> from global styles is used.</summary>
+    [Parameter] public string? Width { get; set; }
+
+    [Parameter] public string? ValidationMessage { get; set; }
+
+    [Parameter] public string Value { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    private string? FieldWidthStyle =>
+        string.IsNullOrWhiteSpace(Width) ? null : $"--smart-field-width:{Width.Trim()};";
+}

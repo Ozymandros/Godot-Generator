@@ -1,0 +1,31 @@
+@* Label + validation region for form controls (Unity-Generator generic/BaseField parity). *@
+
+<div class="base-field">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">
+            @Label@if (Required) { <span style="color:var(--app-color-validation-error);"> *</span> }
+        </FluentLabel>
+    }
+    @ChildContent
+    @if (!string.IsNullOrEmpty(Help))
+    {
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-help app-margin-top-xs">@Help</FluentLabel>
+    }
+    @if (!string.IsNullOrEmpty(ValidationMessage))
+    {
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-validation app-margin-top-xs">@ValidationMessage</FluentLabel>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public string? Help { get; set; }
+
+    [Parameter] public string? ValidationMessage { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

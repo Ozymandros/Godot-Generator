@@ -1,0 +1,23 @@
+@inject IJSRuntime Js
+
+<FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8" role="group" aria-labelledby="theme-toggle-label">
+    <FluentLabel Typo="Typography.Body" id="theme-toggle-label">Theme</FluentLabel>
+    <FluentSwitch Value="_dark" ValueChanged="OnDarkChangedAsync" aria-labelledby="theme-toggle-label">Dark</FluentSwitch>
+</FluentStack>
+
+@code {
+    private bool _dark;
+
+    private async Task OnDarkChangedAsync(bool value)
+    {
+        _dark = value;
+        try
+        {
+            await Js.InvokeVoidAsync("godotTheme.setDark", _dark).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or JSDisconnectedException)
+        {
+            // Prerender / circuit not attached yet; theme applies on next interactive render.
+        }
+    }
+}

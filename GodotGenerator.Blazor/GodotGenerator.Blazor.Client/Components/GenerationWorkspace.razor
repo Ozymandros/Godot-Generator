@@ -1,0 +1,226 @@
+@using GodotGenerator.Api.Dtos
+@inject GodotGeneratorHttpClient Api
+@inject ProjectStateService ProjectState
+@inject LogBufferService Logs
+@inject StatusBannerService StatusBanner
+
+<PageTitle>@Title</PageTitle>
+
+<div class="generation-workspace">
+    <div class="generation-workspace__intro app-content-wide">
+        @if (!string.IsNullOrEmpty(Badge))
+        {
+            <FluentBadge Appearance="Appearance.Accent" Class="app-badge-margin-bottom">@Badge</FluentBadge>
+        }
+        <FluentLabel Typo="Typography.H4" Class="app-fluent-label-margin-title">@Title</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-intro-desc">@Description</FluentLabel>
+    </div>
+
+    <div class="generation-workspace__layout @(ShowResultSplit ? "generation-workspace__layout--split" : null)">
+        <div class="generation-workspace__form app-content-wide">
+            <FluentCard Class="settings-card-host">
+                <div class="settings-card__inner">
+                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">Effective runtime</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">Provider: @_lastProvider</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">Model: @_lastModel</FluentLabel>
+                    <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft app-margin-top-xs">Overrides below apply to the next request.</FluentLabel>
+                </div>
+            </FluentCard>
+
+            @if (AdditionalFields is not null)
+            {
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Class="generation-workspace__additional-stack">
+                    @AdditionalFields
+                </FluentStack>
+            }
+
+            <div class="generation-workspace__row-controls">
+                <FluentTextField @bind-Value="_providerOverride" Label="Provider" Placeholder="e.g. openai" Class="app-field-min-xs" />
+                <FluentTextField @bind-Value="_modelOverride" Label="Model" Placeholder="Model id" Class="app-field-min-sm" />
+                <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end" OnClick="@(() => _showModelModal = true)">+</FluentButton>
+            </div>
+
+            <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt" />
+
+            <AdvancedOptionsSection Options="_advanced" OnChanged="OnAdvancedOptionsChanged">
+                @AdvancedChildContent
+            </AdvancedOptionsSection>
+
+            <FluentButton Appearance="Appearance.Accent"
+                          Class="generation-workspace__cta"
+                          OnClick="RunAsync"
+                          Disabled="@_busy">
+                @GenerateButtonLabel
+            </FluentButton>
+            @if (_busy)
+            {
+                <FluentProgressRing Class="app-progress-ring-margin" />
+            }
+
+            <ModelManagerModal Visible="_showModelModal" Title="Models" OnClose="@(() => _showModelModal = false)">
+                <FluentLabel Typo="Typography.Body">Configure default models under Settings → Models; use Provider/Model fields above for per-request overrides.</FluentLabel>
+            </ModelManagerModal>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <FluentMessageBar Intent="MessageIntent.Error">@_error</FluentMessageBar>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_result))
+        {
+            <aside class="generation-workspace__result-pane app-content-wide" aria-label="Generation result">
+                <p class="generation-workspace__result-title">Result</p>
+                <FluentCard Class="settings-card-host generation-workspace__result">
+                    <div class="settings-card__inner generation-workspace__result-pre">
+                        <FluentLabel Typo="Typography.Body">@_result</FluentLabel>
+                    </div>
+                </FluentCard>
+            </aside>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GenerationModality Modality { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Generate";
+
+    [Parameter] public string Description { get; set; } = string.Empty;
+
+    [Parameter] public string? Badge { get; set; }
+
+    [Parameter] public string PromptPlaceholder { get; set; } = "Describe what you want…";
+
+    [Parameter] public RenderFragment? AdditionalFields { get; set; }
+
+    [Parameter] public RenderFragment? AdvancedChildContent { get; set; }
+
+    [Parameter] public Func<string, GenerateRequest>? CreateRequest { get; set; }
+
+    private string _prompt = string.Empty;
+    private string _providerOverride = string.Empty;
+    private string _modelOverride = string.Empty;
+    private string _result = string.Empty;
+    private string? _error;
+    private bool _busy;
+    private bool _showModelModal;
+    private string _lastProvider = "(not run yet)";
+    private string _lastModel = "(not run yet)";
+    private readonly GenerationAdvancedOptions _advanced = new();
+
+    private bool ShowResultSplit => !string.IsNullOrEmpty(_result);
+
+    private string GenerateButtonLabel => $"Generate — {Title}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ProjectState.LoadAsync().ConfigureAwait(false);
+    }
+
+    private Task OnAdvancedOptionsChanged()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest ApplyAdvancedAndOverrides(GenerateRequest r)
+    {
+        var opts = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (r.Options is not null)
+        {
+            foreach (var kv in r.Options)
+            {
+                opts[kv.Key] = kv.Value;
+            }
+        }
+
+        opts[GenerationOptionKeys.Temperature] = _advanced.Temperature;
+        if (!string.IsNullOrWhiteSpace(_advanced.PreferredScriptLanguage))
+        {
+            opts[GenerationOptionKeys.PreferredScriptLanguage] = _advanced.PreferredScriptLanguage.Trim();
+        }
+
+        var apiKey = string.IsNullOrWhiteSpace(_advanced.ApiKeyOverride) ? r.ApiKey : _advanced.ApiKeyOverride.Trim();
+        var sys = r.SystemPrompt;
+        if (!string.IsNullOrWhiteSpace(_advanced.SystemPromptOverride))
+        {
+            sys = string.IsNullOrWhiteSpace(sys)
+                ? _advanced.SystemPromptOverride.Trim()
+                : $"{sys}{Environment.NewLine}{Environment.NewLine}{_advanced.SystemPromptOverride.Trim()}";
+        }
+
+        var provider = string.IsNullOrWhiteSpace(_providerOverride) ? r.Provider : _providerOverride.Trim();
+        var model = string.IsNullOrWhiteSpace(_modelOverride) ? r.PreferredModelId : _modelOverride.Trim();
+
+        return r with
+        {
+            Options = opts,
+            ApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey,
+            SystemPrompt = string.IsNullOrWhiteSpace(sys) ? null : sys,
+            Provider = string.IsNullOrWhiteSpace(provider) ? null : provider,
+            PreferredModelId = string.IsNullOrWhiteSpace(model) ? null : model,
+        };
+    }
+
+    private async Task RunAsync()
+    {
+        _error = null;
+        _result = string.Empty;
+        if (string.IsNullOrWhiteSpace(_prompt))
+        {
+            _error = "Prompt cannot be empty.";
+            StatusBanner.Set($"{Title}: prompt empty.", MessageIntent.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var trimmed = _prompt.Trim();
+            var request = CreateRequest is not null
+                ? CreateRequest.Invoke(trimmed)
+                : new GenerateRequest(
+                    Prompt: trimmed,
+                    ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+
+            request = ApplyAdvancedAndOverrides(request);
+
+            var response = await Api.GenerateAsync(Modality, request).ConfigureAwait(false);
+            if (!response.Success)
+            {
+                _error = response.Error ?? "Generation failed.";
+                Logs.Append($"{Title}: error {_error}");
+                StatusBanner.Set($"{Title}: {_error}", MessageIntent.Error);
+                return;
+            }
+
+            _result = GenerationResponseFormatter.ExtractMessage(response.Data);
+            if (response.Data is not null)
+            {
+                if (response.Data.TryGetValue("provider", out var p) && p?.ToString() is { } ps)
+                {
+                    _lastProvider = ps;
+                }
+
+                if (response.Data.TryGetValue("modelId", out var m) && m?.ToString() is { } ms)
+                {
+                    _lastModel = ms;
+                }
+            }
+
+            Logs.Append($"{Title}: completed.");
+            StatusBanner.Set($"{Title}: completed.", MessageIntent.Success);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Logs.Append($"{Title}: exception {ex.Message}");
+            StatusBanner.Set($"{Title}: {ex.Message}", MessageIntent.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

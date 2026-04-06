@@ -1,0 +1,48 @@
+@* Unity-Generator SpritesPanel parity + preview column. *@
+
+<FluentStack Orientation="Orientation.Horizontal" Class="sprites-workspace-layout">
+    <FluentStack Orientation="Orientation.Vertical" Class="sprites-workspace__col-main">
+        <GenerationWorkspace Modality="GenerationModality.Sprites"
+                             Badge="PIXEL ART OPTIMIZED"
+                             Title="2D Sprites"
+                             Description="Generate sprite directions and pixel-friendly assets."
+                             PromptPlaceholder="Describe sprites…"
+                             CreateRequest="BuildRequest">
+            <AdditionalFields>
+                <SmartField Label="Resolution preset" Placeholder="e.g. 64x64, 128x128" @bind-Value="_resolution" />
+                <SmartField Label="Palette size" Placeholder="e.g. 32 colors" @bind-Value="_palette" />
+                <SmartField Label="Style notes" FieldType="SmartFieldType.Multiline" Rows="2" Placeholder="Outline, outline width, dithering…" @bind-Value="_styleNotes" />
+            </AdditionalFields>
+        </GenerationWorkspace>
+    </FluentStack>
+    <FluentCard Class="sprites-preview-pane">
+        <FluentLabel Typo="Typography.Body" Class="sprites-preview__label-muted">Preview area</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="sprites-preview__hint">Generated artwork will appear here when the pipeline returns image URLs.</FluentLabel>
+    </FluentCard>
+</FluentStack>
+
+@code {
+    private string _resolution = "64x64";
+    private string _palette = "32 colors";
+    private string _styleNotes = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(_resolution))
+        {
+            options["sprite_resolution"] = _resolution.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_palette))
+        {
+            options["palette_size"] = _palette.Trim();
+        }
+
+        var body = string.IsNullOrWhiteSpace(_styleNotes)
+            ? prompt
+            : $"{_styleNotes.Trim()}{Environment.NewLine}{Environment.NewLine}{prompt}";
+
+        return new GenerateRequest(Prompt: body, Options: options.Count > 0 ? options : null);
+    }
+}

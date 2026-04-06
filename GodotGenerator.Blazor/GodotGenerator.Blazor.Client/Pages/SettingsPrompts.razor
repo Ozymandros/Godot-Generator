@@ -1,0 +1,10 @@
+@page "/settings/prompts"
+@inject NavigationManager Nav
+@rendermode InteractiveWebAssembly
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/settings?tab=3", replace: true);
+    }
+}

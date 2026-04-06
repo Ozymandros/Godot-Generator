@@ -1,0 +1,28 @@
+﻿@* Custom nav (full labels, Unity-style active pill) — avoids Fluent nav ellipsis at narrow widths. *@
+
+<nav class="app-nav" aria-label="Main">
+    <NavLink class="app-nav__link" href="/settings" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">⚙</span><span class="app-nav__text">Configuration</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/scenes" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">▦</span><span class="app-nav__text">Scenes</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/code" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">⟨⟩</span><span class="app-nav__text">Code</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/text" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">¶</span><span class="app-nav__text">Text</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/image" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">◐</span><span class="app-nav__text">Image</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/sprites" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">▤</span><span class="app-nav__text">Sprites</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/animations" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">✦</span><span class="app-nav__text">Animations</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/audio" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">♪</span><span class="app-nav__text">Audio</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/video" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">▶</span><span class="app-nav__text">Video</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/godot-ui" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">◧</span><span class="app-nav__text">Godot UI</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/godot-physics" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">◎</span><span class="app-nav__text">Godot Physics</span></NavLink>
+    <NavLink class="app-nav__link" href="/generate/godot-project" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">◆</span><span class="app-nav__text">Godot Project</span></NavLink>
+    <div class="app-nav__divider" role="separator"></div>
+    <NavLink class="app-nav__link" href="/" Match="NavLinkMatch.All"><span class="nav-glyph" aria-hidden="true">⌂</span><span class="app-nav__text">Home</span></NavLink>
+    <NavLink class="app-nav__link" href="/dashboard" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">▣</span><span class="app-nav__text">Dashboard</span></NavLink>
+    <NavLink class="app-nav__link" href="/logs" Match="NavLinkMatch.Prefix"><span class="nav-glyph" aria-hidden="true">≋</span><span class="app-nav__text">Logs</span></NavLink>
+</nav>
+
+<div class="app-nav__footer">
+    <FluentAnchor class="app-nav__repo" Appearance="Appearance.Neutral"
+                  Href="https://github.com/Ozymandros/Godot-Generator-Avalonia"
+                  Target="_blank" Rel="noopener noreferrer">
+        <span class="nav-glyph" aria-hidden="true">⎇</span><span class="app-nav__text">Repository</span>
+    </FluentAnchor>
+</div>

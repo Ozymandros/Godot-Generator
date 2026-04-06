@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.13.2" />
+    <ProjectReference Include="..\GodotGenerator.Blazor.Client\GodotGenerator.Blazor.Client.csproj" />
+    <ProjectReference Include="..\..\src\GodotGenerator.Infrastructure.Ai\GodotGenerator.Infrastructure.Ai.csproj" />
+    <ProjectReference Include="..\..\src\GodotGenerator.Api\GodotGenerator.Api.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
+  </ItemGroup>
+
+</Project>

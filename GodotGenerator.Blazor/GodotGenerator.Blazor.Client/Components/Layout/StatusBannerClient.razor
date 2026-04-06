@@ -1,0 +1,30 @@
+@inject StatusBannerService Status
+@implements IDisposable
+
+<FluentLabel Typo="Typography.Body" Class="app-opacity-muted">@_display</FluentLabel>
+
+@code {
+    private string _display = "Ready";
+
+    protected override void OnInitialized()
+    {
+        Status.Changed += OnStatusChanged;
+        Sync();
+    }
+
+    private void OnStatusChanged() => InvokeAsync(() =>
+    {
+        Sync();
+        StateHasChanged();
+    });
+
+    private void Sync()
+    {
+        _display = string.IsNullOrEmpty(Status.Message) ? "Ready" : Status.Message;
+    }
+
+    public void Dispose()
+    {
+        Status.Changed -= OnStatusChanged;
+    }
+}

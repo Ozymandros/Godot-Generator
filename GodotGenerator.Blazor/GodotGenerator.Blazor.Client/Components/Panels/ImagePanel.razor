@@ -1,0 +1,43 @@
+@* Unity-Generator ImagePanel parity (constraints + aspect/quality hints). *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.Image"
+                     Title="Image Generation"
+                     Description="Describe the image; aspect and quality are sent as request hints."
+                     PromptPlaceholder="Describe the image…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Aspect ratio" Placeholder="e.g. 1:1, 16:9" @bind-Value="_aspectRatio" />
+        <SmartField Label="Quality" Placeholder="e.g. standard, high" @bind-Value="_quality" />
+        <SmartField Label="Size / aspect / style constraints" FieldType="SmartFieldType.Multiline" Rows="2" Placeholder="e.g. 1024×1024, square, pixel art" @bind-Value="_constraints" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _aspectRatio = "1:1";
+    private string _quality = "Standard";
+    private string _constraints = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(_aspectRatio))
+        {
+            options["aspect_ratio"] = _aspectRatio.Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(_quality))
+        {
+            options["quality"] = _quality.Trim();
+        }
+
+        var body = string.IsNullOrWhiteSpace(_constraints)
+            ? prompt
+            : $"Image constraints: {_constraints.Trim()}{Environment.NewLine}{Environment.NewLine}{prompt}";
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

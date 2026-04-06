@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/test/">
+    <Project Path="test/GodotGenerator.Blazor.Tests/GodotGenerator.Blazor.Tests.csproj" />
     <Project Path="test/GodotGenerator.Application.Tests/GodotGenerator.Application.Tests.csproj" />
     <Project Path="test/GodotGenerator.Infrastructure.Ai.Tests/GodotGenerator.Infrastructure.Ai.Tests.csproj" />
     <Project Path="test/GodotGenerator.Infrastructure.Persistence.Tests/GodotGenerator.Infrastructure.Persistence.Tests.csproj" />
@@ -13,4 +14,6 @@
   </Folder>
   <Project Path="Godot-Generator-Avalonia/Godot-Generator-Avalonia.csproj" />
   <Project Path="Godot-Generator-Blazor/Godot-Generator-Blazor.csproj" Id="adef89e6-e397-49bb-989e-c143898492d2" />
+  <Project Path="GodotGenerator.Blazor/GodotGenerator.Blazor.Client/GodotGenerator.Blazor.Client.csproj" Id="05b8b605-a10c-4992-a8d8-53192604caa1" />
+  <Project Path="GodotGenerator.Blazor/GodotGenerator.Blazor/GodotGenerator.Blazor.csproj" Id="296fc346-06f3-430e-9a2e-c450ef29f619" />
 </Solution>

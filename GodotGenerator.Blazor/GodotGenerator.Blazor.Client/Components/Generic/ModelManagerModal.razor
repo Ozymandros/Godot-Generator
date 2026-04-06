@@ -1,0 +1,28 @@
+@* Placeholder modal for model CRUD (Settings / panels). *@
+
+<FluentDialog Hidden="@(!Visible)" Modal="true" TrapFocus="true" Style="--dialog-width: var(--app-dialog-model-width);">
+    <FluentDialogHeader>
+        <FluentLabel Typo="Typography.H5">@Title</FluentLabel>
+    </FluentDialogHeader>
+    <FluentDialogBody>
+        @ChildContent
+    </FluentDialogBody>
+    <FluentDialogFooter>
+        <FluentButton Appearance="Appearance.Accent" OnClick="@CloseAsync">@PrimaryLabel</FluentButton>
+        <FluentButton Appearance="Appearance.Neutral" OnClick="@CloseAsync">Cancel</FluentButton>
+    </FluentDialogFooter>
+</FluentDialog>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Models";
+
+    [Parameter] public string PrimaryLabel { get; set; } = "OK";
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+}

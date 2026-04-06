@@ -32,108 +32,80 @@
           </StackPanel>
         </TabItem.Header>
         <ScrollViewer>
-          <StackPanel Spacing="16" MaxWidth="840" Margin="0,8,0,0" DataContext="{Binding General}">
+          <StackPanel Spacing="16" MaxWidth="720" Margin="0,8,0,0" DataContext="{Binding General}">
             <TextBlock Text="General Settings" Theme="{StaticResource MaterialHeadline5TextBlock}"/>
+            
+            <TextBox Text="{Binding BackendUrl}" 
+                     Watermark="http://127.0.0.1:35421" 
+                     assists:TextFieldAssist.Label="Backend URL" 
+                     Theme="{StaticResource OutlineTextBox}" />
+            
+            <TextBox Text="{Binding OutputBasePath}" 
+                     Watermark="./output" 
+                     assists:TextFieldAssist.Label="Base path (output)" 
+                     Theme="{StaticResource OutlineTextBox}" />
 
-            <Border CornerRadius="8" Padding="12" Background="#0F111217" BorderBrush="{DynamicResource MaterialDividerBrush}" BorderThickness="1">
-              <StackPanel Spacing="8">
-                <TextBlock Text="NETWORK &amp; API" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaterialPrimaryMidBrush}"/>
-                <TextBlock Text="Backend URL" Opacity="0.8" FontSize="12"/>
-                <TextBox Text="{Binding BackendUrl}" 
-                         Watermark="http://127.0.0.1:35421" 
-                         assists:TextFieldAssist.Label="Backend URL" 
-                         Theme="{StaticResource OutlineTextBox}" />
-
-                <TextBlock Text="Base path (output)" Opacity="0.8" FontSize="12"/>
-                <TextBox Text="{Binding OutputBasePath}" 
-                         Watermark="./output" 
-                         assists:TextFieldAssist.Label="Base path (output)" 
-                         Theme="{StaticResource OutlineTextBox}" />
-                <TextBlock Text="Relative path for generated projects (stored in preferences)." Opacity="0.6" FontSize="11"/>
-              </StackPanel>
-            </Border>
-
-            <Border CornerRadius="8" Padding="12" Background="#0F111217" BorderBrush="{DynamicResource MaterialDividerBrush}" BorderThickness="1">
-              <StackPanel Spacing="8">
-                <TextBlock Text="PREFERRED INTELLIGENCE" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaterialPrimaryMidBrush}"/>
-
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="12">
-                  <ComboBox Grid.Row="0" Grid.Column="0" Margin="0,8,0,8"
-                            ItemsSource="{Binding ProviderOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding LlmProvider}"
-                            assists:ComboBoxAssist.Label="Default Text/Logic Provider"/>
-                  <ComboBox Grid.Row="0" Grid.Column="1" Margin="0,8,0,8"
-                            ItemsSource="{Binding LlmModelOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding LlmModel}"
-                            assists:ComboBoxAssist.Label="Model (for text/llm)"/>
-
-                  <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,0,0,8"
-                            ItemsSource="{Binding ProviderOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding ImageProvider}"
-                            assists:ComboBoxAssist.Label="Default Image Provider"/>
-                  <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,0,0,8"
-                            ItemsSource="{Binding ImageModelOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding ImageModel}"
-                            assists:ComboBoxAssist.Label="Model (for image)"/>
-
-                  <ComboBox Grid.Row="2" Grid.Column="0" Margin="0,0,0,8"
-                            ItemsSource="{Binding ProviderOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding AudioProvider}"
-                            assists:ComboBoxAssist.Label="Default Speech (TTS) Provider"/>
-                  <ComboBox Grid.Row="2" Grid.Column="1" Margin="0,0,0,8"
-                            ItemsSource="{Binding AudioModelOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding AudioModel}"
-                            assists:ComboBoxAssist.Label="Model (for audio)"/>
-
-                  <ComboBox Grid.Row="3" Grid.Column="0" Margin="0,0,0,0"
-                            ItemsSource="{Binding ProviderOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding VideoProvider}"
-                            assists:ComboBoxAssist.Label="Default Video Provider"/>
-                  <ComboBox Grid.Row="3" Grid.Column="1" Margin="0,0,0,0"
-                            ItemsSource="{Binding VideoModelOptions}"
-                            IsEditable="True"
-                            SelectedItem="{Binding VideoModel}"
-                            assists:ComboBoxAssist.Label="Model (for video)"/>
-                </Grid>
-              </StackPanel>
-            </Border>
-
-            <!-- Host defaults & diagnostics -->
-            <Border CornerRadius="8" Padding="12" Background="#0F111217" BorderBrush="{DynamicResource MaterialDividerBrush}" BorderThickness="1">
-              <StackPanel Spacing="8">
-                <TextBlock Text="HOST DEFAULTS" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MaterialPrimaryMidBrush}"/>
-                <TextBlock>
-                  <Run Text="Default LLM: " FontWeight="Medium"/>
-                  <Run Text="{Binding DefaultLlmProvider}" />
-                </TextBlock>
-                <TextBlock>
-                  <Run Text="Default Chat ID: " FontWeight="Medium"/>
-                  <Run Text="{Binding DefaultChatModelId}" />
-                </TextBlock>
-                <TextBlock>
-                  <Run Text="Available Godot tools: " FontWeight="Medium"/>
-                  <Run Text="{Binding GodotToolCount}" />
-                </TextBlock>
-              </StackPanel>
-            </Border>
-
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="8">
-              <Button Content="Save All Changes" 
-                      Command="{Binding SaveCommand}" 
-                      Theme="{StaticResource MaterialFlatMidButton}" 
-                      MinWidth="150"
-                      Margin="0,12,0,0"/>
-              <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MaterialDividerBrush}" VerticalAlignment="Center" Margin="8,14,0,0"/>
-              <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
-                         IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" VerticalAlignment="Center" Margin="8,14,0,0"/>
+            <StackPanel Spacing="4">
+              <TextBlock Text="Default preferred language:" Opacity="0.7" FontSize="12"/>
+              <ComboBox ItemsSource="{Binding LanguageOptions}"
+                        SelectedItem="{Binding SelectedLanguage}"
+                        MinWidth="220"/>
             </StackPanel>
+
+            <TextBlock Text="Preferred Intelligence Providers" Theme="{StaticResource MaterialHeadline6TextBlock}" Margin="0,8,0,0"/>
+
+            <!-- LLM / Code / UI / Physics -->
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+              <ComboBox Grid.Column="0" Margin="0,0,8,8"
+                        ItemsSource="{Binding ProviderOptions}"
+                        IsEditable="True"
+                        Text="{Binding LlmProvider}"
+                        assists:ComboBoxAssist.Label="LLM (Text/Code/Godot) Provider"/>
+              <ComboBox Grid.Column="1" Margin="0,0,0,8"
+                        ItemsSource="{Binding LlmModelOptions}"
+                        IsEditable="True"
+                        Text="{Binding LlmModel}"
+                        assists:ComboBoxAssist.Label="LLM Model"/>
+            </Grid>
+
+            <!-- Image -->
+            <Grid ColumnDefinitions="*,*">
+              <ComboBox Grid.Column="0" Margin="0,0,8,8"
+                        ItemsSource="{Binding ProviderOptions}"
+                        IsEditable="True"
+                        Text="{Binding ImageProvider}"
+                        assists:ComboBoxAssist.Label="Image Provider"/>
+              <ComboBox Grid.Column="1" Margin="0,0,0,8"
+                        ItemsSource="{Binding ImageModelOptions}"
+                        IsEditable="True"
+                        Text="{Binding ImageModel}"
+                        assists:ComboBoxAssist.Label="Image Model"/>
+            </Grid>
+            
+            <Separator Height="1" Margin="0,8" Background="{DynamicResource MaterialDividerBrush}" />
+
+            <StackPanel Spacing="4">
+              <TextBlock Text="Host defaults (read-only)" Theme="{StaticResource MaterialSubtitle1TextBlock}"/>
+              <TextBlock Foreground="{DynamicResource MaterialDividerBrush}">
+                <Run Text="Default LLM: " FontWeight="Medium"/>
+                <Run Text="{Binding DefaultLlmProvider}"/>
+              </TextBlock>
+              <TextBlock Foreground="{DynamicResource MaterialDividerBrush}">
+                <Run Text="Default Chat ID: " FontWeight="Medium"/>
+                <Run Text="{Binding DefaultChatModelId}"/>
+              </TextBlock>
+            </StackPanel>
+
+            <Button Content="Save All Changes" 
+                    Command="{Binding SaveCommand}" 
+                    Theme="{StaticResource MaterialFlatMidButton}" 
+                    HorizontalAlignment="Left"
+                    MinWidth="150"
+                    Margin="0,12,0,0"/>
+            
+            <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource MaterialDividerBrush}"/>
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource MaterialSecondaryMidBrush}"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

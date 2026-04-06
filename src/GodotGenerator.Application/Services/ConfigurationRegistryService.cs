@@ -66,6 +66,14 @@ public static class ConfigurationRegistryService
                 new() { Id = Constants.ProviderAnthropic, KeyStoreHandle = Constants.ProviderAnthropic },
                 new() { Id = Constants.ProviderGoogle, KeyStoreHandle = Constants.ProviderGoogle },
                 new() { Id = Constants.ProviderDeepSeek, KeyStoreHandle = Constants.ProviderDeepSeek, OpenAiCompatibility = true },
+                new()
+                {
+                    Id = Constants.ProviderOpenRouter,
+                    KeyStoreHandle = Constants.ProviderOpenRouter,
+                    Endpoint = "https://openrouter.ai/api/v1",
+                    OpenAiCompatibility = true,
+                },
+                new() { Id = Constants.ProviderHuggingFace, KeyStoreHandle = Constants.ProviderHuggingFace },
                 new() { Id = Constants.ProviderOllama, KeyStoreHandle = "ollama", Endpoint = "http://localhost:11434/v1", OpenAiCompatibility = true },
                 new() { Id = Constants.ProviderGroq, KeyStoreHandle = Constants.ProviderGroq, OpenAiCompatibility = true },
                 new() { Id = Constants.ProviderStability, KeyStoreHandle = Constants.ProviderStability },
@@ -87,6 +95,8 @@ public static class ConfigurationRegistryService
                 new() { ProviderId = Constants.ProviderAnthropic, FriendlyName = "Claude 3.5 Sonnet", EngineValue = Constants.ModelClaude35Sonnet, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderGoogle, FriendlyName = "Gemini 1.5 Pro", EngineValue = Constants.ModelGemini15Pro, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderGoogle, FriendlyName = "Gemini 1.5 Flash", EngineValue = Constants.ModelGemini15Flash, Modality = "llm" },
+                new() { ProviderId = Constants.ProviderGoogle, FriendlyName = "Google TTS", EngineValue = "google-tts", Modality = "audio" },
+                new() { ProviderId = Constants.ProviderGoogle, FriendlyName = "Imagen 3.0 Generate 002", EngineValue = "imagen-3.0-generate-002", Modality = "image" },
                 new() { ProviderId = Constants.ProviderGroq, FriendlyName = "Llama 3 70B", EngineValue = Constants.ModelLlama370B, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderDeepSeek, FriendlyName = "DeepSeek Coder", EngineValue = Constants.ModelDeepSeekCoder, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderDeepSeek, FriendlyName = "DeepSeek Chat", EngineValue = Constants.ModelDeepSeekChat, Modality = "llm" },
@@ -101,19 +111,36 @@ public static class ConfigurationRegistryService
 
     public static SystemPromptsDocument ParseSystemPrompts(string? json)
     {
+        SystemPromptsDocument doc;
         if (string.IsNullOrWhiteSpace(json))
         {
-            return new SystemPromptsDocument();
+            doc = new SystemPromptsDocument();
+        }
+        else
+        {
+            try
+            {
+                doc = JsonSerializer.Deserialize<SystemPromptsDocument>(json, JsonOptions) ?? new SystemPromptsDocument();
+            }
+            catch (JsonException)
+            {
+                doc = new SystemPromptsDocument();
+            }
         }
 
-        try
+        EnsurePromptDefaults(doc);
+        return doc;
+    }
+
+    /// <summary>Fills missing or empty modality entries from <see cref="SystemPromptDefaults"/> (first-run and partial documents).</summary>
+    private static void EnsurePromptDefaults(SystemPromptsDocument doc)
+    {
+        foreach (var (key, value) in SystemPromptDefaults.ByModality)
         {
-            var doc = JsonSerializer.Deserialize<SystemPromptsDocument>(json, JsonOptions);
-            return doc ?? new SystemPromptsDocument();
-        }
-        catch (JsonException)
-        {
-            return new SystemPromptsDocument();
+            if (!doc.Prompts.TryGetValue(key, out var existing) || string.IsNullOrWhiteSpace(existing))
+            {
+                doc.Prompts[key] = value;
+            }
         }
     }
 

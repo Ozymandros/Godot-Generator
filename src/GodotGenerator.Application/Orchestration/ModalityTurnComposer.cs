@@ -12,6 +12,9 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
     /// <summary>Option key for UI-provided preferred language (passed through to system prompt).</summary>
     public const string PreferredLanguageOptionKey = "preferred_language";
 
+    /// <summary>Option key for GDScript vs C# preference in code-related modalities.</summary>
+    public const string PreferredScriptLanguageOptionKey = "preferred_script_language";
+
     /// <summary>Option key for optional Godot project root path (triggers validation before LLM).</summary>
     public const string GodotProjectPathOptionKey = "godot_project_path";
 
@@ -67,12 +70,24 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             sb.Append('.');
         }
 
+        var scriptLang = ExtractOptionString(options, PreferredScriptLanguageOptionKey);
+        if (!string.IsNullOrWhiteSpace(scriptLang))
+        {
+            sb.AppendLine();
+            sb.Append("When generating code, prefer ");
+            sb.Append(scriptLang.Trim());
+            sb.Append(" unless the user specifies otherwise.");
+        }
+
         return sb.ToString().Trim();
     }
 
-    private static string? ExtractPreferredLanguage(IReadOnlyDictionary<string, object?>? options)
+    private static string? ExtractPreferredLanguage(IReadOnlyDictionary<string, object?>? options) =>
+        ExtractOptionString(options, PreferredLanguageOptionKey);
+
+    private static string? ExtractOptionString(IReadOnlyDictionary<string, object?>? options, string key)
     {
-        if (options is null || !options.TryGetValue(PreferredLanguageOptionKey, out var value) || value is null)
+        if (options is null || !options.TryGetValue(key, out var value) || value is null)
         {
             return null;
         }

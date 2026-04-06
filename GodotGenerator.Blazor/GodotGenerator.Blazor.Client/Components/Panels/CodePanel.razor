@@ -1,0 +1,30 @@
+@* Unity-Generator CodePanel parity (language hint → preferred_language option). *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.Code"
+                     Title="Code"
+                     Description="Generate GDScript or C# snippets."
+                     PromptPlaceholder="Describe the code behavior…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Preferred language" Placeholder="e.g. English" @bind-Value="_preferredLanguage" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _preferredLanguage = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(_preferredLanguage))
+        {
+            options[GenerationOptionKeys.PreferredLanguage] = _preferredLanguage.Trim();
+        }
+
+        return new GenerateRequest(
+            Prompt: prompt,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

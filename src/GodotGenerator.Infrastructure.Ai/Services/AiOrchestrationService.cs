@@ -67,6 +67,11 @@ public sealed class AiOrchestrationService(
                     : ToolCallBehavior.EnableKernelFunctions,
             };
 
+            if (TryGetTemperature(request.Options, out var temperature))
+            {
+                settings.Temperature = temperature;
+            }
+
             var contents = await chat
                 .GetChatMessageContentsAsync(history, settings, kernel, cancellationToken: effectiveCancellationToken)
                 .ConfigureAwait(false);
@@ -99,6 +104,38 @@ public sealed class AiOrchestrationService(
         finally
         {
             timeoutCts?.Dispose();
+        }
+    }
+
+    private const string TemperatureOptionKey = "temperature";
+
+    private static bool TryGetTemperature(IReadOnlyDictionary<string, object?>? options, out double temperature)
+    {
+        temperature = 0;
+        if (options is null || !options.TryGetValue(TemperatureOptionKey, out var raw) || raw is null)
+        {
+            return false;
+        }
+
+        switch (raw)
+        {
+            case double d:
+                temperature = d;
+                return true;
+            case float f:
+                temperature = f;
+                return true;
+            case int i:
+                temperature = i;
+                return true;
+            case long l:
+                temperature = l;
+                return true;
+            case string s when double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed):
+                temperature = parsed;
+                return true;
+            default:
+                return false;
         }
     }
 

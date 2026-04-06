@@ -1,0 +1,42 @@
+@page "/logs"
+@rendermode InteractiveWebAssembly
+@inject LogBufferService Logs
+@implements IDisposable
+
+<PageTitle>Logs</PageTitle>
+
+<FluentLabel Typo="Typography.H4" Class="app-fluent-label-margin-title">Console</FluentLabel>
+<FluentLabel Typo="Typography.Body" Class="app-fluent-label-margin-title app-opacity-muted">Terminal-style output from this session (newest lines at the bottom).</FluentLabel>
+
+<FluentCard Class="log-terminal-shell app-card-padding">
+    <FluentTextArea ReadOnly="true"
+                    Rows="24"
+                    Value="@_text"
+                    Class="app-textarea-log" />
+</FluentCard>
+
+@code {
+    private string _text = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        Logs.Changed += OnLogChanged;
+        Refresh();
+    }
+
+    private void OnLogChanged() => InvokeAsync(() =>
+    {
+        Refresh();
+        StateHasChanged();
+    });
+
+    private void Refresh()
+    {
+        _text = string.Join(Environment.NewLine, Logs.GetSnapshot());
+    }
+
+    public void Dispose()
+    {
+        Logs.Changed -= OnLogChanged;
+    }
+}

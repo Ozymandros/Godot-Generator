@@ -1,0 +1,413 @@
+@inject GodotGeneratorHttpClient Api
+@inject IJSRuntime JS
+
+<div class="settings-models">
+    @if (!string.IsNullOrEmpty(_panelError))
+    {
+        <FluentMessageBar Intent="MessageIntent.Error" Class="settings-models__msg">@_panelError</FluentMessageBar>
+    }
+    @if (!string.IsNullOrEmpty(_panelInfo))
+    {
+        <FluentMessageBar Intent="MessageIntent.Success" Class="settings-models__msg">@_panelInfo</FluentMessageBar>
+    }
+
+    <div class="settings-models__head">
+        <div>
+            <h2 class="settings-models__title">Model Registration</h2>
+            <p class="settings-models__subtitle">Models for <strong>@(_selectedProvider.Length > 0 ? _selectedProvider : "—")</strong></p>
+        </div>
+        <div class="settings-models__provider">
+            <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Provider</FluentLabel>
+            <select class="settings-select settings-models__provider-select"
+                    value="@_selectedProvider"
+                    @onchange="OnProviderChange"
+                    disabled="@Disabled">
+                @if (_providerChoices.Count == 0)
+                {
+                    <option value="">—</option>
+                }
+                @foreach (var id in _providerChoices)
+                {
+                    <option value="@id">@id</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (_providerChoices.Count == 0)
+    {
+        <FluentCard Class="settings-models__card">
+            <div class="settings-models__empty">
+                <FluentLabel Typo="Typography.Body">No providers in the registry. Add providers on the Providers tab first.</FluentLabel>
+            </div>
+        </FluentCard>
+    }
+    else
+    {
+        <FluentCard Class="settings-models__card">
+            <div class="settings-models__table-wrap">
+                <table class="settings-models__table" aria-label="Registered models">
+                    <thead>
+                    <tr>
+                        <th>Friendly Name</th>
+                        <th>Engine Value</th>
+                        <th>Modality</th>
+                        <th class="settings-models__col-actions">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var row in PagedRows)
+                    {
+                        <tr>
+                            <td>@row.FriendlyName</td>
+                            <td><code class="settings-models__code">@row.EngineValue</code></td>
+                            <td>
+                                <span class="settings-models__pill @PillClass(row.Modality)">@FormatModality(row.Modality)</span>
+                            </td>
+                            <td>
+                                <FluentButton Appearance="Appearance.Neutral"
+                                              Disabled="@Disabled"
+                                              Title="Remove model"
+                                              class="settings-models__delete"
+                                              OnClick="@(() => RemoveRowAsync(row))">
+                                    <FluentIcon Value="@(new Icons.Regular.Size20.Delete())" Width="18px" Color="Color.Error" />
+                                </FluentButton>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (FilteredRows.Count > 0)
+            {
+                <div class="settings-models__pager">
+                    <label class="settings-models__pager-label">
+                        Items per page
+                        <select class="settings-select settings-models__page-size" @bind="_pageSize" @bind:after="OnPageSizeAfter" disabled="@Disabled">
+                            @foreach (var n in PageSizeOptions)
+                            {
+                                <option value="@n">@n</option>
+                            }
+                        </select>
+                    </label>
+                    <span class="settings-models__pager-range">@PagerRangeText</span>
+                    <div class="settings-models__pager-nav">
+                        <FluentButton Appearance="Appearance.Neutral"
+                                      Disabled="@(Disabled || _pageIndex <= 0)"
+                                      OnClick="@(() => StepPage(-1))">‹</FluentButton>
+                        <FluentButton Appearance="Appearance.Neutral"
+                                      Disabled="@(Disabled || _pageIndex >= MaxPageIndex)"
+                                      OnClick="@(() => StepPage(1))">›</FluentButton>
+                    </div>
+                </div>
+            }
+        </FluentCard>
+
+        <FluentCard Class="settings-models__card settings-models__register">
+            <p class="settings-models__register-kicker">Register New Endpoint</p>
+            <div class="settings-models__register-grid">
+                <SmartField Label="Label"
+                            Placeholder="Friendly display name"
+                            Value="@_newFriendlyName"
+                            ValueChanged="OnNewFriendlyChanged"
+                            Width="100%" />
+                <SmartField Label="Value / ID"
+                            Placeholder="Engine or API model id"
+                            Value="@_newEngineValue"
+                            ValueChanged="OnNewEngineChanged"
+                            Width="100%" />
+                <div>
+                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Type</FluentLabel>
+                    <select class="settings-select" @bind="_newModality" disabled="@Disabled">
+                        @foreach (var m in ModalityOptions)
+                        {
+                            <option value="@m">@m</option>
+                        }
+                    </select>
+                </div>
+                <div class="settings-models__register-actions">
+                    <FluentButton Appearance="Appearance.Accent" Disabled="@Disabled" OnClick="AddToProviderAsync">
+                        + ADD TO PROVIDER
+                    </FluentButton>
+                </div>
+            </div>
+        </FluentCard>
+
+        <div class="settings-models__commit">
+            <FluentButton Appearance="Appearance.Accent" Disabled="@(Disabled || _busy)" OnClick="CommitAsync">Commit Changes</FluentButton>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly int[] PageSizeOptions = [5, 10, 25, 50];
+
+    private static readonly string[] ModalityOptions =
+    [
+        "llm", "image", "audio", "video", "sprites", "code", "text", "music",
+    ];
+
+    private readonly List<ModelRegistryEntry> _models = [];
+    private readonly List<string> _providerChoices = [];
+    private string _selectedProvider = string.Empty;
+    private int _lastEpoch = int.MinValue;
+    private int _pageIndex;
+    private int _pageSize = 10;
+    private string _newFriendlyName = string.Empty;
+    private string _newEngineValue = string.Empty;
+    private string _newModality = "llm";
+    private string? _panelError;
+    private string? _panelInfo;
+    private bool _busy;
+
+    [Parameter]
+    public int ConfigEpoch { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ModelRegistryEntry> SourceModels { get; set; } = Array.Empty<ModelRegistryEntry>();
+
+    [Parameter]
+    public IReadOnlyList<string> ProviderIds { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnRegistrySaved { get; set; }
+
+    private IReadOnlyList<ModelRegistryEntry> FilteredRows =>
+        _models
+            .Where(m => string.Equals(m.ProviderId.Trim(), _selectedProvider.Trim(), StringComparison.OrdinalIgnoreCase))
+            .OrderBy(m => m.FriendlyName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(m => m.EngineValue, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private IReadOnlyList<ModelRegistryEntry> PagedRows
+    {
+        get
+        {
+            var all = FilteredRows;
+            var skip = Math.Clamp(_pageIndex, 0, int.MaxValue) * _pageSize;
+            return all.Skip(skip).Take(_pageSize).ToList();
+        }
+    }
+
+    private int MaxPageIndex
+    {
+        get
+        {
+            var n = FilteredRows.Count;
+            if (n == 0)
+            {
+                return 0;
+            }
+
+            return Math.Max(0, (int)Math.Ceiling(n / (double)_pageSize) - 1);
+        }
+    }
+
+    private string PagerRangeText
+    {
+        get
+        {
+            var total = FilteredRows.Count;
+            if (total == 0)
+            {
+                return "0 of 0";
+            }
+
+            var start = _pageIndex * _pageSize + 1;
+            var end = Math.Min((_pageIndex + 1) * _pageSize, total);
+            return $"{start}-{end} of {total}";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ConfigEpoch == _lastEpoch)
+        {
+            return;
+        }
+
+        _lastEpoch = ConfigEpoch;
+        _panelError = null;
+        _panelInfo = null;
+        _pageIndex = 0;
+
+        _models.Clear();
+        foreach (var m in SourceModels)
+        {
+            _models.Add(CloneEntry(m));
+        }
+
+        _providerChoices.Clear();
+        _providerChoices.AddRange(ProviderIds.Select(s => s.Trim()).Where(s => s.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
+
+        if (_providerChoices.Count == 0)
+        {
+            _selectedProvider = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_selectedProvider) ||
+            !_providerChoices.Contains(_selectedProvider, StringComparer.OrdinalIgnoreCase))
+        {
+            _selectedProvider = _providerChoices[0];
+        }
+    }
+
+    private Task OnProviderChange(ChangeEventArgs e)
+    {
+        _selectedProvider = e.Value?.ToString()?.Trim() ?? string.Empty;
+        _pageIndex = 0;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPageSizeAfter()
+    {
+        _pageIndex = 0;
+        return Task.CompletedTask;
+    }
+
+    private void StepPage(int delta)
+    {
+        _pageIndex = Math.Clamp(_pageIndex + delta, 0, MaxPageIndex);
+    }
+
+    private Task OnNewFriendlyChanged(string v)
+    {
+        _newFriendlyName = v;
+        return Task.CompletedTask;
+    }
+
+    private Task OnNewEngineChanged(string v)
+    {
+        _newEngineValue = v;
+        return Task.CompletedTask;
+    }
+
+    private async Task RemoveRowAsync(ModelRegistryEntry row)
+    {
+        _panelError = null;
+        _panelInfo = null;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Remove model '{row.FriendlyName}' ({row.EngineValue})?").ConfigureAwait(false))
+        {
+            return;
+        }
+
+        _models.RemoveAll(m =>
+            string.Equals(m.ProviderId, row.ProviderId, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(m.EngineValue, row.EngineValue, StringComparison.OrdinalIgnoreCase));
+        if (_pageIndex > MaxPageIndex)
+        {
+            _pageIndex = MaxPageIndex;
+        }
+    }
+
+    private Task AddToProviderAsync()
+    {
+        _panelError = null;
+        _panelInfo = null;
+        if (string.IsNullOrWhiteSpace(_selectedProvider))
+        {
+            _panelError = "Select a provider.";
+            return Task.CompletedTask;
+        }
+
+        var engine = _newEngineValue.Trim();
+        if (string.IsNullOrEmpty(engine))
+        {
+            _panelError = "Value / ID is required.";
+            return Task.CompletedTask;
+        }
+
+        if (_models.Any(m =>
+                string.Equals(m.ProviderId, _selectedProvider, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(m.EngineValue, engine, StringComparison.OrdinalIgnoreCase)))
+        {
+            _panelError = "A model with this engine id already exists for this provider.";
+            return Task.CompletedTask;
+        }
+
+        _models.Add(new ModelRegistryEntry
+        {
+            ProviderId = _selectedProvider.Trim(),
+            FriendlyName = string.IsNullOrWhiteSpace(_newFriendlyName) ? engine : _newFriendlyName.Trim(),
+            EngineValue = engine,
+            Modality = string.IsNullOrWhiteSpace(_newModality) ? "llm" : _newModality.Trim().ToLowerInvariant(),
+        });
+
+        _newFriendlyName = string.Empty;
+        _newEngineValue = string.Empty;
+        _newModality = "llm";
+        _pageIndex = MaxPageIndex;
+        return Task.CompletedTask;
+    }
+
+    private async Task CommitAsync()
+    {
+        _panelError = null;
+        _panelInfo = null;
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var doc = new ModelRegistryDocument { Version = 1, Models = _models.ToList() };
+            var err = ConfigurationRegistryService.ValidateModelRegistry(doc);
+            if (err is not null)
+            {
+                _panelError = err;
+                return;
+            }
+
+            var json = ConfigurationRegistryService.Serialize(doc);
+            var res = await Api.SetPreferenceEnvelopeAsync(new SetPreferenceRequest(PreferenceKeys.ModelsRegistryV1, json)).ConfigureAwait(false);
+            if (!res.Success)
+            {
+                _panelError = res.Error ?? "Failed to save model registry.";
+                return;
+            }
+
+            _panelInfo = "Model registry saved.";
+            await OnRegistrySaved.InvokeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string FormatModality(string modality)
+    {
+        var m = modality.Trim();
+        return m.Length == 0 ? "—" : m.ToUpperInvariant();
+    }
+
+    private static string PillClass(string modality)
+    {
+        var m = modality.Trim().ToLowerInvariant();
+        return m switch
+        {
+            "llm" or "text" or "code" => "settings-models__pill--llm",
+            "image" => "settings-models__pill--image",
+            "audio" or "music" => "settings-models__pill--audio",
+            "video" => "settings-models__pill--video",
+            "sprites" => "settings-models__pill--sprites",
+            _ => "settings-models__pill--other",
+        };
+    }
+
+    private static ModelRegistryEntry CloneEntry(ModelRegistryEntry m) =>
+        new()
+        {
+            ProviderId = m.ProviderId,
+            FriendlyName = m.FriendlyName,
+            EngineValue = m.EngineValue,
+            Modality = m.Modality,
+        };
+}

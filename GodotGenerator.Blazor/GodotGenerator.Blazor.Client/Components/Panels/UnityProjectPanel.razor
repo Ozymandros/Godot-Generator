@@ -1,0 +1,44 @@
+@* Unity-Generator UnityProjectPanel parity → Godot project scaffolding. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotProject"
+                     Title="Godot Project"
+                     Description="Scaffold or extend the project structure."
+                     PromptPlaceholder="Describe project changes…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Scope / milestones" FieldType="SmartFieldType.Multiline" Rows="3" Placeholder="Folders, addons, CI, export presets…" @bind-Value="_scopeNotes" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _scopeNotes = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var body = string.IsNullOrWhiteSpace(_scopeNotes)
+            ? prompt
+            : $"Project scope notes: {_scopeNotes.Trim()}{Environment.NewLine}{Environment.NewLine}{prompt}";
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+        {
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+        }
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

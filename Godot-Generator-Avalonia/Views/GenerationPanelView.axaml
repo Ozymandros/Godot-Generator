@@ -34,7 +34,8 @@
                TextWrapping="Wrap"
                MinHeight="140"
                assists:TextFieldAssist.Label="{Binding PromptLabel}"
-               Theme="{StaticResource OutlineTextBox}"/>
+               Theme="{StaticResource OutlineTextBox}"
+               GotFocus="ChildTextBox_GotFocus"/>
 
       <StackPanel Spacing="4">
         <TextBlock Text="Preferred language override (empty = use global default):" 
@@ -59,14 +60,16 @@
                        PasswordChar="*" 
                        Watermark="sk-..." 
                        assists:TextFieldAssist.Label="API Key (Optional Override)"
-                       Theme="{StaticResource OutlineTextBox}"/>
+                       Theme="{StaticResource OutlineTextBox}"
+                       GotFocus="ChildTextBox_GotFocus"/>
 
               <TextBox Text="{Binding SystemPromptOverride}" 
                        AcceptsReturn="True" 
                        TextWrapping="Wrap" 
                        MinHeight="80" 
                        assists:TextFieldAssist.Label="System Prompt Override (Optional)"
-                       Theme="{StaticResource OutlineTextBox}"/>
+                       Theme="{StaticResource OutlineTextBox}"
+                       GotFocus="ChildTextBox_GotFocus"/>
           </StackPanel>
       </Expander>
 

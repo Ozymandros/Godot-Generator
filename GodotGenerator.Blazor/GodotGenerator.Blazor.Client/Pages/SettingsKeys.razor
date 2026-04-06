@@ -1,0 +1,10 @@
+@page "/settings/keys"
+@inject NavigationManager Nav
+@rendermode InteractiveWebAssembly
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/settings?tab=4", replace: true);
+    }
+}

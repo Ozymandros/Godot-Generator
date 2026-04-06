@@ -1,0 +1,27 @@
+@* Prompt block shared across panels (Unity-Generator PromptInputSection). *@
+
+<FluentCard Class="app-content-wide settings-card-host">
+    <div class="settings-card__inner">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <FluentLabel Typo="Typography.H6" Class="app-fluent-title-tight">@Title</FluentLabel>
+        }
+        <FluentTextArea Value="@Prompt" ValueChanged="OnPromptChangedAsync" Rows="@Rows" Placeholder="@Placeholder" Label="@Label" />
+    </div>
+</FluentCard>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter] public int Rows { get; set; } = 6;
+
+    [Parameter] public string Prompt { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<string> PromptChanged { get; set; }
+
+    private Task OnPromptChangedAsync(string value) => PromptChanged.InvokeAsync(value);
+}
