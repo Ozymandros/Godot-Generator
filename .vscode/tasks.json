@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "electron:install-deps",
+      "type": "shell",
+      "command": "pnpm install",
+      "options": {
+        "cwd": "${workspaceFolder}/electron"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "electron:reinstall-deps",
+      "type": "shell",
+      "command": "if (Test-Path \"electron/node_modules\") { Remove-Item -Recurse -Force \"electron/node_modules\" }; pnpm install",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

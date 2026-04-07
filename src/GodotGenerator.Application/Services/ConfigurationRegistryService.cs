@@ -19,6 +19,7 @@ public static class ConfigurationRegistryService
         WriteIndented = false,
     };
 
+    /// <summary>Parses provider registry JSON and falls back to built-in defaults when invalid or empty.</summary>
     public static ProviderRegistryDocument ParseProviderRegistry(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -37,6 +38,7 @@ public static class ConfigurationRegistryService
         }
     }
 
+    /// <summary>Parses model registry JSON and falls back to built-in defaults when invalid or empty.</summary>
     public static ModelRegistryDocument ParseModelRegistry(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -109,6 +111,7 @@ public static class ConfigurationRegistryService
         };
     }
 
+    /// <summary>Parses the system prompts document and guarantees required modality defaults are present.</summary>
     public static SystemPromptsDocument ParseSystemPrompts(string? json)
     {
         SystemPromptsDocument doc;
@@ -174,6 +177,7 @@ public static class ConfigurationRegistryService
         return document;
     }
 
+    /// <summary>Groups model entries by provider id using case-insensitive keys.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<ModelRegistryEntry>> GroupModelsByProvider(
         IReadOnlyList<ModelRegistryEntry> models)
     {
@@ -201,12 +205,15 @@ public static class ConfigurationRegistryService
             StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>Serializes provider registry data into compact JSON.</summary>
     public static string Serialize(ProviderRegistryDocument document) =>
         JsonSerializer.Serialize(document, JsonOptions);
 
+    /// <summary>Serializes model registry data into compact JSON.</summary>
     public static string Serialize(ModelRegistryDocument document) =>
         JsonSerializer.Serialize(document, JsonOptions);
 
+    /// <summary>Serializes system prompts data into compact JSON.</summary>
     public static string Serialize(SystemPromptsDocument document) =>
         JsonSerializer.Serialize(document, JsonOptions);
 

@@ -17,6 +17,16 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
+    "desktop-ipc-backend": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://127.0.0.1:5044",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "GODOT_DESKTOP_IPC": "1"
+      }
+    },
     "http (browser + wasm debug)": {
       "commandName": "Project",
       "dotnetRunMessages": true,

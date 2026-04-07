@@ -4,10 +4,10 @@
   --app-color-accent: #5b8fd4;
   --app-color-accent-subtle: rgba(91, 143, 212, 0.14);
   --app-color-accent-border: rgba(91, 143, 212, 0.32);
-  --app-color-bg: #0a0e14;
-  --app-color-surface: #0f131a;
-  --app-color-surface-elevated: #161c26;
-  --app-color-border: rgba(255, 255, 255, 0.07);
+  --app-color-bg: #0d1117;
+  --app-color-surface: #161b22;
+  --app-color-surface-elevated: #1e2530;
+  --app-color-border: rgba(255, 255, 255, 0.09);
   --app-color-fg: #e8eaed;
   --app-color-fg-muted: rgba(232, 234, 237, 0.72);
   --app-color-status-ok: #3fcc7a;
@@ -30,13 +30,13 @@
   --app-native-select-max-width: min(100%, 20rem);
   --app-native-select-padding-y: var(--app-space-sm);
   --app-native-select-padding-x: var(--app-space-md);
-  --app-field-height: 2.6rem;
-  --app-field-bg: rgba(255, 255, 255, 0.02);
-  --app-field-border: rgba(255, 255, 255, 0.18);
-  --app-field-border-hover: rgba(255, 255, 255, 0.32);
-  --app-field-focus: rgba(91, 143, 212, 0.82);
-  --app-field-shadow-focus: 0 0 0 0.13rem rgba(91, 143, 212, 0.16);
-  --app-field-radius: 0.5rem;
+  --app-field-height: 2.375rem;
+  --app-field-bg: rgba(255, 255, 255, 0.03);
+  --app-field-border: rgba(255, 255, 255, 0.15);
+  --app-field-border-hover: rgba(255, 255, 255, 0.28);
+  --app-field-focus: var(--app-color-accent);
+  --app-field-shadow-focus: 0 0 0 2px rgba(91, 143, 212, 0.22);
+  --app-field-radius: 6px;
   --app-field-min-width-xs: 8.75rem;
   --app-field-min-width-sm: 10rem;
   --app-field-min-width-md: 12.5rem;
@@ -73,16 +73,25 @@
   --app-accent: var(--app-color-accent);
   --app-accent-muted: var(--app-color-accent-subtle);
   /* Fluent UI neutral bridge — dark shell (FluentDesignTheme); keeps var(--neutral-*) resolvable app-wide */
-  --neutral-layer-1: #12161e;
+  --neutral-layer-1: #161b22;
   --neutral-layer-2: var(--app-color-surface);
   --neutral-layer-3: var(--app-color-surface-elevated);
-  --neutral-stroke-divider: rgba(255, 255, 255, 0.09);
+  --neutral-stroke-divider: rgba(255, 255, 255, 0.1);
+  /* Card elevation shadow */
+  --app-card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06);
+  --app-card-shadow-hover: 0 4px 12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.09);
+  /* Sidebar */
+  --app-sidebar-width: 16rem;
+  /* Transitions */
+  --app-transition-fast: 0.12s ease;
+  --app-transition-base: 0.18s ease;
   --neutral-foreground-rest: var(--app-color-fg);
   /* FluentCard (minimal style) — bridge app surface tokens to library names; declared globally, no undefined --card-* */
   --app-surface-card-height: auto;
   --app-surface-card-width: 100%;
   --card-height: var(--app-surface-card-height);
   --card-width: var(--app-surface-card-width);
+  --card-border-radius: var(--app-radius-lg);
   /* Bootstrap snippets in this file (Bootstrap CSS is optional) */
   --bs-secondary-color: var(--app-color-fg-muted);
 }
@@ -100,6 +109,23 @@
 html,
 body {
   font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Global FluentCard polish ─────────────────────────────────────────── */
+fluent-card {
+  background: var(--app-color-surface-elevated) !important;
+  border-radius: var(--app-radius-lg) !important;
+  border: 1px solid var(--app-color-border) !important;
+  box-shadow: var(--app-card-shadow) !important;
+  transition: box-shadow var(--app-transition-base), border-color var(--app-transition-base) !important;
+}
+
+/* Elevate interactive cards on hover (opt-in via .app-card-interactive class) */
+fluent-card.app-card-interactive:hover {
+  box-shadow: var(--app-card-shadow-hover) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
 }
 
 .base-field {
@@ -125,34 +151,33 @@ body {
 
 .app-field-label {
   margin-bottom: var(--app-space-xs);
-  font-size: 0.94rem;
-  color: var(--app-color-fg-muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--app-color-fg);
 }
 
 .app-field-help {
-  font-size: var(--app-field-footer-font-size);
-  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
   margin-bottom: 0;
-  line-height: 1.3;
-  display: inline-block;
-  padding-left: 1em;
-  padding-right: 0.3rem;
-  border-radius: 0.25rem;
-  background: var(--neutral-layer-2);
+  line-height: 1.35;
+  display: block;
   color: var(--app-color-fg-muted);
+  padding-left: 0;
+  background: none;
+  border-radius: 0;
 }
 
 .app-field-error {
-  font-size: var(--app-field-footer-font-size);
-  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
   margin-bottom: 0;
-  display: inline-block;
-  padding-left: 1em;
-  padding-right: 0.3rem;
-  border-radius: 0.25rem;
-  background: var(--neutral-layer-2);
+  display: block;
+  padding-left: 0;
+  background: none;
+  border-radius: 0;
   color: var(--app-color-validation-error);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 /* Fluent text inputs — default sizing; .smart-field ::deep rules override width for SmartField */
@@ -465,7 +490,7 @@ fluent-text-area.app-textarea-log::part(control) {
   min-width: var(--app-sidebar-width);
   max-width: var(--app-sidebar-width);
   border-right: 1px solid var(--app-shell-border);
-  padding: var(--app-space-lg) var(--app-space-md);
+  padding: var(--app-space-md) var(--app-space-sm);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -488,10 +513,11 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-shell__titlebar {
-  padding: var(--app-space-md) var(--app-main-padding) !important;
+  padding: 0.6rem var(--app-main-padding) !important;
   border-bottom: 1px solid var(--app-shell-border) !important;
-  background: transparent !important;
+  background: var(--app-color-surface) !important;
   box-shadow: none !important;
+  min-height: 3rem !important;
 }
 
 .app-shell__titlebar-row {
@@ -595,10 +621,11 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-shell__statusbar {
-  padding: var(--app-space-sm) var(--app-main-padding) !important;
+  padding: 0.35rem var(--app-main-padding) !important;
   border-top: 1px solid var(--app-shell-border) !important;
-  background: var(--app-color-bg) !important;
-  font-size: 0.8125rem;
+  background: var(--app-color-surface) !important;
+  font-size: 0.7813rem;
+  min-height: 2rem !important;
 }
 
 /* Content width — use instead of inline max-width in Razor */
@@ -618,41 +645,46 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .app-nav__link {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--app-space-sm);
-  padding: var(--app-space-sm) var(--app-space-md);
-  border-radius: var(--app-radius-lg);
-  color: var(--neutral-foreground-rest, var(--app-color-fg)) !important;
+  padding: 0.45rem var(--app-space-md);
+  border-radius: var(--app-radius-md);
+  color: var(--app-color-fg-muted) !important;
   text-decoration: none !important;
   font-size: 0.8125rem;
-  line-height: 1.35;
+  line-height: 1.4;
   border: 1px solid transparent;
   transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
+    background var(--app-transition-fast),
+    border-color var(--app-transition-fast),
+    color var(--app-transition-fast);
 }
 
 .app-nav__link:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--app-color-fg) !important;
 }
 
 .app-nav__link:focus-visible {
   outline: 2px solid var(--app-color-accent);
   outline-offset: 2px;
+  border-radius: var(--app-radius-md);
 }
 
 .app-nav__link.active {
   background: var(--app-accent-muted);
   border-color: var(--app-color-accent-border);
   box-shadow: inset 3px 0 0 var(--app-accent);
+  color: var(--app-color-fg) !important;
   font-weight: 600;
 }
 
 .app-nav__text {
   flex: 1;
   min-width: 0;
-  white-space: normal;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-nav__divider {
@@ -714,24 +746,31 @@ fluent-text-area.app-textarea-log::part(control) {
   display: inline-flex;
   align-items: center;
   gap: var(--app-space-sm);
-  padding: var(--app-space-sm) var(--app-space-md);
+  padding: 0.5rem var(--app-space-md);
   border: none;
   border-radius: var(--app-radius-md) var(--app-radius-md) 0 0;
   background: transparent;
-  color: var(--neutral-foreground-rest, var(--app-color-fg));
-  opacity: 0.85;
+  color: var(--app-color-fg-muted);
   font-size: 0.875rem;
+  transition:
+    color var(--app-transition-fast),
+    background var(--app-transition-fast);
 }
 
 .settings-tab__icon {
   display: inline-flex;
   align-items: center;
-  opacity: 0.95;
+  opacity: 0.8;
+  transition: opacity var(--app-transition-fast);
 }
 
 .settings-tab:hover {
-  opacity: 1;
+  color: var(--app-color-fg);
   background: rgba(255, 255, 255, 0.04);
+}
+
+.settings-tab:hover .settings-tab__icon {
+  opacity: 1;
 }
 
 .settings-tab:focus-visible {
@@ -740,11 +779,14 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-tab--active {
-  opacity: 1;
-  font-weight: 600;
   color: var(--app-accent);
+  font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--app-accent);
   background: var(--app-color-accent-subtle);
+}
+
+.settings-tab--active .settings-tab__icon {
+  opacity: 1;
 }
 
 /* Settings / workspace card layout (FluentCard bridge is on fluent-card above) */
@@ -755,14 +797,16 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-card__inner {
-  padding: var(--app-space-lg) var(--app-space-xl);
+  padding: var(--app-space-xl) var(--app-space-xl);
 }
 
 .settings-card__kicker {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
   color: var(--app-accent);
+  opacity: 0.9;
   margin: 0 0 var(--app-space-md) 0;
 }
 
@@ -903,23 +947,29 @@ fluent-text-area.app-textarea-log::part(control) {
   text-align: start;
   font: inherit;
   font-size: 0.875rem;
-  padding: var(--app-space-sm) var(--app-space-md);
+  padding: 0.45rem var(--app-space-md);
   border: 1px solid transparent;
-  border-radius: var(--app-radius-sm);
+  border-radius: var(--app-radius-md);
   background: transparent;
-  color: inherit;
+  color: var(--app-color-fg-muted);
   cursor: pointer;
   box-sizing: border-box;
+  transition:
+    background var(--app-transition-fast),
+    color var(--app-transition-fast),
+    border-color var(--app-transition-fast);
 }
 
 .settings-providers__list-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--app-color-fg);
 }
 
 .settings-providers__list-item--active {
   border-color: var(--app-color-accent-border);
   background: var(--app-color-accent-subtle);
   color: var(--app-accent);
+  font-weight: 500;
 }
 
 .settings-providers__id {
@@ -1731,6 +1781,16 @@ fluent-text-area.app-textarea-log::part(control) {
   );
 }
 
+/* Dashboard cards get subtle hover lift */
+.management-dashboard__grid > fluent-card {
+  transition: box-shadow var(--app-transition-base), border-color var(--app-transition-base);
+}
+
+.management-dashboard__grid > fluent-card:hover {
+  box-shadow: var(--app-card-shadow-hover) !important;
+  border-color: rgba(255,255,255,0.13) !important;
+}
+
 @media (max-width: 960px) {
   .sprites-workspace-layout {
     flex-direction: column !important;
@@ -1823,4 +1883,90 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder,
 .form-floating > .form-control:focus::placeholder {
   text-align: start;
+}
+
+/* ── Home page ──────────────────────────────────────────────────────────── */
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-sm);
+  margin-bottom: var(--app-space-2xl);
+  max-width: 48rem;
+}
+
+.home-hero__icon {
+  display: inline-flex;
+  margin-bottom: var(--app-space-xs);
+  opacity: 0.95;
+}
+
+.home-hero__title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--app-color-fg);
+  line-height: 1.2;
+}
+
+.home-hero__subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: var(--app-color-fg-muted);
+  line-height: 1.6;
+  max-width: 42rem;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 17rem), 1fr));
+  gap: var(--app-space-lg);
+  max-width: var(--app-content-max);
+}
+
+.home-card {
+  display: flex !important;
+  flex-direction: column;
+  padding: var(--app-space-xl) !important;
+  gap: 0;
+}
+
+.home-card__body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--app-space-md);
+  flex: 1;
+  margin-bottom: var(--app-space-lg);
+}
+
+.home-card__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.home-card__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-card__title {
+  margin: 0 0 var(--app-space-xs) 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--app-color-fg);
+  line-height: 1.3;
+}
+
+.home-card__desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--app-color-fg-muted);
+  line-height: 1.5;
+}
+
+.home-card__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-sm);
 }

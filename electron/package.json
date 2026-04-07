@@ -6,9 +6,17 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "dev:5044": "cross-env GODOT_BLAZOR_URL=http://127.0.0.1:5044 electron .",
+    "dev:ci": "cross-env GODOT_BLAZOR_URL=http://127.0.0.1:5044 electron --no-sandbox ."
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
   },
   "devDependencies": {
-    "electron": "^35.0.0"
+    "cross-env": "^10.1.0",
+    "electron": "^41.1.1"
   }
 }

@@ -6,6 +6,7 @@ namespace GodotGenerator.Application.Configuration;
 /// <summary>Versioned JSON blob stored under <see cref="PreferenceKeys.PromptsSystemV1"/>.</summary>
 public sealed class SystemPromptsDocument
 {
+    /// <summary>Schema version of the system prompts document.</summary>
     [JsonPropertyName("version")]
     public int Version { get; set; } = 1;
 

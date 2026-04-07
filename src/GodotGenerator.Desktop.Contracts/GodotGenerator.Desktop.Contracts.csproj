@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GodotGenerator.Desktop.Contracts</RootNamespace>
+    <AssemblyName>GodotGenerator.Desktop.Contracts</AssemblyName>
+    <Description>Versioned typed command/response contracts for the Electron desktop IPC transport layer.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+</Project>

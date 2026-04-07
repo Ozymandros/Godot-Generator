@@ -1,18 +1,76 @@
 @page "/"
 @rendermode InteractiveWebAssembly
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Godot Generator</PageTitle>
 
-<FluentLabel Typo="Typography.H3" Class="app-fluent-label-margin-title">Godot Generator</FluentLabel>
-<FluentLabel Typo="Typography.Body" Class="app-fluent-intro-desc app-fluent-intro-desc--home">
-    Web shell with Fluent UI, server-side BFF, and shared generation primitives. Use the sidebar to open a modality or settings.
-</FluentLabel>
+<div class="home-hero">
+    <span class="home-hero__icon" aria-hidden="true">
+        <FluentIcon Value="@(new Icons.Regular.Size48.Games())" Width="44px" Color="Color.Accent" />
+    </span>
+    <h1 class="home-hero__title">Godot Generator</h1>
+    <p class="home-hero__subtitle">
+        AI-powered asset &amp; code generation for Godot projects — scenes, scripts, UI, physics, audio, and more.
+    </p>
+</div>
 
-<FluentCard Class="app-card-padding--spacious">
-    <FluentLabel Typo="Typography.H6" Class="app-fluent-title-tight">Quick links</FluentLabel>
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="8">
-        <FluentAnchor Href="/generate/godot-project">Godot Project</FluentAnchor>
-        <FluentAnchor Href="/generate/scenes">Scenes</FluentAnchor>
-        <FluentAnchor Href="/settings">Configuration</FluentAnchor>
-    </FluentStack>
-</FluentCard>
+<div class="home-grid">
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.FolderOpen())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Project</h2>
+                <p class="home-card__desc">Scaffold a full project structure from a single prompt.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-project" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Layer())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Scenes</h2>
+                <p class="home-card__desc">Generate Godot scene files ready to drop into your project.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/scenes" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Code())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Code</h2>
+                <p class="home-card__desc">Generate GDScript or C# scripts for any game-logic task.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/code" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Settings())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Configuration</h2>
+                <p class="home-card__desc">Manage providers, models, system prompts, and API secrets.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/settings" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+</div>

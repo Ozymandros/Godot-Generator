@@ -55,9 +55,12 @@ public static class PreferenceKeys
     /// <summary>Legacy per-panel prompt keys (migrated into <see cref="PromptsSystemV1"/> on read).</summary>
     public const string PromptsTextLegacy = "prompts.text";
 
+    /// <summary>Legacy prompt key for code generation.</summary>
     public const string PromptsCodeLegacy = "prompts.code";
 
+    /// <summary>Legacy prompt key for Godot UI generation.</summary>
     public const string PromptsGodotUiLegacy = "prompts.godot_ui";
 
+    /// <summary>Legacy prompt key for Godot physics generation.</summary>
     public const string PromptsGodotPhysicsLegacy = "prompts.godot_physics";
 }

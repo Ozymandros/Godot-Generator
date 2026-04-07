@@ -8,3 +8,7 @@ playwright/.cache/
 **/bin/
 **/obj/
 *.user
+
+.fake
+TestResults
+test/GodotGenerator.Infrastructure.Ai.Tests/TestResults/

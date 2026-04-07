@@ -108,28 +108,49 @@ public sealed class GodotGeneratorHttpClient(HttpClient http)
         }
     }
 
-    /// <summary>GET <c>api/preference/{key}</c>.</summary>
+    /// <summary>GET <c>api/preference/{key}</c> (raw HTTP; caller interprets status).</summary>
     public Task<HttpResponseMessage> GetPreferenceAsync(string key, CancellationToken cancellationToken = default) =>
         http.GetAsync($"api/preference/{Uri.EscapeDataString(key)}", cancellationToken);
 
+    /// <summary>GET <c>api/preference/{key}</c> deserialized as <see cref="ApiResponse{T}"/>.</summary>
+    public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceEnvelopeAsync(string key, CancellationToken cancellationToken = default)
+    {
+        using var response = await http.GetAsync($"api/preference/{Uri.EscapeDataString(key)}", cancellationToken).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return ApiResponse<Dictionary<string, string?>>.Fail("Empty response.");
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<ApiResponse<Dictionary<string, string?>>>(text, DeserializeOptions)
+                   ?? ApiResponse<Dictionary<string, string?>>.Fail("Empty response.");
+        }
+        catch (JsonException)
+        {
+            return ApiResponse<Dictionary<string, string?>>.Fail("Invalid JSON response.");
+        }
+    }
+
     /// <summary>POST <c>api/keys</c> — save or remove API keys by service handle (null value removes).</summary>
-    public async Task<ApiResponse<Dictionary<string, object?>>> SaveApiKeysEnvelopeAsync(ApiKeysRequest request, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<Dictionary<string, string?>>> SaveApiKeysEnvelopeAsync(ApiKeysRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await http.PostAsJsonAsync("api/keys", request, cancellationToken).ConfigureAwait(false);
         var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(text))
         {
-            return ApiResponse<Dictionary<string, object?>>.Fail("Empty response.");
+            return ApiResponse<Dictionary<string, string?>>.Fail("Empty response.");
         }
 
         try
         {
-            return JsonSerializer.Deserialize<ApiResponse<Dictionary<string, object?>>>(text, DeserializeOptions)
-                   ?? ApiResponse<Dictionary<string, object?>>.Fail("Empty response.");
+            return JsonSerializer.Deserialize<ApiResponse<Dictionary<string, string?>>>(text, DeserializeOptions)
+                   ?? ApiResponse<Dictionary<string, string?>>.Fail("Empty response.");
         }
         catch (JsonException)
         {
-            return ApiResponse<Dictionary<string, object?>>.Fail("Invalid JSON response.");
+            return ApiResponse<Dictionary<string, string?>>.Fail("Invalid JSON response.");
         }
     }
 }
