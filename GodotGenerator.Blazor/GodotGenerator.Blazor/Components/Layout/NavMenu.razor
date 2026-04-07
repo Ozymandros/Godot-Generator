@@ -1,94 +1,30 @@
-@using Microsoft.FluentUI.AspNetCore.Components
 @* Sidebar navigation — Fluent UI icons, accessible active-pill, no Unicode glyphs. *@
 
 <nav class="app-nav" aria-label="Main navigation">
 
     @* ── Generate ──────────────────────────────────────────────────────── *@
-    <NavLink class="app-nav__link" href="/settings" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Settings())" Width="18px" /></span>
-        <span class="app-nav__text">Configuration</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/scenes" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Layer())" Width="18px" /></span>
-        <span class="app-nav__text">Scenes</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/code" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Code())" Width="18px" /></span>
-        <span class="app-nav__text">Code</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/text" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.TextT())" Width="18px" /></span>
-        <span class="app-nav__text">Text</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/image" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Image())" Width="18px" /></span>
-        <span class="app-nav__text">Image</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/sprites" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Grid())" Width="18px" /></span>
-        <span class="app-nav__text">Sprites</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/animations" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Play())" Width="18px" /></span>
-        <span class="app-nav__text">Animations</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/audio" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Speaker2())" Width="18px" /></span>
-        <span class="app-nav__text">Audio</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/video" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Video())" Width="18px" /></span>
-        <span class="app-nav__text">Video</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/godot-ui" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.AppsList())" Width="18px" /></span>
-        <span class="app-nav__text">Godot UI</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/godot-physics" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Molecule())" Width="18px" /></span>
-        <span class="app-nav__text">Godot Physics</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/generate/godot-project" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.FolderOpen())" Width="18px" /></span>
-        <span class="app-nav__text">Godot Project</span>
-    </NavLink>
+    <AppNavLink Href="/settings" Match="NavLinkMatch.Prefix" Text="Configuration" Icon="@AppIconFactory.Settings" />
+    <AppNavLink Href="/generate/scenes" Match="NavLinkMatch.Prefix" Text="Scenes" Icon="@AppIconFactory.Layer" />
+    <AppNavLink Href="/generate/code" Match="NavLinkMatch.Prefix" Text="Code" Icon="@AppIconFactory.Code" />
+    <AppNavLink Href="/generate/text" Match="NavLinkMatch.Prefix" Text="Text" Icon="@AppIconFactory.Text" />
+    <AppNavLink Href="/generate/image" Match="NavLinkMatch.Prefix" Text="Image" Icon="@AppIconFactory.Image" />
+    <AppNavLink Href="/generate/sprites" Match="NavLinkMatch.Prefix" Text="Sprites" Icon="@AppIconFactory.Grid" />
+    <AppNavLink Href="/generate/animations" Match="NavLinkMatch.Prefix" Text="Animations" Icon="@AppIconFactory.Play" />
+    <AppNavLink Href="/generate/audio" Match="NavLinkMatch.Prefix" Text="Audio" Icon="@AppIconFactory.Speaker2" />
+    <AppNavLink Href="/generate/video" Match="NavLinkMatch.Prefix" Text="Video" Icon="@AppIconFactory.Video" />
+    <AppNavLink Href="/generate/godot-ui" Match="NavLinkMatch.Prefix" Text="Godot UI" Icon="@AppIconFactory.AppsList" />
+    <AppNavLink Href="/generate/godot-physics" Match="NavLinkMatch.Prefix" Text="Godot Physics" Icon="@AppIconFactory.Molecule" />
+    <AppNavLink Href="/generate/godot-project" Match="NavLinkMatch.Prefix" Text="Godot Project" Icon="@AppIconFactory.FolderOpen" />
 
     <div class="app-nav__divider" role="separator" aria-hidden="true"></div>
 
     @* ── Utility ───────────────────────────────────────────────────────── *@
-    <NavLink class="app-nav__link" href="/" Match="NavLinkMatch.All">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Home())" Width="18px" /></span>
-        <span class="app-nav__text">Home</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/dashboard" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.DataArea())" Width="18px" /></span>
-        <span class="app-nav__text">Dashboard</span>
-    </NavLink>
-
-    <NavLink class="app-nav__link" href="/logs" Match="NavLinkMatch.Prefix">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.DocumentBulletList())" Width="18px" /></span>
-        <span class="app-nav__text">Logs</span>
-    </NavLink>
+    <AppNavLink Href="/" Match="NavLinkMatch.All" Text="Home" Icon="@AppIconFactory.Home" />
+    <AppNavLink Href="/dashboard" Match="NavLinkMatch.Prefix" Text="Dashboard" Icon="@AppIconFactory.DataArea" />
+    <AppNavLink Href="/logs" Match="NavLinkMatch.Prefix" Text="Logs" Icon="@AppIconFactory.DocumentBulletList" />
 
 </nav>
 
 <div class="app-nav__footer">
-    <FluentAnchor class="app-nav__repo" Appearance="Appearance.Neutral"
-                  Href="https://github.com/Ozymandros/Godot-Generator-Avalonia"
-                  Target="_blank" Rel="noopener noreferrer">
-        <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.BranchFork())" Width="16px" /></span>
-        <span class="app-nav__text">Repository</span>
-    </FluentAnchor>
+    <AppNavExternalLink Href="https://github.com/Ozymandros/Godot-Generator-Avalonia" Text="Repository" Icon="@AppIconFactory.BranchFork" />
 </div>
