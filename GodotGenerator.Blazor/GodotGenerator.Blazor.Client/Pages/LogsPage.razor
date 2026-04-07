@@ -9,10 +9,11 @@
 <FluentLabel Typo="Typography.Body" Class="app-fluent-label-margin-title app-opacity-muted">Terminal-style output from this session (newest lines at the bottom).</FluentLabel>
 
 <FluentCard Class="log-terminal-shell app-card-padding">
-    <FluentTextArea ReadOnly="true"
-                    Rows="24"
-                    Value="@_text"
-                    Class="app-textarea-log" />
+    <SmartField FieldType="@SmartFieldType.Multiline"
+                ReadOnly="true"
+                Rows="24"
+                Value="@_text"
+                InputClass="app-textarea-log" />
 </FluentCard>
 
 @code {

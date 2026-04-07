@@ -59,7 +59,7 @@
             <SmartField Label="Base path (output)"
                         Help="Relative path for generated projects (e.g. ./output). Stored in preferences."
                         @bind-Value="_outputBasePath" />
-            <SmartField Label="Workspace notes" FieldType="@SmartFieldType.Multiline" Rows="3"
+            <SmartField Label="Workspace notes" FieldType="@SmartFieldType.Multiline"
                         Help="Optional notes for this workspace (local UI only for now)."
                         @bind-Value="_notes" />
         </div>
@@ -70,84 +70,68 @@
             <p class="settings-card__kicker">PREFERRED INTELLIGENCE</p>
             <div class="settings-grid-2">
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Default text/logic provider</FluentLabel>
-                    <select class="settings-select" @bind="_llmProvider" @bind:after="SyncLlmModels">
-                        <option value="">—</option>
-                        @foreach (var p in _providerOptions)
-                        {
-                            <option value="@p">@p</option>
-                        }
-                    </select>
+                    <SmartField Label="Default text/logic provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_llmProvider"
+                                ValueChanged="OnLlmProviderChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Default image generation provider</FluentLabel>
-                    <select class="settings-select" @bind="_imageProvider" @bind:after="SyncImageModels">
-                        <option value="">—</option>
-                        @foreach (var p in _providerOptions)
-                        {
-                            <option value="@p">@p</option>
-                        }
-                    </select>
+                    <SmartField Label="Default image generation provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_imageProvider"
+                                ValueChanged="OnImageProviderChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Model (for @(_llmProvider.Length > 0 ? _llmProvider : "LLM"))</FluentLabel>
-                    <select class="settings-select" @bind="_llmModel">
-                        <option value="">—</option>
-                        @foreach (var m in _llmModelOptions)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
+                    <SmartField Label="@($"Model (for {(_llmProvider.Length > 0 ? _llmProvider : "LLM")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_llmModelOptions"
+                                Value="@_llmModel"
+                                ValueChanged="OnLlmModelChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Model (for @(_imageProvider.Length > 0 ? _imageProvider : "image"))</FluentLabel>
-                    <select class="settings-select" @bind="_imageModel">
-                        <option value="">—</option>
-                        @foreach (var m in _imageModelOptions)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
+                    <SmartField Label="@($"Model (for {(_imageProvider.Length > 0 ? _imageProvider : "image")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_imageModelOptions"
+                                Value="@_imageModel"
+                                ValueChanged="OnImageModelChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Default audio (speech/TTS) provider</FluentLabel>
-                    <select class="settings-select" @bind="_audioProvider" @bind:after="SyncAudioModels">
-                        <option value="">—</option>
-                        @foreach (var p in _providerOptions)
-                        {
-                            <option value="@p">@p</option>
-                        }
-                    </select>
+                    <SmartField Label="Default audio (speech/TTS) provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_audioProvider"
+                                ValueChanged="OnAudioProviderChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Default video / music provider</FluentLabel>
-                    <select class="settings-select" @bind="_videoProvider" @bind:after="SyncVideoModels">
-                        <option value="">—</option>
-                        @foreach (var p in _providerOptions)
-                        {
-                            <option value="@p">@p</option>
-                        }
-                    </select>
+                    <SmartField Label="Default video / music provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_videoProvider"
+                                ValueChanged="OnVideoProviderChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Model (for @(_audioProvider.Length > 0 ? _audioProvider : "audio"))</FluentLabel>
-                    <select class="settings-select" @bind="_audioModel">
-                        <option value="">—</option>
-                        @foreach (var m in _audioModelOptions)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
+                    <SmartField Label="@($"Model (for {(_audioProvider.Length > 0 ? _audioProvider : "audio")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_audioModelOptions"
+                                Value="@_audioModel"
+                                ValueChanged="OnAudioModelChanged" />
                 </div>
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Model (for @(_videoProvider.Length > 0 ? _videoProvider : "video"))</FluentLabel>
-                    <select class="settings-select" @bind="_videoModel">
-                        <option value="">—</option>
-                        @foreach (var m in _videoModelOptions)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
+                    <SmartField Label="@($"Model (for {(_videoProvider.Length > 0 ? _videoProvider : "video")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_videoModelOptions"
+                                Value="@_videoModel"
+                                ValueChanged="OnVideoModelChanged" />
                 </div>
             </div>
         </div>
@@ -510,6 +494,58 @@
     private void SyncAudioModels() => RefillModelOptions(_audioProvider, _audioModelOptions, ref _audioModel);
 
     private void SyncVideoModels() => RefillModelOptions(_videoProvider, _videoModelOptions, ref _videoModel);
+
+    private Task OnLlmProviderChanged(string value)
+    {
+        _llmProvider = value;
+        SyncLlmModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnImageProviderChanged(string value)
+    {
+        _imageProvider = value;
+        SyncImageModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnAudioProviderChanged(string value)
+    {
+        _audioProvider = value;
+        SyncAudioModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnVideoProviderChanged(string value)
+    {
+        _videoProvider = value;
+        SyncVideoModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnLlmModelChanged(string value)
+    {
+        _llmModel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnImageModelChanged(string value)
+    {
+        _imageModel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnAudioModelChanged(string value)
+    {
+        _audioModel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnVideoModelChanged(string value)
+    {
+        _videoModel = value;
+        return Task.CompletedTask;
+    }
 
     private void RefillModelOptions(string providerId, List<string> target, ref string selected)
     {

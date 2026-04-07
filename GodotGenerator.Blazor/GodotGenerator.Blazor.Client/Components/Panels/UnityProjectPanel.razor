@@ -7,7 +7,7 @@
                      PromptPlaceholder="Describe project changes…"
                      CreateRequest="BuildRequest">
     <AdditionalFields>
-        <SmartField Label="Scope / milestones" FieldType="SmartFieldType.Multiline" Rows="3" Placeholder="Folders, addons, CI, export presets…" @bind-Value="_scopeNotes" />
+        <SmartField Label="Scope / milestones" FieldType="SmartFieldType.Multiline" Placeholder="Folders, addons, CI, export presets…" @bind-Value="_scopeNotes" />
         <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
             <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
         </FluentStack>

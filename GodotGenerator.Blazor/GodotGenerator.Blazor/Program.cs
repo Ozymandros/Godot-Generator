@@ -52,4 +52,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(GodotGenerator.Blazor.Client._Imports).Assembly);
 
+app.UseStaticFiles();
+app.UseBlazorFrameworkFiles();
+
 app.Run();

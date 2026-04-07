@@ -8,4 +8,5 @@ public enum SmartFieldType
     Text,
     Multiline,
     Password,
+    Select,
 }

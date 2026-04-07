@@ -17,20 +17,14 @@
             <p class="settings-models__subtitle">Models for <strong>@(_selectedProvider.Length > 0 ? _selectedProvider : "—")</strong></p>
         </div>
         <div class="settings-models__provider">
-            <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Provider</FluentLabel>
-            <select class="settings-select settings-models__provider-select"
-                    value="@_selectedProvider"
-                    @onchange="OnProviderChange"
-                    disabled="@Disabled">
-                @if (_providerChoices.Count == 0)
-                {
-                    <option value="">—</option>
-                }
-                @foreach (var id in _providerChoices)
-                {
-                    <option value="@id">@id</option>
-                }
-            </select>
+            <SmartField Label="Provider"
+                        FieldType="@SmartFieldType.Select"
+                        Placeholder="—"
+                        SelectOptions="_providerChoices"
+                        Value="@_selectedProvider"
+                        ValueChanged="OnProviderChange"
+                        Disabled="@Disabled"
+                        InputClass="settings-models__provider-select" />
         </div>
     </div>
 
@@ -84,12 +78,13 @@
                 <div class="settings-models__pager">
                     <label class="settings-models__pager-label">
                         Items per page
-                        <select class="settings-select settings-models__page-size" @bind="_pageSize" @bind:after="OnPageSizeAfter" disabled="@Disabled">
-                            @foreach (var n in PageSizeOptions)
-                            {
-                                <option value="@n">@n</option>
-                            }
-                        </select>
+                        <SmartField Label=""
+                                    FieldType="@SmartFieldType.Select"
+                                    SelectOptions="PageSizeTextOptions"
+                                    Value="@_pageSizeText"
+                                    ValueChanged="OnPageSizeTextChangedAsync"
+                                    Disabled="@Disabled"
+                                    InputClass="settings-models__page-size" />
                     </label>
                     <span class="settings-models__pager-range">@PagerRangeText</span>
                     <div class="settings-models__pager-nav">
@@ -118,13 +113,12 @@
                             ValueChanged="OnNewEngineChanged"
                             Width="100%" />
                 <div>
-                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block">Type</FluentLabel>
-                    <select class="settings-select" @bind="_newModality" disabled="@Disabled">
-                        @foreach (var m in ModalityOptions)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
+                    <SmartField Label="Type"
+                                FieldType="@SmartFieldType.Select"
+                                SelectOptions="ModalityOptions"
+                                Value="@_newModality"
+                                ValueChanged="OnNewModalityChanged"
+                                Disabled="@Disabled" />
                 </div>
                 <div class="settings-models__register-actions">
                     <FluentButton Appearance="Appearance.Accent" Disabled="@Disabled" OnClick="AddToProviderAsync">
@@ -142,6 +136,7 @@
 
 @code {
     private static readonly int[] PageSizeOptions = [5, 10, 25, 50];
+    private static readonly string[] PageSizeTextOptions = ["5", "10", "25", "50"];
 
     private static readonly string[] ModalityOptions =
     [
@@ -154,6 +149,7 @@
     private int _lastEpoch = int.MinValue;
     private int _pageIndex;
     private int _pageSize = 10;
+    private string _pageSizeText = "10";
     private string _newFriendlyName = string.Empty;
     private string _newEngineValue = string.Empty;
     private string _newModality = "llm";
@@ -234,6 +230,7 @@
         _panelError = null;
         _panelInfo = null;
         _pageIndex = 0;
+        _pageSizeText = _pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         _models.Clear();
         foreach (var m in SourceModels)
@@ -257,16 +254,32 @@
         }
     }
 
-    private Task OnProviderChange(ChangeEventArgs e)
+    private Task OnProviderChange(string value)
     {
-        _selectedProvider = e.Value?.ToString()?.Trim() ?? string.Empty;
+        _selectedProvider = value.Trim();
         _pageIndex = 0;
         return Task.CompletedTask;
     }
 
-    private Task OnPageSizeAfter()
+    private Task OnPageSizeTextChangedAsync(string value)
     {
+        _pageSizeText = value;
+        if (int.TryParse(_pageSizeText, out var parsed) && PageSizeOptions.Contains(parsed))
+        {
+            _pageSize = parsed;
+        }
+        else
+        {
+            _pageSizeText = _pageSize.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
         _pageIndex = 0;
+        return Task.CompletedTask;
+    }
+
+    private Task OnNewModalityChanged(string value)
+    {
+        _newModality = value;
         return Task.CompletedTask;
     }
 

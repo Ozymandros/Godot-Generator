@@ -35,8 +35,8 @@
             }
 
             <div class="generation-workspace__row-controls">
-                <FluentTextField @bind-Value="_providerOverride" Label="Provider" Placeholder="e.g. openai" Class="app-field-min-xs" />
-                <FluentTextField @bind-Value="_modelOverride" Label="Model" Placeholder="Model id" Class="app-field-min-sm" />
+                <SmartField Label="Provider" Placeholder="e.g. openai" Value="@_providerOverride" ValueChanged="OnProviderOverrideChanged" />
+                <SmartField Label="Model" Placeholder="Model id" Value="@_modelOverride" ValueChanged="OnModelOverrideChanged" />
                 <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end" OnClick="@(() => _showModelModal = true)">+</FluentButton>
             </div>
 
@@ -121,6 +121,18 @@
     private Task OnAdvancedOptionsChanged()
     {
         StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnProviderOverrideChanged(string value)
+    {
+        _providerOverride = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnModelOverrideChanged(string value)
+    {
+        _modelOverride = value;
         return Task.CompletedTask;
     }
 

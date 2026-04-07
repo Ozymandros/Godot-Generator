@@ -6,7 +6,12 @@
         {
             <FluentLabel Typo="Typography.H6" Class="app-fluent-title-tight">@Title</FluentLabel>
         }
-        <FluentTextArea Value="@Prompt" ValueChanged="OnPromptChangedAsync" Rows="@Rows" Placeholder="@Placeholder" Label="@Label" />
+        <SmartField Label="@Label"
+                    FieldType="@SmartFieldType.Multiline"
+                    Rows="@Rows"
+                    Placeholder="@Placeholder"
+                    Value="@Prompt"
+                    ValueChanged="OnPromptChangedAsync" />
     </div>
 </FluentCard>
 

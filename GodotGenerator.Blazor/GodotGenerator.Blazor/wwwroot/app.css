@@ -20,7 +20,7 @@
   --app-space-xl: 1.5rem;
   --app-space-2xl: 2rem;
   /* SmartField — default control width when Width prop is unset (instance: --smart-field-width) */
-  --app-smart-field-width-default: min(100%, 32rem);
+  --app-smart-field-width-default: min(100%, 48rem);
   /* Form controls — shared (override with --fluent-control-width / --fluent-control-min-height on host) */
   --app-control-width-default: 100%;
   --app-textarea-min-height-default: 6rem;
@@ -30,10 +30,18 @@
   --app-native-select-max-width: min(100%, 20rem);
   --app-native-select-padding-y: var(--app-space-sm);
   --app-native-select-padding-x: var(--app-space-md);
+  --app-field-height: 2.6rem;
+  --app-field-bg: rgba(255, 255, 255, 0.02);
+  --app-field-border: rgba(255, 255, 255, 0.18);
+  --app-field-border-hover: rgba(255, 255, 255, 0.32);
+  --app-field-focus: rgba(91, 143, 212, 0.82);
+  --app-field-shadow-focus: 0 0 0 0.13rem rgba(91, 143, 212, 0.16);
+  --app-field-radius: 0.5rem;
   --app-field-min-width-xs: 8.75rem;
   --app-field-min-width-sm: 10rem;
   --app-field-min-width-md: 12.5rem;
   --app-field-min-width-lg: 17.5rem;
+  --app-field-footer-font-size: 12px;
   --app-sprites-preview-width: min(22.5rem, 36vw);
   --app-sprites-preview-min-width: 12.5rem;
   --app-sprites-preview-min-height: 17.5rem;
@@ -98,9 +106,59 @@ body {
   margin-bottom: var(--app-space-md);
 }
 
+.smart-field {
+  width: var(--smart-field-width, var(--app-smart-field-width-default));
+  max-width: 100%;
+  min-width: 0;
+}
+
+.smart-field fluent-text-field,
+.smart-field fluent-text-area,
+.smart-field fluent-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.app-field-shell {
+  margin-bottom: var(--app-space-sm);
+}
+
+.app-field-label {
+  margin-bottom: var(--app-space-xs);
+  font-size: 0.94rem;
+  color: var(--app-color-fg-muted);
+}
+
+.app-field-help {
+  font-size: var(--app-field-footer-font-size);
+  margin-top: 0.35rem;
+  margin-bottom: 0;
+  line-height: 1.3;
+  display: inline-block;
+  padding-left: 1em;
+  padding-right: 0.3rem;
+  border-radius: 0.25rem;
+  background: var(--neutral-layer-2);
+  color: var(--app-color-fg-muted);
+}
+
+.app-field-error {
+  font-size: var(--app-field-footer-font-size);
+  margin-top: 0.4rem;
+  margin-bottom: 0;
+  display: inline-block;
+  padding-left: 1em;
+  padding-right: 0.3rem;
+  border-radius: 0.25rem;
+  background: var(--neutral-layer-2);
+  color: var(--app-color-validation-error);
+  line-height: 1.3;
+}
+
 /* Fluent text inputs — default sizing; .smart-field ::deep rules override width for SmartField */
 fluent-text-field,
-fluent-text-area {
+fluent-text-area,
+fluent-select {
   width: var(--fluent-control-width, var(--app-control-width-default));
   min-width: var(--fluent-control-min-width, 0);
   max-width: 100%;
@@ -136,6 +194,84 @@ fluent-text-area {
     --fluent-textarea-min-height,
     var(--app-textarea-min-height-default)
   );
+}
+
+/* Vuetify-like modern fields over opted-in controls only */
+.app-input-like::part(control),
+.app-combobox-like::part(control),
+.smart-field fluent-text-field::part(control),
+.smart-field fluent-text-area::part(control) {
+  min-height: var(--app-field-height);
+  border-radius: var(--app-field-radius);
+  background: var(--app-field-bg);
+  border: 1px solid var(--app-field-border);
+  font-size: 0.93rem;
+  box-shadow: none;
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.app-input-like::part(root),
+.app-combobox-like::part(root),
+.smart-field fluent-text-field::part(root),
+.smart-field fluent-select::part(root) {
+  min-height: var(--app-field-height);
+  box-sizing: border-box;
+}
+
+.smart-field fluent-text-area::part(root) {
+  min-height: var(--app-field-height);
+  box-sizing: border-box;
+}
+
+.app-input-like.app-input-like--textarea::part(control),
+.smart-field fluent-text-area::part(control) {
+  min-height: max(
+    var(--app-textarea-min-height-default),
+    var(--app-field-height)
+  );
+}
+
+.app-input-like.app-input-like--textarea::part(root),
+.smart-field fluent-text-area::part(root) {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.app-input-like:hover::part(control),
+.app-combobox-like:hover::part(control),
+.smart-field fluent-text-field:hover::part(control),
+.smart-field fluent-text-area:hover::part(control) {
+  border-color: var(--app-field-border-hover);
+}
+
+.app-input-like:focus-within::part(control),
+.app-combobox-like:focus-within::part(control),
+.smart-field fluent-text-field:focus-within::part(control),
+.smart-field fluent-text-area:focus-within::part(control) {
+  border-color: var(--app-field-focus);
+  box-shadow: var(--app-field-shadow-focus);
+}
+
+.app-input-like,
+.app-combobox-like {
+  width: 100%;
+}
+
+.app-combobox-like {
+  --fluent-control-min-height: var(--app-field-height);
+}
+
+.settings-providers__form .app-field-label,
+.settings-models .app-field-label,
+.settings-hub .app-field-label {
+  font-size: 0.92rem;
+}
+
+.app-combobox-like fluent-option {
+  font-size: 0.92rem;
 }
 
 fluent-text-area.app-textarea-log {
@@ -1429,6 +1565,14 @@ fluent-text-area.app-textarea-log::part(control) {
   align-items: flex-end;
 }
 
+.generation-workspace__row-controls > .smart-field {
+  flex: 1 1 14rem;
+}
+
+.generation-workspace__row-controls > fluent-button {
+  flex: 0 0 auto;
+}
+
 .generation-workspace__result-pre {
   white-space: pre-wrap;
 }
@@ -1539,6 +1683,11 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .unity-ui-panel__fields {
   margin-bottom: var(--app-space-lg);
+}
+
+.unity-ui-panel__fields .smart-field {
+  width: 100%;
+  max-width: 100%;
 }
 
 .generation-workspace__result fluent-label,

@@ -7,7 +7,7 @@
                      PromptPlaceholder="Describe physics setup…"
                      CreateRequest="BuildRequest">
     <AdditionalFields>
-        <SmartField Label="Collision / layer notes" FieldType="SmartFieldType.Multiline" Rows="3" Placeholder="Layers, masks, damping…" @bind-Value="_physicsNotes" />
+        <SmartField Label="Collision / layer notes" FieldType="SmartFieldType.Multiline" Placeholder="Layers, masks, damping…" @bind-Value="_physicsNotes" />
         <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
             <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
         </FluentStack>

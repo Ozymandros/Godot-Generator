@@ -16,7 +16,7 @@
 <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Class="unity-ui-panel__fields app-content-wide">
     <SmartField Label="Preferred language" Placeholder="e.g. English" @bind-Value="_preferredLanguage" />
     <SmartField Label="UI parent path" Placeholder="e.g. /root/Main/UI or CanvasLayer path" @bind-Value="_uiParentPath" />
-    <SmartField Label="Theme / layout notes" FieldType="SmartFieldType.Multiline" Rows="3" Placeholder="Anchors, min size, Theme resource, etc." @bind-Value="_layoutNotes" />
+    <SmartField Label="Theme / layout notes" FieldType="SmartFieldType.Multiline" Placeholder="Anchors, min size, Theme resource, etc." @bind-Value="_layoutNotes" />
     <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
         <FluentSwitch Value="_useActiveProjectForValidation" ValueChanged="OnValidationSwitchChanged">Use active project path for MCP validation</FluentSwitch>
     </FluentStack>

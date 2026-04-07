@@ -5,45 +5,35 @@
         <span class="advanced-options-section__title">Advanced Options</span>
         <span class="advanced-options-section__chevron" aria-hidden="true"></span>
     </summary>
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="16" Class="advanced-options-section__stack">
+    <FluentAccordion>
         @if (ChildContent is not null)
         {
             @ChildContent
         }
 
-        <BaseField Label="Temperature (creativity)" Help="0 = focused, 2 = more random. Passed to the model when supported.">
-            <div class="app-control-row">
-                <input type="range" min="0" max="2" step="0.1"
-                       value="@Options.Temperature"
-                       @oninput="OnTemperatureInput" />
-                <FluentLabel Typo="Typography.Body">@Options.Temperature.ToString("0.0")</FluentLabel>
-            </div>
-        </BaseField>
+        <SmartField Label="Temperature (creativity)"
+            Help="0 = focused, 2 = more random. Passed to the model when supported." Placeholder="0.0 to 2.0"
+            Value="@TemperatureText" ValueChanged="OnTemperatureChanged" Width="100%" />
 
         <SmartField Label="API key (optional override)" FieldType="SmartFieldType.Password"
-                    Placeholder="Overrides stored keys for this request only"
-                    Help="Not persisted; use global keys in Settings when possible."
-                    Width="100%"
-                    Value="@Options.ApiKeyOverride"
-                    ValueChanged="OnApiKeyChanged" />
+            Placeholder="Overrides stored keys for this request only"
+            Help="Not persisted; use global keys in Settings when possible." Width="100%"
+            Value="@Options.ApiKeyOverride" ValueChanged="OnApiKeyChanged" />
 
         <SmartField Label="System prompt override" FieldType="SmartFieldType.Multiline" Rows="4"
-                    Placeholder="Additional system instructions for this request…"
-                    Width="100%"
-                    Value="@Options.SystemPromptOverride"
-                    ValueChanged="OnSystemPromptChanged" />
+            Placeholder="Additional system instructions for this request…" Width="100%"
+            Value="@Options.SystemPromptOverride" ValueChanged="OnSystemPromptChanged" />
 
-        <BaseField Label="Preferred script language (code generation)" Help="Hint merged into the system prompt for code-related modalities.">
-            <select class="advanced-options-section__select" value="@Options.PreferredScriptLanguage" @onchange="OnScriptLanguageChange">
-                <option value="">(use default)</option>
-                <option value="GDScript">GDScript</option>
-                <option value="C#">C#</option>
-            </select>
-        </BaseField>
-    </FluentStack>
+        <SmartField Label="Preferred script language (code generation)"
+            Help="Hint merged into the system prompt for code-related modalities." FieldType="@SmartFieldType.Select"
+            Placeholder="(use default)" SelectOptions="ScriptLanguageOptions" Value="@Options.PreferredScriptLanguage"
+            ValueChanged="OnScriptLanguageChanged" Width="100%" />
+    </FluentAccordion>
 </details>
 
 @code {
+    private static readonly string[] ScriptLanguageOptions = ["", "GDScript", "C#"];
+
     [Parameter, EditorRequired]
     public GenerationAdvancedOptions Options { get; set; } = null!;
 
@@ -53,18 +43,22 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    private async Task OnTemperatureInput(ChangeEventArgs e)
+    private string TemperatureText => Options.Temperature.ToString("0.0",
+    System.Globalization.CultureInfo.InvariantCulture);
+
+    private async Task OnTemperatureChanged(string value)
     {
-        if (double.TryParse(e.Value?.ToString(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
+        if (double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture,
+        out var v))
         {
-            Options.Temperature = v;
+            Options.Temperature = Math.Clamp(v, 0d, 2d);
             await OnChanged.InvokeAsync().ConfigureAwait(false);
         }
     }
 
-    private async Task OnScriptLanguageChange(ChangeEventArgs e)
+    private async Task OnScriptLanguageChanged(string value)
     {
-        Options.PreferredScriptLanguage = e.Value?.ToString() ?? string.Empty;
+        Options.PreferredScriptLanguage = value;
         await OnChanged.InvokeAsync().ConfigureAwait(false);
     }
 

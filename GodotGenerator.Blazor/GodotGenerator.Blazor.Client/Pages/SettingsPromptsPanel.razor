@@ -38,10 +38,12 @@
                         <FluentIcon Value="@(new Icons.Regular.Size20.Copy())" Width="18px" Color="Color.Neutral" />
                     </FluentButton>
                 </div>
-                <FluentTextArea Rows="8"
-                                Value="@GetText(key)"
-                                ValueChanged="@(v => OnTextChanged(key, v))"
-                                Class="settings-prompts__textarea" />
+                <SmartField FieldType="@SmartFieldType.Multiline"
+                            Rows="8"
+                            Value="@GetText(key)"
+                            ValueChanged="@(v => OnTextChanged(key, v))"
+                            InputClass="settings-prompts__textarea"
+                            Disabled="@Disabled" />
             </FluentCard>
         }
     </div>

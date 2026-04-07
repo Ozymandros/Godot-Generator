@@ -1,46 +1,86 @@
-@* Typed field wrapper (Unity-Generator SmartField — mutatis mutandis). *@
+@* Typed field wrapper with shared form styling hooks. *@
 
-<div class="smart-field" style="@FieldWidthStyle">
-<BaseField Label="@Label" Help="@Help" Required="@Required" ValidationMessage="@ValidationMessage">
-    @if (FieldType == SmartFieldType.Multiline)
-    {
-        <FluentTextArea @bind-Value="Value" Rows="@(Rows ?? 5)" Placeholder="@Placeholder" Disabled="@Disabled" />
-    }
-    else if (FieldType == SmartFieldType.Password)
-    {
-        <FluentTextField @bind-Value="Value" Placeholder="@Placeholder" Disabled="@Disabled" TextFieldType="TextFieldType.Password" />
-    }
-    else
-    {
-        <FluentTextField @bind-Value="Value" Placeholder="@Placeholder" Disabled="@Disabled" />
-    }
-</BaseField>
+<div class="smart-field app-smart-field" style="@FieldWidthStyle">
+    <BaseField Label="@Label" Help="@Help" Required="@Required" ValidationMessage="@ValidationMessage">
+        @if (FieldType == SmartFieldType.Multiline)
+        {
+            <FluentTextArea Value="@Value" ValueChanged="ValueChanged" Rows="@(Rows ?? 5)" Placeholder="@Placeholder"
+                Disabled="@Disabled" ReadOnly="@ReadOnly" Class="@MultilineClass" />
+        }
+        else if (FieldType == SmartFieldType.Select)
+        {
+            <FluentSelect Value="@Value" ValueChanged="ValueChanged" Appearance="Appearance.Outline"
+                Placeholder="@Placeholder" Items="@SelectOptions" Disabled="@Disabled" Class="@SelectClass" />
+        }
+        else if (FieldType == SmartFieldType.Password)
+        {
+            <FluentTextField Value="@Value" ValueChanged="ValueChanged" Appearance="FluentInputAppearance.Filled" Placeholder="@Placeholder" Disabled="@Disabled"
+                ReadOnly="@ReadOnly" TextFieldType="TextFieldType.Password" Class="@TextClass" />
+        }
+        else
+        {
+            <FluentTextField Value="@Value" ValueChanged="ValueChanged" Appearance="FluentInputAppearance.Filled" Placeholder="@Placeholder" Disabled="@Disabled"
+                ReadOnly="@ReadOnly" Class="@TextClass"  />
+        }
+    </BaseField>
 </div>
 
 @code {
+    /// <summary>Label text.</summary>
     [Parameter] public string? Label { get; set; }
 
+    /// <summary>Placeholder text.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
+    /// <summary>Help text.</summary>
     [Parameter] public string? Help { get; set; }
 
+    /// <summary>Whether the field is required.</summary>
     [Parameter] public bool Required { get; set; }
 
+    /// <summary>Whether the field is disabled.</summary>
     [Parameter] public bool Disabled { get; set; }
 
+    /// <summary>Whether the field is read-only.</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Type of the field.</summary>
     [Parameter] public SmartFieldType FieldType { get; set; } = SmartFieldType.Text;
 
+    /// <summary>Number of rows for the textarea.</summary>
     [Parameter] public int? Rows { get; set; }
 
-    /// <summary>CSS length for the control; sets <c>--smart-field-width</c>. If omitted, <c>--app-smart-field-width-default</c> from global styles is used.</summary>
+    /// <summary>
+    /// CSS length for the control; sets <c>--smart-field-width</c>. If omitted,
+    /// <c>--app-smart-field-width-default</c> from global styles is used.
+    /// </summary>
     [Parameter] public string? Width { get; set; }
 
+    /// <summary>Validation message.</summary>
     [Parameter] public string? ValidationMessage { get; set; }
 
+    /// <summary>Items rendered when <see cref="FieldType"/> is Select.</summary>
+    [Parameter] public IReadOnlyList<string> SelectOptions { get; set; } = Array.Empty<string>();
+
+    /// <summary>Additional CSS class for the underlying input/select control.</summary>
+    [Parameter] public string? InputClass { get; set; }
+
+    /// <summary>Value of the field.</summary>
     [Parameter] public string Value { get; set; } = string.Empty;
 
+    /// <summary>Event callback for value changed.</summary>
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
 
+    /// <summary>CSS style for the field width.</summary>
     private string? FieldWidthStyle =>
-        string.IsNullOrWhiteSpace(Width) ? null : $"--smart-field-width:{Width.Trim()};";
+    string.IsNullOrWhiteSpace(Width) ? null : $"--smart-field-width:{Width.Trim()};";
+
+    private string TextClass => JoinClass("app-input-like", InputClass);
+
+    private string MultilineClass => JoinClass("app-input-like app-input-like--textarea", InputClass);
+
+    private string SelectClass => JoinClass("app-combobox-like", InputClass);
+
+    private static string JoinClass(string first, string? second) =>
+    string.IsNullOrWhiteSpace(second) ? first : $"{first} {second.Trim()}";
 }

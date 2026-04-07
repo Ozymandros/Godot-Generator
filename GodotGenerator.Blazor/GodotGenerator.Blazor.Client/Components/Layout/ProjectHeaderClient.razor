@@ -10,8 +10,8 @@
             <span class="app-shell__online-dot" aria-hidden="true"></span>
             <FluentLabel Typo="Typography.Body" Class="app-opacity-90">Online</FluentLabel>
         </FluentStack>
-        <FluentTextField @bind-Value="_name" Label="Project name" Placeholder="MyGame" />
-        <FluentTextField @bind-Value="_path" Label="Project path" Placeholder="C:\\Games\\MyGame" />
+        <SmartField Label="Project name" Placeholder="MyGame" Value="@_name" ValueChanged="OnNameChanged" />
+        <SmartField Label="Project path" Placeholder="C:\\Games\\MyGame" Value="@_path" ValueChanged="OnPathChanged" />
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Class="app-stack-wrap">
             <FluentButton Appearance="Appearance.Neutral" OnClick="BrowseFolderAsync" Disabled="_pickingFolder">Browse…</FluentButton>
             <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync">Save</FluentButton>
@@ -20,8 +20,8 @@
     else
     {
     <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12" Class="app-stack-wrap">
-        <FluentTextField @bind-Value="_name" Label="Project name" Placeholder="MyGame" Class="app-field-min-md" />
-        <FluentTextField @bind-Value="_path" Label="Project path" Placeholder="C:\\Games\\MyGame" Class="app-field-min-lg" />
+        <SmartField Label="Project name" Placeholder="MyGame" Value="@_name" ValueChanged="OnNameChanged" />
+        <SmartField Label="Project path" Placeholder="C:\\Games\\MyGame" Value="@_path" ValueChanged="OnPathChanged" />
         <FluentButton Appearance="Appearance.Neutral" OnClick="BrowseFolderAsync" Disabled="_pickingFolder">Browse…</FluentButton>
         <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync">Save project</FluentButton>
     </FluentStack>
@@ -60,6 +60,18 @@
     {
         _name = ProjectState.ActiveProjectName;
         _path = ProjectState.ActiveProjectPath;
+    }
+
+    private Task OnNameChanged(string value)
+    {
+        _name = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPathChanged(string value)
+    {
+        _path = value;
+        return Task.CompletedTask;
     }
 
     private async Task SaveAsync()
