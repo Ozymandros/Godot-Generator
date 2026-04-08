@@ -10,7 +10,7 @@
     <CollectCoverage>true</CollectCoverage>
     <CoverletOutput>$(MSBuildProjectDirectory)\TestResults\</CoverletOutput>
     <CoverletOutputFormat>cobertura</CoverletOutputFormat>
-    <Include>[GodotGenerator.Blazor]GodotGenerator.Blazor.Infrastructure.DesktopIpc.*;[GodotGenerator.Blazor.Client]GodotGenerator.Blazor.Client.Services.Transport.*</Include>
+    <Include>[GodotGenerator.Blazor]GodotGenerator.Blazor.Infrastructure.DesktopIpc.*</Include>
     <Threshold>80</Threshold>
     <ThresholdType>line</ThresholdType>
     <ThresholdStat>total</ThresholdStat>

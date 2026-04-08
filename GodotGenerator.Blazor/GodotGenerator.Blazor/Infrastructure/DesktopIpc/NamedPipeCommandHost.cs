@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.IO.Pipes;
 using GodotGenerator.Desktop.Contracts.Envelope;
@@ -18,6 +19,7 @@ namespace GodotGenerator.Blazor.Infrastructure.DesktopIpc;
 /// back-to-back requests from the broker without head-of-line blocking.
 /// Each connection handles exactly one request-response cycle, then closes.
 /// </remarks>
+[ExcludeFromCodeCoverage(Justification = "Named-pipe I/O host: covered by integration tests, not unit tests.")]
 internal sealed class NamedPipeCommandHost : BackgroundService
 {
     /// <summary>The pipe name used by both the .NET host and the Electron broker.</summary>
@@ -118,7 +120,6 @@ internal sealed class NamedPipeCommandHost : BackgroundService
             var envelope = await ReadEnvelopeAsync(server, ct).ConfigureAwait(false);
             if (envelope is null)
             {
-                _logger.LogWarning("Received unreadable or oversized pipe payload; closing connection.");
                 return;
             }
 

@@ -9,6 +9,57 @@ const pipeBroker       = require('./pipeBroker.cjs');
 /** Must match backendLifecycle default (override with GODOT_BLAZOR_URL). */
 const defaultDevUrl = 'http://127.0.0.1:5044';
 
+function getBlazorOrigin() {
+  try {
+    return new URL(process.env.GODOT_BLAZOR_URL || defaultDevUrl).origin;
+  } catch {
+    return new URL(defaultDevUrl).origin;
+  }
+}
+
+function installContentSecurityPolicy() {
+  const blazorOrigin = getBlazorOrigin();
+
+  // Desktop renderer CSP: no unsafe-eval, but allow WASM and required inline
+  // blocks used by import maps and framework bootstrapping.
+  const csp = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src 'self' ${blazorOrigin} ws: wss:`,
+    "media-src 'self' data: blob:",
+  ].join('; ');
+
+  app.on('session-created', (session) => {
+    session.webRequest.onHeadersReceived((details, callback) => {
+      const currentOrigin = (() => {
+        try {
+          return new URL(details.url).origin;
+        } catch {
+          return '';
+        }
+      })();
+
+      if (currentOrigin !== blazorOrigin) {
+        callback({ responseHeaders: details.responseHeaders });
+        return;
+      }
+
+      const responseHeaders = {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      };
+
+      callback({ responseHeaders });
+    });
+  });
+}
+
 function safeExistsSync(p) {
   return typeof p === 'string' && p.length > 0 && fs.existsSync(p);
 }
@@ -288,6 +339,7 @@ ipcMain.handle('godot:invoke-command', async (_event, command, payloadJson) => {
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
+  installContentSecurityPolicy();
   Menu.setApplicationMenu(buildMenu());
 
   // Start the .NET backend; create the window immediately so the user sees the

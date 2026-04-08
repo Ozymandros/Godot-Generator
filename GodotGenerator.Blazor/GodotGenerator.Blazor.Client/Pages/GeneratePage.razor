@@ -1,5 +1,5 @@
 @page "/generate/{Slug}"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 @if (_modality is { } m)
 {

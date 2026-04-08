@@ -28,6 +28,7 @@ const RESTART_DELAY   = 2_000;    // ms between supervised restart attempts
 const MAX_RESTARTS    = 5;        // stop supervising after this many rapid restarts
 const RAPID_WINDOW    = 10_000;   // ms window for counting rapid restarts
 const DEFAULT_UI_URL  = 'http://127.0.0.1:5044';
+const EXISTING_BACKEND_PROBE_TIMEOUT = 1_000;
 
 // ── Resolve backend executable ───────────────────────────────────────────────
 
@@ -51,7 +52,11 @@ function resolveBackendCommand() {
   // Development fallback: dotnet run
   const projectDir = path.resolve(__dirname, '..', 'GodotGenerator.Blazor', 'GodotGenerator.Blazor');
   const urls = process.env.GODOT_BLAZOR_URL || DEFAULT_UI_URL;
-  return { cmd: 'dotnet', args: ['run', '--project', projectDir, '--no-launch-profile', '--urls', urls], isBundled: false };
+  return {
+    cmd: 'dotnet',
+    args: ['run', '--no-build', '-c', 'Release', '--project', projectDir, '--no-launch-profile', '--urls', urls],
+    isBundled: false,
+  };
 }
 
 // ── Pipe readiness probe ─────────────────────────────────────────────────────
@@ -101,6 +106,20 @@ class BackendLifecycle extends EventEmitter {
    */
   async start() {
     this._stopping = false;
+
+    // If another backend instance is already serving the named pipe (e.g. from
+    // a previous Electron run), reuse it instead of spawning a duplicate that
+    // would fail to bind the same HTTP port.
+    try {
+      await waitForPipeReady(EXISTING_BACKEND_PROBE_TIMEOUT);
+      this._ready = true;
+      console.log('[BackendLifecycle] Reusing existing backend already ready on pipe:', PIPE_NAME);
+      this.emit('ready');
+      return;
+    } catch {
+      // No existing backend detected; continue with normal spawn path.
+    }
+
     await this._spawn();
     await waitForPipeReady(READY_TIMEOUT);
     this._ready = true;
@@ -139,6 +158,8 @@ class BackendLifecycle extends EventEmitter {
         ...process.env,
         GODOT_DESKTOP_IPC: '1',
         ASPNETCORE_ENVIRONMENT: aspnetEnvironment,
+        ASPNETCORE_Logging__LogLevel__Microsoft_AspNetCore_Server_Kestrel:
+          process.env.ASPNETCORE_Logging__LogLevel__Microsoft_AspNetCore_Server_Kestrel || 'Error',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
@@ -176,6 +197,19 @@ class BackendLifecycle extends EventEmitter {
     console.log(`[BackendLifecycle] Restarting in ${RESTART_DELAY}ms (attempt ${this._restartCount}/${MAX_RESTARTS}).`);
     setTimeout(async () => {
       if (this._stopping) return;
+
+      // Another instance may have become healthy between crash and retry.
+      try {
+        await waitForPipeReady(EXISTING_BACKEND_PROBE_TIMEOUT);
+        this._ready = true;
+        this._restartCount = 0;
+        console.log('[BackendLifecycle] Existing backend detected during restart; reusing pipe endpoint.');
+        this.emit('ready');
+        return;
+      } catch {
+        // No existing backend detected, continue with spawn.
+      }
+
       try {
         await this._spawn();
         await waitForPipeReady(READY_TIMEOUT);

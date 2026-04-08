@@ -1,6 +1,6 @@
 @page "/settings/prompts"
 @inject NavigationManager Nav
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 @code {
     protected override void OnInitialized()

@@ -52,6 +52,9 @@ public static class PreferenceKeys
     /// <summary>Base path for generated output (relative or absolute).</summary>
     public const string AppOutputBasePath = "app.output_base_path";
 
+    /// <summary>Optional free-form notes for the current workspace/configuration.</summary>
+    public const string AppWorkspaceNotes = "app.workspace_notes";
+
     /// <summary>Legacy per-panel prompt keys (migrated into <see cref="PromptsSystemV1"/> on read).</summary>
     public const string PromptsTextLegacy = "prompts.text";
 

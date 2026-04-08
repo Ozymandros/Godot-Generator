@@ -3,6 +3,7 @@ using GodotGenerator.Api.Dtos;
 using GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
 using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -10,8 +11,13 @@ namespace GodotGenerator.Desktop.Ipc.Tests.Handlers;
 
 public sealed class ConfigCommandHandlerTests
 {
-    private static ConfigCommandHandler Build(IGodotGeneratorApiService api) =>
-        new(api, NullLogger<ConfigCommandHandler>.Instance);
+    private static ConfigCommandHandler Build(IGodotGeneratorApiService api)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(api);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        return new(scopeFactory, NullLogger<ConfigCommandHandler>.Instance);
+    }
 
     private static CommandEnvelope Envelope() =>
         new(Guid.NewGuid().ToString(), ConfigCommandNames.GetAll, null);

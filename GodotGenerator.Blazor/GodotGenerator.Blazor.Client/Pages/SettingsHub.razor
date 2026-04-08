@@ -1,10 +1,10 @@
 @page "/settings"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using System.Text.Json
 @using GodotGenerator.Application
 @using GodotGenerator.Application.Configuration
 @using GodotGenerator.Api.Dtos
-@inject GodotGeneratorHttpClient Api
+@inject GodotGeneratorClientFacade Api
 @inject NavigationManager Nav
 
 <PageTitle>Configuration</PageTitle>
@@ -282,6 +282,7 @@
         var prefs = ParsePreferences(data.GetValueOrDefault("preferences"));
         _backendUrl = GetDictString(prefs, PreferenceKeys.AppBackendUrl);
         _outputBasePath = GetDictString(prefs, PreferenceKeys.AppOutputBasePath);
+        _notes = GetDictString(prefs, PreferenceKeys.AppWorkspaceNotes);
         _llmProvider = GetDictString(prefs, PreferenceKeys.PreferredLlmProvider);
         _imageProvider = GetDictString(prefs, PreferenceKeys.PreferredImageProvider);
         _audioProvider = GetDictString(prefs, PreferenceKeys.PreferredAudioProvider);
@@ -574,6 +575,7 @@
             {
                 (PreferenceKeys.AppBackendUrl, NullIfEmpty(_backendUrl)),
                 (PreferenceKeys.AppOutputBasePath, NullIfEmpty(_outputBasePath)),
+                (PreferenceKeys.AppWorkspaceNotes, NullIfEmpty(_notes)),
                 (PreferenceKeys.PreferredLlmProvider, NullIfEmpty(_llmProvider)),
                 (PreferenceKeys.PreferredLlmModel, NullIfEmpty(_llmModel)),
                 (PreferenceKeys.PreferredImageProvider, NullIfEmpty(_imageProvider)),

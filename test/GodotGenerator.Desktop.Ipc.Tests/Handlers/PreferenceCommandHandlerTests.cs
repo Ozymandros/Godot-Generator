@@ -4,6 +4,7 @@ using GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
 using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
 using GodotGenerator.Desktop.Contracts.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -11,8 +12,13 @@ namespace GodotGenerator.Desktop.Ipc.Tests.Handlers;
 
 public sealed class PreferenceCommandHandlerTests
 {
-    private static PreferenceCommandHandler Build(IGodotGeneratorApiService api) =>
-        new(api, NullLogger<PreferenceCommandHandler>.Instance);
+    private static PreferenceCommandHandler Build(IGodotGeneratorApiService api)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(api);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        return new(scopeFactory, NullLogger<PreferenceCommandHandler>.Instance);
+    }
 
     private static string Json<T>(T obj) =>
         System.Text.Json.JsonSerializer.Serialize(obj, ContractJsonOptions.Default);

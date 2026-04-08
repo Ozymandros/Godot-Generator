@@ -7,12 +7,8 @@ namespace GodotGenerator.Blazor.Client.Services.Transport;
 
 /// <summary>
 /// Abstraction over the transport channel used by the Blazor WASM client to reach
-/// the application backend. Two implementations exist:
-/// <list type="bullet">
-///   <item><see cref="HttpBffTransport"/> — delegates to the existing HTTP BFF; used in web/dev mode.</item>
-///   <item><see cref="ElectronIpcTransport"/> — sends typed IPC commands via <c>window.godotElectron.invokeCommand</c>; used in desktop mode.</item>
-/// </list>
-/// The active transport is selected at runtime by <see cref="GodotGeneratorClientFacade"/>.
+/// the application backend. The sole implementation is <see cref="ElectronIpcTransport"/>,
+/// which sends typed IPC commands via <c>window.godotElectron.invokeCommand</c>.
 /// </summary>
 public interface IGodotGeneratorClientTransport
 {

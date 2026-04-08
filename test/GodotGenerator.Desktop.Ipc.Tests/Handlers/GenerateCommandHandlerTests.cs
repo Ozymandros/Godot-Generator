@@ -4,6 +4,7 @@ using GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
 using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
 using GodotGenerator.Desktop.Contracts.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -11,8 +12,13 @@ namespace GodotGenerator.Desktop.Ipc.Tests.Handlers;
 
 public sealed class GenerateCommandHandlerTests
 {
-    private static GenerateCommandHandler Build(IGodotGeneratorApiService api) =>
-        new(api, NullLogger<GenerateCommandHandler>.Instance);
+    private static GenerateCommandHandler Build(IGodotGeneratorApiService api)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(api);
+        var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
+        return new(scopeFactory, NullLogger<GenerateCommandHandler>.Instance);
+    }
 
     private static string Json<T>(T obj) =>
         System.Text.Json.JsonSerializer.Serialize(obj, ContractJsonOptions.Default);
@@ -34,7 +40,14 @@ public sealed class GenerateCommandHandlerTests
     [Theory]
     [InlineData(GenerateCommandNames.Text)]
     [InlineData(GenerateCommandNames.Code)]
+    [InlineData(GenerateCommandNames.Image)]
+    [InlineData(GenerateCommandNames.Audio)]
+    [InlineData(GenerateCommandNames.Video)]
+    [InlineData(GenerateCommandNames.Sprites)]
     [InlineData(GenerateCommandNames.GodotUi)]
+    [InlineData(GenerateCommandNames.GodotPhysics)]
+    [InlineData(GenerateCommandNames.GodotProject)]
+    [InlineData(GenerateCommandNames.Scenes)]
     [InlineData(GenerateCommandNames.Animations)]
     public async Task HandleAsync_ValidCommand_ReturnsSuccess(string command)
     {
@@ -43,7 +56,21 @@ public sealed class GenerateCommandHandlerTests
            .ReturnsAsync(OkResult());
         api.Setup(a => a.GenerateCodeAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateImageAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateAudioAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateVideoAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateSpritesAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
         api.Setup(a => a.GenerateGodotUiAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotPhysicsAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotProjectAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.CreateSceneAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
         api.Setup(a => a.GenerateAnimationsAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
