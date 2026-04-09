@@ -33,7 +33,7 @@ public interface IGodotGeneratorClientTransport
         CancellationToken cancellationToken = default);
 
     /// <summary>Saves API keys in batch by service handle.</summary>
-    Task<ApiResponse<Dictionary<string, string?>>> SaveApiKeysAsync(
+    Task<ApiResponse<Dictionary<string, object?>>> SaveApiKeysAsync(
         ApiKeysRequest request,
         CancellationToken cancellationToken = default);
 }

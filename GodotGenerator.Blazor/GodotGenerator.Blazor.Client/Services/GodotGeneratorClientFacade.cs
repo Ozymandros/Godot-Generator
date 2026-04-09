@@ -35,7 +35,7 @@ public sealed class GodotGeneratorClientFacade(ElectronIpcTransport transport)
         CancellationToken cancellationToken = default) =>
         transport.SetPreferenceAsync(request, cancellationToken);
 
-    public Task<ApiResponse<Dictionary<string, string?>>> SaveApiKeysAsync(
+    public Task<ApiResponse<Dictionary<string, object?>>> SaveApiKeysAsync(
         ApiKeysRequest request,
         CancellationToken cancellationToken = default) =>
         transport.SaveApiKeysAsync(request, cancellationToken);
@@ -51,7 +51,7 @@ public sealed class GodotGeneratorClientFacade(ElectronIpcTransport transport)
         CancellationToken cancellationToken = default) =>
         SetPreferenceAsync(request, cancellationToken);
 
-    public Task<ApiResponse<Dictionary<string, string?>>> SaveApiKeysEnvelopeAsync(
+    public Task<ApiResponse<Dictionary<string, object?>>> SaveApiKeysEnvelopeAsync(
         ApiKeysRequest request,
         CancellationToken cancellationToken = default) =>
         SaveApiKeysAsync(request, cancellationToken);

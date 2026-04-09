@@ -1,4 +1,5 @@
 #nullable enable
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GodotGenerator.Application.Configuration;
@@ -10,6 +11,7 @@ namespace GodotGenerator.Application.Services;
 /// <summary>Loads, merges, serializes, and validates versioned configuration registry JSON.</summary>
 public static class ConfigurationRegistryService
 {
+    private const string AgentDebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-cb9046.log";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -24,16 +26,101 @@ public static class ConfigurationRegistryService
     {
         if (string.IsNullOrWhiteSpace(json))
         {
+            #region agent log
+            try
+            {
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "cb9046",
+                    runId = "initial",
+                    hypothesisId = "H2",
+                    location = "ConfigurationRegistryService.cs:ParseProviderRegistry",
+                    message = "Provider registry parse fell back to defaults (empty input)",
+                    data = new { inputLength = 0, providerCount = GetDefaultProviderRegistry().Providers.Count },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // no-op
+            }
+            #endregion
             return GetDefaultProviderRegistry();
         }
 
         try
         {
             var doc = JsonSerializer.Deserialize<ProviderRegistryDocument>(json, JsonOptions);
-            return doc is null || doc.Providers.Count == 0 ? GetDefaultProviderRegistry() : doc;
+            if (doc is null || doc.Providers.Count == 0)
+            {
+                #region agent log
+                try
+                {
+                    var line = JsonSerializer.Serialize(new
+                    {
+                        sessionId = "cb9046",
+                        runId = "initial",
+                        hypothesisId = "H2",
+                        location = "ConfigurationRegistryService.cs:ParseProviderRegistry",
+                        message = "Provider registry parse fell back to defaults (null/empty doc)",
+                        data = new { inputLength = json.Length, providerCount = GetDefaultProviderRegistry().Providers.Count },
+                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    });
+                    File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+                }
+                catch
+                {
+                    // no-op
+                }
+                #endregion
+                return GetDefaultProviderRegistry();
+            }
+
+            #region agent log
+            try
+            {
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "cb9046",
+                    runId = "initial",
+                    hypothesisId = "H2",
+                    location = "ConfigurationRegistryService.cs:ParseProviderRegistry",
+                    message = "Provider registry parse succeeded",
+                    data = new { inputLength = json.Length, providerCount = doc.Providers.Count },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // no-op
+            }
+            #endregion
+            return doc;
         }
         catch (JsonException)
         {
+            #region agent log
+            try
+            {
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "cb9046",
+                    runId = "initial",
+                    hypothesisId = "H2",
+                    location = "ConfigurationRegistryService.cs:ParseProviderRegistry",
+                    message = "Provider registry parse fell back to defaults (invalid JSON)",
+                    data = new { inputLength = json.Length, providerCount = GetDefaultProviderRegistry().Providers.Count },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // no-op
+            }
+            #endregion
             return GetDefaultProviderRegistry();
         }
     }

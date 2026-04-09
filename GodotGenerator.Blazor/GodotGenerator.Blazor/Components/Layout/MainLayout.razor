@@ -1,8 +1,10 @@
 ﻿@inherits LayoutComponentBase
+@using GodotGenerator.Blazor.Components.Layout
 
 <a href="#main-content" class="app-skip-link">Skip to main content</a>
 
-<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="#5b8fd4">
+@* AccentColor is defined in AppTheme.cs — update it there to keep --app-color-accent in app.css in sync. *@
+<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="@AppTheme.AccentColor">
     <FluentLayout Class="app-shell" Style="min-height:100vh;">
         <FluentStack Orientation="Orientation.Horizontal" Style="flex:1; align-items: stretch;">
             <div id="app-shell-nav" class="app-shell__sidebar">

@@ -4,6 +4,7 @@
 @using GodotGenerator.Application
 @using GodotGenerator.Application.Configuration
 @using GodotGenerator.Api.Dtos
+@using GodotGenerator.Desktop.Contracts.Serialization
 @inject GodotGeneratorClientFacade Api
 @inject NavigationManager Nav
 
@@ -312,7 +313,7 @@
     {
         _providerOptions.Clear();
         _providerRegistryEntries.Clear();
-        if (data.GetValueOrDefault("providers") is not JsonElement arr || arr.ValueKind != JsonValueKind.Array)
+        if (!TryGetJsonElement(data.GetValueOrDefault("providers"), out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
             return;
         }
@@ -361,7 +362,7 @@
     private void LoadPrompts(Dictionary<string, object?> data)
     {
         _systemPrompts.Clear();
-        if (data.GetValueOrDefault("prompts") is not JsonElement root || root.ValueKind != JsonValueKind.Object)
+        if (!TryGetJsonElement(data.GetValueOrDefault("prompts"), out var root) || root.ValueKind != JsonValueKind.Object)
         {
             return;
         }
@@ -378,7 +379,7 @@
     private void LoadKeyNames(Dictionary<string, object?> data)
     {
         _keyNames.Clear();
-        if (data.GetValueOrDefault("keys") is not JsonElement arr || arr.ValueKind != JsonValueKind.Array)
+        if (!TryGetJsonElement(data.GetValueOrDefault("keys"), out var arr) || arr.ValueKind != JsonValueKind.Array)
         {
             return;
         }
@@ -404,7 +405,7 @@
     {
         _modelRegistryEntries.Clear();
         _modelsByProvider.Clear();
-        if (data.GetValueOrDefault("models") is not JsonElement root || root.ValueKind != JsonValueKind.Object)
+        if (!TryGetJsonElement(data.GetValueOrDefault("models"), out var root) || root.ValueKind != JsonValueKind.Object)
         {
             return;
         }
@@ -467,7 +468,7 @@
     private static Dictionary<string, string?> ParsePreferences(object? raw)
     {
         var d = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-        if (raw is not JsonElement je || je.ValueKind != JsonValueKind.Object)
+        if (!TryGetJsonElement(raw, out var je) || je.ValueKind != JsonValueKind.Object)
         {
             return d;
         }
@@ -483,6 +484,32 @@
         }
 
         return d;
+    }
+
+    private static bool TryGetJsonElement(object? raw, out JsonElement element)
+    {
+        if (raw is JsonElement je)
+        {
+            element = je;
+            return true;
+        }
+
+        if (raw is null)
+        {
+            element = default;
+            return false;
+        }
+
+        try
+        {
+            element = JsonSerializer.SerializeToElement(raw, ContractJsonOptions.Default);
+            return true;
+        }
+        catch
+        {
+            element = default;
+            return false;
+        }
     }
 
     private static string GetDictString(Dictionary<string, string?> prefs, string key) =>

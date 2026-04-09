@@ -1,6 +1,8 @@
 /* Design tokens — declare every custom property used in this file / Razor here first (app + integration aliases). */
 :root {
-  /* Accent — softer blue (less aggressive than pure cyan) — keep in sync with FluentDesignTheme CustomColor in MainLayout.razor */
+  /* Accent — softer blue (less aggressive than pure cyan).
+     SINGLE SOURCE OF TRUTH: Components/Layout/AppTheme.cs → AppTheme.AccentColor.
+     Update that constant AND the values below together when the brand accent changes. */
   --app-color-accent: #5b8fd4;
   --app-color-accent-subtle: rgba(91, 143, 212, 0.14);
   --app-color-accent-border: rgba(91, 143, 212, 0.32);
@@ -19,6 +21,11 @@
   --app-space-lg: 1rem;
   --app-space-xl: 1.5rem;
   --app-space-2xl: 2rem;
+  /* Component micro-spacing — named by context so refactors stay semantic  */
+  --app-space-help: 0.3rem;      /* top margin on help / error hint text    */
+  --app-space-nav-y: 0.45rem;    /* nav-link and list-item vertical padding */
+  --app-space-badge-y: 0.2rem;   /* badge / pill vertical padding           */
+  --app-space-badge-x: 0.55rem;  /* badge / pill horizontal padding         */
   /* SmartField — default control width when Width prop is unset (instance: --smart-field-width) */
   --app-smart-field-width-default: min(100%, 48rem);
   /* Form controls — shared (override with --fluent-control-width / --fluent-control-min-height on host) */
@@ -51,13 +58,13 @@
   --app-heading-margin-after-lg: var(--app-space-lg);
   --app-stack-margin-after: var(--app-space-md);
   --app-control-row-gap: var(--app-space-md);
-  --app-dialog-model-width: 32.5rem;
+  --app-dialog-model-width: 32.5rem; /* alias → --app-dialog-width-compact */
   --app-management-grid-min: 13.75rem;
   --app-radius-sm: 0.375rem;
   --app-radius-md: 0.625rem;
   --app-radius-lg: 0.875rem;
   --app-radius-xl: 1rem;
-  --app-sidebar-width: 17rem;
+  --app-radius-pill: 999px; /* fully-rounded capsule badges and toggles */
   --app-content-max: min(92rem, 100%);
   --app-main-padding: clamp(var(--app-space-md), 2.5vw, var(--app-space-2xl));
   /* Must match @media below (CSS cannot use var() in media queries reliably) */
@@ -66,6 +73,106 @@
   --app-bp-settings-grid-1col: 720px;
   --app-z-backdrop: 1040;
   --app-z-sidebar-drawer: 1050;
+  --app-z-skip-link: 10000; /* skip-to-content link must clear all layers */
+  /* ── Overlay / surface hover alphas ──────────────────────────────────────
+     Use these tokens instead of raw rgba(255,255,255,0.0x) for hover/separator
+     surfaces so light-theme overrides apply automatically.               */
+  --app-overlay-weak: rgba(255, 255, 255, 0.04);
+  --app-overlay-soft: rgba(255, 255, 255, 0.05);
+  --app-overlay-subtle: rgba(255, 255, 255, 0.06);
+  /* ── Focus system ────────────────────────────────────────────────────────
+     Centralised focus ring so every interactive element stays consistent
+     and WCAG 2.1 §1.4.11 contrast is easy to audit/fix in one place.    */
+  --app-focus-outline-width: 2px;
+  --app-focus-outline-offset: 2px;
+  --app-focus-outline-color: var(--app-color-accent);
+  --app-focus-outline: var(--app-focus-outline-width) solid var(--app-focus-outline-color);
+  /* ── Accent variants ─────────────────────────────────────────────────────
+     Darker / lighter shades derived from the primary accent for hover
+     and active states. Must stay visually aligned with --app-color-accent. */
+  --app-color-accent-hover: #4a7cbf;
+  --app-color-accent-dark: #3b6ea2;
+  --app-color-accent-light: #6b9ed2;
+  --app-color-accent-border-strong: rgba(91, 143, 212, 0.45);
+  /* ── Border hover ────────────────────────────────────────────────────────*/
+  --app-color-border-hover: rgba(255, 255, 255, 0.13);
+  /* ── Status glow ─────────────────────────────────────────────────────────*/
+  --app-color-status-ok-glow: rgba(63, 204, 122, 0.55);
+  /* ── Validation success ──────────────────────────────────────────────────*/
+  --app-color-validation-success: #26b050;
+  /* ── Typography scale ────────────────────────────────────────────────────
+     Named by role, not by px value. Use these throughout instead of
+     hardcoded rem literals to make global type-size changes trivial.     */
+  --app-text-size-badge: 0.65rem;       /* modality badge / pill label text  */
+  --app-text-size-kicker: 0.7rem;       /* uppercase section kicker labels   */
+  --app-text-size-caption: 0.75rem;     /* help text, table headers          */
+  --app-text-size-statusbar: 0.7813rem; /* status-bar footer                 */
+  --app-text-size-small: 0.8125rem;     /* secondary / code snippets         */
+  --app-text-size-label-sm: 0.92rem;    /* compact field / option labels     */
+  --app-text-size-field-sm: 0.93rem;    /* field-control inner text          */
+  --app-text-size-body: 0.875rem;       /* base body / table cells           */
+  --app-text-size-body-sm: 0.9rem;      /* slightly tighter body copy        */
+  --app-text-size-body-md: 0.9375rem;   /* subtitle / section description    */
+  --app-text-size-title-md: 1.05rem;    /* settings card title               */
+  --app-text-size-base: 1rem;           /* default body / card heading       */
+  --app-text-size-icon-lg: 1.25rem;    /* hamburger / action icon in toolbar */
+  --app-text-size-title-sm: 1.15rem;    /* section title (h3-level)          */
+  --app-text-size-title: 1.125rem;      /* page / panel title (h2-level)     */
+  /* ── Opacity scale ──────────────────────────────────────────────────────
+     Named by visual impact, not raw value. Prefer these over bare
+     `opacity: 0.85` literals so theme adjustments stay in one place.    */
+  --app-opacity-near-full: 0.95; /* hero icons, near-pristine elements       */
+  --app-opacity-strong: 0.9;    /* near-full — icons, glyphs on hover       */
+  --app-opacity-muted: 0.85;    /* default de-emphasis (most common)        */
+  --app-opacity-soft: 0.8;      /* secondary icons, inactive chevrons       */
+  --app-opacity-subtle: 0.75;   /* help text, supplementary descriptors     */
+  --app-opacity-dim: 0.7;       /* preview labels, secondary muted content  */
+  --app-opacity-faint: 0.55;    /* hint / supplementary text on dark bg     */
+  /* ── Line-height scale ──────────────────────────────────────────────────*/
+  --app-line-height-tight: 1.2;    /* display headings / hero titles        */
+  --app-line-height-help: 1.35;    /* inline help and error text            */
+  --app-line-height-body: 1.4;     /* body copy, nav items, code            */
+  --app-line-height-snug: 1.3;     /* card / widget headings                */
+  --app-line-height-loose: 1.45;   /* subtitles, textarea content           */
+  --app-line-height-relaxed: 1.5;  /* card descriptions                     */
+  --app-line-height-roomy: 1.6;    /* hero subtitle / intro paragraphs      */
+  /* ── Letter-spacing scale ───────────────────────────────────────────────*/
+  --app-letter-spacing-label: 0.04em;  /* table column headers              */
+  --app-letter-spacing-badge: 0.06em;  /* badge / pill modality text        */
+  --app-letter-spacing-kicker: 0.12em; /* uppercase section kicker labels   */
+  --app-letter-spacing-mask: 0.15em;   /* monospace masked / password text  */
+  /* ── Badge / pill semantic palette ──────────────────────────────────────
+     Shared by both .settings-models__pill--* and .settings-prompts__badge--*
+     so modality colours are defined once. Override per-theme in the
+     [data-theme] scopes below.                                            */
+  --app-badge-llm-bg: rgba(91, 143, 212, 0.2);
+  --app-badge-llm-color: var(--app-color-accent);
+  --app-badge-llm-border: var(--app-color-accent-border);
+  --app-badge-image-bg: rgba(100, 120, 200, 0.22);
+  --app-badge-image-color: #a8b8f0;
+  --app-badge-image-border: rgba(160, 180, 240, 0.35);
+  --app-badge-audio-bg: rgba(160, 120, 200, 0.2);
+  --app-badge-audio-color: #d0b8f0;
+  --app-badge-audio-border: rgba(200, 170, 240, 0.35);
+  --app-badge-video-bg: rgba(200, 140, 100, 0.18);
+  --app-badge-video-color: #e8c4a8;
+  --app-badge-video-border: rgba(230, 180, 140, 0.35);
+  --app-badge-sprites-bg: rgba(80, 180, 160, 0.18);
+  --app-badge-sprites-color: #8ee0c8;
+  --app-badge-sprites-border: rgba(120, 220, 200, 0.35);
+  --app-badge-text-bg: rgba(63, 204, 122, 0.18);
+  --app-badge-text-color: var(--app-color-status-ok);
+  --app-badge-text-border: rgba(63, 204, 122, 0.35);
+  --app-badge-neutral-bg: rgba(255, 255, 255, 0.06);
+  --app-badge-neutral-color: var(--app-color-fg-muted);
+  --app-badge-neutral-border: var(--neutral-stroke-divider);
+  /* ── Dialog sizing ───────────────────────────────────────────────────────
+     --app-dialog-width-compact is the canonical name; the older
+     --app-dialog-model-width is kept as an alias for back-compat.        */
+  --app-dialog-width-compact: 32.5rem;
+  /* ── Shadow tokens ───────────────────────────────────────────────────────*/
+  --app-shadow-drawer: 8px 0 24px rgba(0, 0, 0, 0.35);
+  --app-shadow-modal: 0 3px 6px 2px rgba(0, 0, 0, 0.3);
   /* Aliases used by earlier rules */
   --app-shell-bg: var(--app-color-bg);
   --app-shell-sidebar: var(--app-color-surface);
@@ -85,6 +192,7 @@
   /* Transitions */
   --app-transition-fast: 0.12s ease;
   --app-transition-base: 0.18s ease;
+  --app-transition-drawer: 0.2s ease; /* mobile nav-drawer slide */
   --neutral-foreground-rest: var(--app-color-fg);
   /* FluentCard (minimal style) — bridge app surface tokens to library names; declared globally, no undefined --card-* */
   --app-surface-card-height: auto;
@@ -125,7 +233,7 @@ fluent-card {
 /* Elevate interactive cards on hover (opt-in via .app-card-interactive class) */
 fluent-card.app-card-interactive:hover {
   box-shadow: var(--app-card-shadow-hover) !important;
-  border-color: rgba(255, 255, 255, 0.13) !important;
+  border-color: var(--app-color-border-hover) !important;
 }
 
 .base-field {
@@ -151,16 +259,16 @@ fluent-card.app-card-interactive:hover {
 
 .app-field-label {
   margin-bottom: var(--app-space-xs);
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
   font-weight: 500;
   color: var(--app-color-fg);
 }
 
 .app-field-help {
-  font-size: 0.75rem;
-  margin-top: 0.3rem;
+  font-size: var(--app-text-size-caption);
+  margin-top: var(--app-space-help);
   margin-bottom: 0;
-  line-height: 1.35;
+  line-height: var(--app-line-height-help);
   display: block;
   color: var(--app-color-fg-muted);
   padding-left: 0;
@@ -169,15 +277,15 @@ fluent-card.app-card-interactive:hover {
 }
 
 .app-field-error {
-  font-size: 0.75rem;
-  margin-top: 0.3rem;
+  font-size: var(--app-text-size-caption);
+  margin-top: var(--app-space-help);
   margin-bottom: 0;
   display: block;
   padding-left: 0;
   background: none;
   border-radius: 0;
   color: var(--app-color-validation-error);
-  line-height: 1.35;
+  line-height: var(--app-line-height-help);
 }
 
 /* Fluent text inputs — default sizing; .smart-field ::deep rules override width for SmartField */
@@ -230,12 +338,12 @@ fluent-text-area {
   border-radius: var(--app-field-radius);
   background: var(--app-field-bg);
   border: 1px solid var(--app-field-border);
-  font-size: 0.93rem;
+  font-size: var(--app-text-size-field-sm);
   box-shadow: none;
   transition:
-    border-color 0.12s ease,
-    box-shadow 0.12s ease,
-    background-color 0.12s ease;
+    border-color var(--app-transition-fast),
+    box-shadow var(--app-transition-fast),
+    background-color var(--app-transition-fast);
 }
 
 .app-input-like::part(root),
@@ -292,11 +400,11 @@ fluent-text-area {
 .settings-providers__form .app-field-label,
 .settings-models .app-field-label,
 .settings-hub .app-field-label {
-  font-size: 0.92rem;
+  font-size: var(--app-text-size-label-sm);
 }
 
 .app-combobox-like fluent-option {
-  font-size: 0.92rem;
+  font-size: var(--app-text-size-label-sm);
 }
 
 fluent-text-area.app-textarea-log {
@@ -321,15 +429,15 @@ fluent-text-area.app-textarea-log::part(control) {
   background: var(--neutral-layer-1);
   color: inherit;
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
   box-sizing: border-box;
 }
 
 .app-native-select:focus-visible,
 .settings-select:focus-visible,
 .advanced-options-section__select:focus-visible {
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
 }
 
 /* FluentCard host padding utilities */
@@ -361,8 +469,8 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-fluent-help {
-  opacity: 0.75;
-  font-size: 0.875rem;
+  opacity: var(--app-opacity-subtle);
+  font-size: var(--app-text-size-body);
 }
 
 .app-fluent-validation {
@@ -405,11 +513,11 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-opacity-muted {
-  opacity: 0.85;
+  opacity: var(--app-opacity-muted);
 }
 
 .app-opacity-muted-soft {
-  opacity: 0.8;
+  opacity: var(--app-opacity-soft);
 }
 
 .app-margin-top-xs {
@@ -426,7 +534,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-fluent-intro-desc {
-  opacity: 0.85;
+  opacity: var(--app-opacity-muted);
   margin-bottom: var(--app-heading-margin-after);
 }
 
@@ -447,7 +555,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-opacity-90 {
-  opacity: 0.9;
+  opacity: var(--app-opacity-strong);
 }
 
 .app-project-header-label {
@@ -463,7 +571,7 @@ fluent-text-area.app-textarea-log::part(control) {
   position: absolute;
   left: -9999px;
   top: var(--app-space-sm);
-  z-index: 10000;
+  z-index: var(--app-z-skip-link);
   padding: var(--app-space-sm) var(--app-space-lg);
   background: var(--app-color-surface-elevated);
   color: var(--app-color-fg);
@@ -475,8 +583,8 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .app-skip-link:focus {
   left: var(--app-space-md);
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
 }
 
 .app-shell {
@@ -541,13 +649,13 @@ fluent-text-area.app-textarea-log::part(control) {
   background: var(--app-color-surface-elevated);
   color: var(--app-color-fg);
   cursor: pointer;
-  font-size: 1.25rem;
+  font-size: var(--app-text-size-icon-lg);
   line-height: 1;
 }
 
 .app-shell__nav-toggle:focus-visible {
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
 }
 
 .app-shell__nav-toggle-icon {
@@ -568,13 +676,13 @@ fluent-text-area.app-textarea-log::part(control) {
     z-index: var(--app-z-sidebar-drawer);
     max-width: min(100vw, var(--app-sidebar-width));
     transform: translateX(-100%);
-    transition: transform 0.2s ease;
+    transition: transform var(--app-transition-drawer);
     box-shadow: none;
   }
 
   html.app-shell--nav-open .app-shell__sidebar {
     transform: translateX(0);
-    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--app-shadow-drawer);
   }
 }
 
@@ -597,9 +705,9 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .app-shell__titlebar-text {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: var(--app-text-size-title);
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.02em; /* intentional: wide tracking on app name in titlebar */
   color: var(--neutral-foreground-rest, var(--app-color-fg));
   flex: 1;
   min-width: 0;
@@ -624,7 +732,7 @@ fluent-text-area.app-textarea-log::part(control) {
   padding: 0.35rem var(--app-main-padding) !important;
   border-top: 1px solid var(--app-shell-border) !important;
   background: var(--app-color-surface) !important;
-  font-size: 0.7813rem;
+  font-size: var(--app-text-size-statusbar);
   min-height: 2rem !important;
 }
 
@@ -647,12 +755,12 @@ fluent-text-area.app-textarea-log::part(control) {
   display: flex;
   align-items: center;
   gap: var(--app-space-sm);
-  padding: 0.45rem var(--app-space-md);
+  padding: var(--app-space-nav-y) var(--app-space-md);
   border-radius: var(--app-radius-md);
   color: var(--app-color-fg-muted) !important;
   text-decoration: none !important;
-  font-size: 0.8125rem;
-  line-height: 1.4;
+  font-size: var(--app-text-size-title);
+  line-height: var(--app-line-height-body);
   border: 1px solid transparent;
   transition:
     background var(--app-transition-fast),
@@ -661,13 +769,13 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-nav__link:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--app-overlay-soft);
   color: var(--app-color-fg) !important;
 }
 
 .app-nav__link:focus-visible {
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
   border-radius: var(--app-radius-md);
 }
 
@@ -714,15 +822,15 @@ fluent-text-area.app-textarea-log::part(control) {
   margin: 0 0 var(--app-space-xs) 0;
   font-size: clamp(1.25rem, 2.5vw, 1.5rem);
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.01em; /* intentional: barely-visible tracking on responsive display heading */
 }
 
 .settings-hub__subtitle {
   margin: 0 0 var(--app-space-lg) 0;
   color: var(--app-color-fg-muted);
-  font-size: 0.9375rem;
+  font-size: var(--app-text-size-body-md);
   max-width: var(--app-content-max);
-  line-height: 1.45;
+  line-height: var(--app-line-height-loose);
 }
 
 .settings-hub__banner {
@@ -751,7 +859,7 @@ fluent-text-area.app-textarea-log::part(control) {
   border-radius: var(--app-radius-md) var(--app-radius-md) 0 0;
   background: transparent;
   color: var(--app-color-fg-muted);
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
   transition:
     color var(--app-transition-fast),
     background var(--app-transition-fast);
@@ -760,13 +868,13 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-tab__icon {
   display: inline-flex;
   align-items: center;
-  opacity: 0.8;
+  opacity: var(--app-opacity-soft);
   transition: opacity var(--app-transition-fast);
 }
 
 .settings-tab:hover {
   color: var(--app-color-fg);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--app-overlay-weak);
 }
 
 .settings-tab:hover .settings-tab__icon {
@@ -774,8 +882,8 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-tab:focus-visible {
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
 }
 
 .settings-tab--active {
@@ -801,12 +909,12 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-card__kicker {
-  font-size: 0.68rem;
+  font-size: var(--app-text-size-kicker);
   font-weight: 700;
-  letter-spacing: 0.13em;
+  letter-spacing: var(--app-letter-spacing-kicker);
   text-transform: uppercase;
   color: var(--app-accent);
-  opacity: 0.9;
+  opacity: var(--app-opacity-strong);
   margin: 0 0 var(--app-space-md) 0;
 }
 
@@ -815,7 +923,7 @@ fluent-text-area.app-textarea-log::part(control) {
   align-items: center;
   gap: var(--app-space-sm);
   margin: 0 0 var(--app-space-lg) 0;
-  font-size: 1.05rem;
+  font-size: var(--app-text-size-title-md);
   font-weight: 600;
 }
 
@@ -842,7 +950,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-raw-json {
   margin-top: var(--app-space-lg);
   max-width: var(--app-content-max);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-size-small);
   color: var(--app-color-fg-muted);
 }
 
@@ -854,8 +962,8 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-raw-json summary:focus-visible {
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
   border-radius: var(--app-radius-sm);
 }
 
@@ -868,8 +976,8 @@ fluent-text-area.app-textarea-log::part(control) {
   border: 1px solid var(--app-shell-border);
   background: var(--app-color-bg);
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-  font-size: 0.75rem;
-  line-height: 1.4;
+  font-size: var(--app-text-size-caption);
+  line-height: var(--app-line-height-body);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -891,8 +999,8 @@ fluent-text-area.app-textarea-log::part(control) {
   display: grid;
   grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
   gap: var(--app-space-xl);
-  align-items: start;
-  min-height: 18rem;
+  align-items: stretch;
+  min-height: 100%;
   padding: var(--app-space-sm) 0;
 }
 
@@ -903,7 +1011,10 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-providers__list-col {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
 }
 
 .settings-providers__list-head {
@@ -915,9 +1026,9 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-providers__kicker {
-  font-size: 0.7rem;
+  font-size: var(--app-text-size-kicker);
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--app-letter-spacing-kicker);
   color: var(--app-accent);
 }
 
@@ -929,8 +1040,11 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-providers__list {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
   gap: var(--app-space-xs);
-  max-height: min(60vh, 28rem);
+  min-height: 0;
+  height: 100%;
+  max-height: none;
   overflow: auto;
   padding: var(--app-space-xs);
   border-radius: var(--app-radius-md);
@@ -946,8 +1060,8 @@ fluent-text-area.app-textarea-log::part(control) {
   width: 100%;
   text-align: start;
   font: inherit;
-  font-size: 0.875rem;
-  padding: 0.45rem var(--app-space-md);
+  font-size: var(--app-text-size-body);
+  padding: var(--app-space-nav-y) var(--app-space-md);
   border: 1px solid transparent;
   border-radius: var(--app-radius-md);
   background: transparent;
@@ -961,7 +1075,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-providers__list-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--app-overlay-soft);
   color: var(--app-color-fg);
 }
 
@@ -982,7 +1096,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-providers__compat {
   display: inline-flex;
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: var(--app-opacity-muted);
 }
 
 .settings-providers__detail {
@@ -1052,14 +1166,14 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-models__title {
   margin: 0 0 var(--app-space-xs) 0;
-  font-size: 1.15rem;
+  font-size: var(--app-text-size-title-sm);
   font-weight: 600;
 }
 
 .settings-models__subtitle {
   margin: 0;
   color: var(--app-color-fg-muted);
-  font-size: 0.9rem;
+  font-size: var(--app-text-size-body-sm);
 }
 
 .settings-models__provider {
@@ -1088,7 +1202,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-models__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
 }
 
 .settings-models__table th,
@@ -1101,9 +1215,9 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-models__table th {
   color: var(--app-color-fg-muted);
   font-weight: 600;
-  font-size: 0.75rem;
+  font-size: var(--app-text-size-caption);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--app-letter-spacing-label);
 }
 
 .settings-models__col-actions {
@@ -1113,7 +1227,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-models__code {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-  font-size: 0.8125rem;
+  font-size: var(--app-text-size-small);
 }
 
 .settings-models__delete {
@@ -1123,47 +1237,47 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-models__pill {
   display: inline-block;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
+  padding: var(--app-space-badge-y) var(--app-space-badge-x);
+  border-radius: var(--app-radius-pill);
+  font-size: var(--app-text-size-kicker);
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--app-letter-spacing-badge);
 }
 
 .settings-models__pill--llm {
-  background: rgba(91, 143, 212, 0.2);
-  color: var(--app-color-accent);
-  border: 1px solid var(--app-color-accent-border);
+  background: var(--app-badge-llm-bg);
+  color: var(--app-badge-llm-color);
+  border: 1px solid var(--app-badge-llm-border);
 }
 
 .settings-models__pill--image {
-  background: rgba(100, 120, 200, 0.22);
-  color: #a8b8f0;
-  border: 1px solid rgba(160, 180, 240, 0.35);
+  background: var(--app-badge-image-bg);
+  color: var(--app-badge-image-color);
+  border: 1px solid var(--app-badge-image-border);
 }
 
 .settings-models__pill--audio {
-  background: rgba(160, 120, 200, 0.2);
-  color: #d0b8f0;
-  border: 1px solid rgba(200, 170, 240, 0.35);
+  background: var(--app-badge-audio-bg);
+  color: var(--app-badge-audio-color);
+  border: 1px solid var(--app-badge-audio-border);
 }
 
 .settings-models__pill--video {
-  background: rgba(200, 140, 100, 0.18);
-  color: #e8c4a8;
-  border: 1px solid rgba(230, 180, 140, 0.35);
+  background: var(--app-badge-video-bg);
+  color: var(--app-badge-video-color);
+  border: 1px solid var(--app-badge-video-border);
 }
 
 .settings-models__pill--sprites {
-  background: rgba(80, 180, 160, 0.18);
-  color: #8ee0c8;
-  border: 1px solid rgba(120, 220, 200, 0.35);
+  background: var(--app-badge-sprites-bg);
+  color: var(--app-badge-sprites-color);
+  border: 1px solid var(--app-badge-sprites-border);
 }
 
 .settings-models__pill--other {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--app-color-fg-muted);
-  border: 1px solid var(--neutral-stroke-divider);
+  background: var(--app-badge-neutral-bg);
+  color: var(--app-badge-neutral-color);
+  border: 1px solid var(--app-badge-neutral-border);
 }
 
 .settings-models__pager {
@@ -1173,7 +1287,7 @@ fluent-text-area.app-textarea-log::part(control) {
   gap: var(--app-space-md);
   padding: var(--app-space-md) var(--app-space-lg);
   border-top: 1px solid var(--app-color-border);
-  font-size: 0.8125rem;
+  font-size: var(--app-text-size-small);
   color: var(--app-color-fg-muted);
 }
 
@@ -1204,9 +1318,9 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-models__register-kicker {
   margin: 0;
   padding: var(--app-space-md) var(--app-space-lg) 0;
-  font-size: 0.7rem;
+  font-size: var(--app-text-size-kicker);
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--app-letter-spacing-kicker);
   color: var(--app-accent);
 }
 
@@ -1257,16 +1371,16 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-prompts__title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--app-text-size-title-sm);
   font-weight: 600;
 }
 
 .settings-prompts__reset {
   color: var(--app-accent) !important;
-  border-color: rgba(91, 143, 212, 0.45) !important;
+  border-color: var(--app-color-accent-border-strong) !important;
   font-weight: 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  font-size: var(--app-text-size-caption);
+  letter-spacing: var(--app-letter-spacing-badge);
 }
 
 .settings-prompts__grid {
@@ -1296,43 +1410,43 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-prompts__badge {
   display: inline-block;
-  padding: 0.2rem 0.55rem;
+  padding: var(--app-space-badge-y) var(--app-space-badge-x);
   border-radius: var(--app-radius-sm);
-  font-size: 0.65rem;
+  font-size: var(--app-text-size-badge);
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--app-letter-spacing-kicker);
 }
 
 .settings-prompts__badge--text {
-  background: rgba(63, 204, 122, 0.18);
-  color: var(--app-color-status-ok);
-  border: 1px solid rgba(63, 204, 122, 0.35);
+  background: var(--app-badge-text-bg);
+  color: var(--app-badge-text-color);
+  border: 1px solid var(--app-badge-text-border);
 }
 
 .settings-prompts__badge--code {
-  background: rgba(91, 143, 212, 0.2);
-  color: var(--app-color-accent);
-  border: 1px solid var(--app-color-accent-border);
+  background: var(--app-badge-llm-bg);
+  color: var(--app-badge-llm-color);
+  border: 1px solid var(--app-badge-llm-border);
 }
 
 .settings-prompts__badge--image,
 .settings-prompts__badge--sprites {
-  background: rgba(100, 140, 220, 0.2);
-  color: #a8c4f8;
-  border: 1px solid rgba(140, 170, 240, 0.35);
+  background: var(--app-badge-image-bg);
+  color: var(--app-badge-image-color);
+  border: 1px solid var(--app-badge-image-border);
 }
 
 .settings-prompts__badge--audio,
 .settings-prompts__badge--music {
-  background: rgba(160, 120, 220, 0.2);
-  color: #d4c0f8;
-  border: 1px solid rgba(190, 160, 240, 0.35);
+  background: var(--app-badge-audio-bg);
+  color: var(--app-badge-audio-color);
+  border: 1px solid var(--app-badge-audio-border);
 }
 
 .settings-prompts__badge--video {
-  background: rgba(220, 140, 100, 0.18);
-  color: #f0c0a0;
-  border: 1px solid rgba(240, 180, 140, 0.35);
+  background: var(--app-badge-video-bg);
+  color: var(--app-badge-video-color);
+  border: 1px solid var(--app-badge-video-border);
 }
 
 .settings-prompts__badge--ui,
@@ -1340,15 +1454,15 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-prompts__badge--scenes,
 .settings-prompts__badge--project,
 .settings-prompts__badge--animations {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--app-color-fg-muted);
-  border: 1px solid var(--neutral-stroke-divider);
+  background: var(--app-badge-neutral-bg);
+  color: var(--app-badge-neutral-color);
+  border: 1px solid var(--app-badge-neutral-border);
 }
 
 .settings-prompts__badge--other {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--app-color-fg-muted);
-  border: 1px solid var(--app-color-border);
+  background: var(--app-badge-neutral-bg);
+  color: var(--app-badge-neutral-color);
+  border: 1px solid var(--app-badge-neutral-border);
 }
 
 .settings-prompts__copy {
@@ -1395,13 +1509,13 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-secrets__title {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: var(--app-text-size-title-sm);
   font-weight: 600;
 }
 
 .settings-secrets__cta {
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: var(--app-letter-spacing-label);
   white-space: nowrap;
 }
 
@@ -1422,7 +1536,7 @@ fluent-text-area.app-textarea-log::part(control) {
   width: 100%;
   min-width: 36rem;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: var(--app-text-size-body-sm);
 }
 
 .settings-secrets__caption {
@@ -1450,14 +1564,14 @@ fluent-text-area.app-textarea-log::part(control) {
   border-bottom: 1px solid var(--neutral-stroke-divider);
   font-weight: 600;
   color: var(--app-color-fg-muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.04em;
+  font-size: var(--app-text-size-caption);
+  letter-spacing: var(--app-letter-spacing-label);
   text-transform: uppercase;
 }
 
 .settings-secrets__table tbody td {
   padding: var(--app-space-sm) var(--app-space-md);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--app-overlay-subtle);
   vertical-align: middle;
 }
 
@@ -1472,8 +1586,8 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-secrets__mask {
   font-family: ui-monospace, monospace;
-  letter-spacing: 0.15em;
-  opacity: 0.85;
+  letter-spacing: var(--app-letter-spacing-mask);
+  opacity: var(--app-opacity-muted);
 }
 
 .settings-secrets__empty {
@@ -1495,7 +1609,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-secrets__remove {
-  font-size: 0.85rem;
+  font-size: var(--app-text-size-body);
 }
 
 .settings-secrets__pager {
@@ -1505,7 +1619,7 @@ fluent-text-area.app-textarea-log::part(control) {
   justify-content: space-between;
   gap: var(--app-space-md);
   margin-bottom: var(--app-space-lg);
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
   color: var(--app-color-fg-muted);
 }
 
@@ -1567,15 +1681,15 @@ fluent-text-area.app-textarea-log::part(control) {
   height: 8px;
   border-radius: 50%;
   background: var(--app-color-status-ok);
-  box-shadow: 0 0 6px rgba(63, 204, 122, 0.55);
+  box-shadow: 0 0 6px var(--app-color-status-ok-glow);
 }
 
 .nav-glyph {
   display: inline-block;
   min-width: 1.25rem;
   margin-right: var(--app-space-sm);
-  opacity: 0.9;
-  font-size: 0.95rem;
+  opacity: var(--app-opacity-strong);
+  font-size: 0.95rem; /* intentional: slightly larger than nav text for visual balance */
 }
 
 /* Generation workspace — wide + optional two columns on xl */
@@ -1703,8 +1817,8 @@ fluent-text-area.app-textarea-log::part(control) {
   border-bottom: 2px solid currentColor;
   transform: rotate(45deg);
   translate: 0 -0.125rem;
-  opacity: 0.85;
-  transition: transform 0.18s ease;
+  opacity: var(--app-opacity-muted);
+  transition: transform var(--app-transition-base);
 }
 
 .advanced-options-section[open] .advanced-options-section__chevron {
@@ -1717,8 +1831,8 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .advanced-options-section__summary:focus-visible {
-  outline: 2px solid var(--app-color-accent);
-  outline-offset: 2px;
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
   border-radius: var(--app-radius-sm);
 }
 
@@ -1743,7 +1857,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .generation-workspace__result fluent-label,
 .generation-workspace .generation-workspace__result {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
 }
 
 .sprites-workspace-layout {
@@ -1766,12 +1880,12 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .sprites-preview__label-muted {
-  opacity: 0.7;
+  opacity: var(--app-opacity-dim);
 }
 
 .sprites-preview__hint {
   margin-top: var(--app-space-sm);
-  opacity: 0.55;
+  opacity: var(--app-opacity-faint);
 }
 
 .management-dashboard__grid {
@@ -1788,7 +1902,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .management-dashboard__grid > fluent-card:hover {
   box-shadow: var(--app-card-shadow-hover) !important;
-  border-color: rgba(255,255,255,0.13) !important;
+  border-color: var(--app-color-border-hover) !important;
 }
 
 @media (max-width: 960px) {
@@ -1812,8 +1926,8 @@ fluent-text-area.app-textarea-log::part(control) {
 .log-terminal-shell fluent-text-area::part(control),
 .log-terminal-shell textarea {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
-  font-size: 0.875rem;
-  line-height: 1.45;
+  font-size: var(--app-text-size-body);
+  line-height: var(--app-line-height-loose);
 }
 
 a,
@@ -1846,7 +1960,7 @@ h1:focus {
 }
 
 .valid.modified:not([type="checkbox"]) {
-  outline: 1px solid #26b050;
+  outline: 1px solid var(--app-color-validation-success);
 }
 
 .invalid {
@@ -1897,23 +2011,23 @@ h1:focus {
 .home-hero__icon {
   display: inline-flex;
   margin-bottom: var(--app-space-xs);
-  opacity: 0.95;
+  opacity: var(--app-opacity-near-full);
 }
 
 .home-hero__title {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.01em; /* intentional: negative tracking on display text */
   color: var(--app-color-fg);
-  line-height: 1.2;
+  line-height: var(--app-line-height-tight);
 }
 
 .home-hero__subtitle {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: var(--app-text-size-body-md);
   color: var(--app-color-fg-muted);
-  line-height: 1.6;
+  line-height: var(--app-line-height-roomy);
   max-width: 42rem;
 }
 
@@ -1952,17 +2066,17 @@ h1:focus {
 
 .home-card__title {
   margin: 0 0 var(--app-space-xs) 0;
-  font-size: 1rem;
+  font-size: var(--app-text-size-base);
   font-weight: 600;
   color: var(--app-color-fg);
-  line-height: 1.3;
+  line-height: var(--app-line-height-snug);
 }
 
 .home-card__desc {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--app-text-size-body);
   color: var(--app-color-fg-muted);
-  line-height: 1.5;
+  line-height: var(--app-line-height-relaxed);
 }
 
 .home-card__footer {
@@ -1970,3 +2084,81 @@ h1:focus {
   align-items: center;
   gap: var(--app-space-sm);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THEME SCOPES — data-theme attribute toggled by window.godotTheme.setDark()
+   in wwwroot/js/storage.js.
+
+   Architecture:
+   • :root           = dark baseline (all tokens defined here)
+   • [data-theme="dark"]  = explicit dark overrides (identical to :root for now,
+                            but the scope exists so future divergence is clean)
+   • [data-theme="light"] = semantic-token overrides only; badge palette stays
+                            dark-anchored and is revisited in Wave 3.
+
+   Only semantic tokens are overridden here — component tokens that
+   reference them update automatically.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Dark scope (no-op — :root is the dark baseline) ──────────────────── */
+:root[data-theme="dark"] {
+  /* Intentionally empty: :root already defines all dark values.
+     Add overrides here if the dark theme needs to diverge from :root. */
+}
+
+/* ── Light scope ───────────────────────────────────────────────────────── */
+:root[data-theme="light"] {
+  /* Surface palette */
+  --app-color-bg: #f5f7fa;
+  --app-color-surface: #ffffff;
+  --app-color-surface-elevated: #eef1f6;
+  --app-color-border: rgba(0, 0, 0, 0.1);
+  --app-color-border-hover: rgba(0, 0, 0, 0.2);
+
+  /* Foreground */
+  --app-color-fg: #1a1d23;
+  --app-color-fg-muted: rgba(26, 29, 35, 0.6);
+
+  /* Backdrop */
+  --app-backdrop-scrim: rgba(0, 0, 0, 0.35);
+
+  /* Overlay alphas — flip to dark-on-light */
+  --app-overlay-weak: rgba(0, 0, 0, 0.03);
+  --app-overlay-soft: rgba(0, 0, 0, 0.05);
+  --app-overlay-subtle: rgba(0, 0, 0, 0.07);
+
+  /* Card shadows — lighter for light surfaces */
+  --app-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --app-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.09);
+
+  /* Drawer shadow */
+  --app-shadow-drawer: 8px 0 24px rgba(0, 0, 0, 0.15);
+
+  /* Modal shadow */
+  --app-shadow-modal: 0 3px 6px 2px rgba(0, 0, 0, 0.15);
+
+  /* Shell aliases — pick up new surfaces automatically */
+  --app-shell-bg: var(--app-color-bg);
+  --app-shell-sidebar: var(--app-color-surface);
+  --app-shell-border: var(--app-color-border);
+
+  /* Field chrome */
+  --app-field-bg: rgba(0, 0, 0, 0.03);
+  --app-field-border: rgba(0, 0, 0, 0.15);
+  --app-field-border-hover: rgba(0, 0, 0, 0.28);
+  --app-field-shadow-focus: 0 0 0 2px rgba(91, 143, 212, 0.3);
+
+  /* Fluent neutral bridge — light shell */
+  --neutral-layer-1: #ffffff;
+  --neutral-layer-2: var(--app-color-surface);
+  --neutral-layer-3: #eef1f6;
+  --neutral-stroke-divider: rgba(0, 0, 0, 0.1);
+  --neutral-foreground-rest: var(--app-color-fg);
+
+  /* Badge neutral tokens must flip for legibility on light surfaces */
+  --app-badge-neutral-bg: rgba(0, 0, 0, 0.06);
+  --app-badge-neutral-color: var(--app-color-fg-muted);
+  --app-badge-neutral-border: rgba(0, 0, 0, 0.12);
+
+  /* Bootstrap snippet */
+  --bs-secondary-color: var(--app-color-fg

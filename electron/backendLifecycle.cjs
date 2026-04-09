@@ -54,7 +54,7 @@ function resolveBackendCommand() {
   const urls = process.env.GODOT_BLAZOR_URL || DEFAULT_UI_URL;
   return {
     cmd: 'dotnet',
-    args: ['run', '--no-build', '-c', 'Release', '--project', projectDir, '--no-launch-profile', '--urls', urls],
+    args: ['run', '-c', 'Release', '--project', projectDir, '--no-launch-profile', '--urls', urls],
     isBundled: false,
   };
 }

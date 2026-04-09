@@ -78,10 +78,10 @@ public sealed class ElectronIpcTransport : IGodotGeneratorClientTransport
             cancellationToken);
 
     /// <inheritdoc/>
-    public Task<ApiResponse<Dictionary<string, string?>>> SaveApiKeysAsync(
+    public Task<ApiResponse<Dictionary<string, object?>>> SaveApiKeysAsync(
         ApiKeysRequest request,
         CancellationToken cancellationToken = default) =>
-        InvokeAsync<Dictionary<string, string?>>(
+        InvokeAsync<Dictionary<string, object?>>(
             KeysCommandNames.Save,
             new KeysSaveRequest(request.Keys.ToDictionary(
                 kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase)),

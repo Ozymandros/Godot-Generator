@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO;
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Desktop.Contracts.Commands;
@@ -15,6 +16,7 @@ namespace GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
 /// </summary>
 internal sealed class PreferenceCommandHandler : ICommandHandler
 {
+    private const string AgentDebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-cb9046.log";
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<PreferenceCommandHandler> _logger;
 
@@ -98,6 +100,32 @@ internal sealed class PreferenceCommandHandler : ICommandHandler
             return Failure(envelope.CorrelationId, DesktopErrorCode.ValidationFailed,
                 "Preference.Set: 'key' is required.");
         }
+
+        #region agent log
+        try
+        {
+            var line = JsonSerializer.Serialize(new
+            {
+                sessionId = "cb9046",
+                runId = "initial",
+                hypothesisId = "H7",
+                location = "PreferenceCommandHandler.cs:HandleSetAsync",
+                message = "IPC Preference.Set received",
+                data = new
+                {
+                    key = request.Key,
+                    valueLength = request.Value?.Length ?? 0,
+                    correlationId = envelope.CorrelationId
+                },
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            });
+            File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+        }
+        catch
+        {
+            // no-op
+        }
+        #endregion
 
         var apiRequest = new SetPreferenceRequest(request.Key, request.Value);
         using var scope = _scopeFactory.CreateScope();

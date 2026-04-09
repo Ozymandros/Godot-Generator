@@ -20,6 +20,7 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
     private readonly string _filePath;
     private readonly ILogger<JsonPreferenceRepository> _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    private const string AgentDebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-cb9046.log";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="JsonPreferenceRepository"/> class.
@@ -41,7 +42,34 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
         try
         {
             var doc = await LoadAsync(cancellationToken).ConfigureAwait(false);
-            return doc.Values.TryGetValue(key, out var v) ? v : null;
+            var found = doc.Values.TryGetValue(key, out var v);
+            #region agent log
+            try
+            {
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "cb9046",
+                    runId = "initial",
+                    hypothesisId = "H1_H4",
+                    location = "JsonPreferenceRepository.cs:GetAsync",
+                    message = "Preference read",
+                    data = new
+                    {
+                        key,
+                        found,
+                        valueLength = found ? (v?.Length ?? 0) : 0,
+                        filePath = _filePath
+                    },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // no-op
+            }
+            #endregion
+            return found ? v : null;
         }
         finally
         {
@@ -57,6 +85,32 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
         try
         {
             var doc = await LoadAsync(cancellationToken).ConfigureAwait(false);
+            #region agent log
+            try
+            {
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "cb9046",
+                    runId = "initial",
+                    hypothesisId = "H1_H4",
+                    location = "JsonPreferenceRepository.cs:SetAsync",
+                    message = "Preference write request",
+                    data = new
+                    {
+                        key,
+                        isNullValue = value is null,
+                        valueLength = value?.Length ?? 0,
+                        filePath = _filePath
+                    },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // no-op
+            }
+            #endregion
             if (value is null)
             {
                 doc.Values.Remove(key);
@@ -67,6 +121,32 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
             }
 
             await SaveAsync(doc, cancellationToken).ConfigureAwait(false);
+            #region agent log
+            try
+            {
+                var line = JsonSerializer.Serialize(new
+                {
+                    sessionId = "cb9046",
+                    runId = "initial",
+                    hypothesisId = "H1_H4",
+                    location = "JsonPreferenceRepository.cs:SetAsync",
+                    message = "Preference write persisted",
+                    data = new
+                    {
+                        key,
+                        hasKeyAfterSave = doc.Values.ContainsKey(key),
+                        valueLengthAfterSave = doc.Values.TryGetValue(key, out var saved) ? (saved?.Length ?? 0) : 0,
+                        filePath = _filePath
+                    },
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                });
+                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // no-op
+            }
+            #endregion
         }
         finally
         {
@@ -115,6 +195,7 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
         var temp = _filePath + ".tmp";
         try
         {
+            var json = JsonSerializer.Serialize(doc, JsonOptions);
             await using (var stream = File.Create(temp))
             {
                 await JsonSerializer.SerializeAsync(stream, doc, JsonOptions, cancellationToken).ConfigureAwait(false);
@@ -123,7 +204,64 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
 
             if (File.Exists(_filePath))
             {
-                File.Replace(temp, _filePath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+                try
+                {
+                    // File.Replace may fail on Windows when the destination is held by another
+                    // process without delete sharing. Use Move(overwrite) as the primary replacement path.
+                    File.Move(temp, _filePath, overwrite: true);
+                    #region agent log
+                    try
+                    {
+                        var line = JsonSerializer.Serialize(new
+                        {
+                            sessionId = "cb9046",
+                            runId = "post-fix",
+                            hypothesisId = "H6",
+                            location = "JsonPreferenceRepository.cs:SaveAsync",
+                            message = "Atomic replace by move succeeded",
+                            data = new { filePath = _filePath },
+                            timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        });
+                        File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+                    }
+                    catch
+                    {
+                        // no-op
+                    }
+                    #endregion
+                    return;
+                }
+                catch (IOException moveEx)
+                {
+                    #region agent log
+                    try
+                    {
+                        var line = JsonSerializer.Serialize(new
+                        {
+                            sessionId = "cb9046",
+                            runId = "post-fix",
+                            hypothesisId = "H6",
+                            location = "JsonPreferenceRepository.cs:SaveAsync",
+                            message = "Atomic replace by move failed; using direct write fallback",
+                            data = new { filePath = _filePath, error = moveEx.Message },
+                            timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        });
+                        File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
+                    }
+                    catch
+                    {
+                        // no-op
+                    }
+                    #endregion
+
+                    // Last-resort fallback for restrictive file-share scenarios.
+                    await File.WriteAllTextAsync(_filePath, json, cancellationToken).ConfigureAwait(false);
+                    if (File.Exists(temp))
+                    {
+                        File.Delete(temp);
+                    }
+                    return;
+                }
             }
             else
             {
