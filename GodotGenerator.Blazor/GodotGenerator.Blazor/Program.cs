@@ -22,6 +22,7 @@ builder.Services.AddGodotGeneratorPersistence(builder.Configuration);
 builder.Services.AddGodotGeneratorInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IGodotGeneratorApiService, GodotGeneratorApiService>();
 builder.Services.AddScoped<ProjectStateService>();
+builder.Services.AddScoped<ElectronBridgeService>();
 builder.Services.AddSingleton<LogBufferService>();
 builder.Services.AddSingleton<StatusBannerService>();
 builder.Services.AddScoped<ElectronIpcTransport>();

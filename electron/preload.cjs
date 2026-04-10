@@ -1,69 +1,43 @@
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { exposeApiToRenderer, exposeEventsToRenderer, exposeValues } =
+  require('electron-message-bridge/preload');
+const { API_CHANNELS, EVENT_CHANNELS } = require('./ipcDefinitions.cjs');
 
 /**
- * Exposes a minimal, audited surface to the renderer (Blazor WASM) via
- * contextBridge. No Node.js or Electron internals are forwarded — only the
- * specific, named functions listed here.
+ * @file preload.cjs
+ * Bridges the typed IPC surface from the main process into the sandboxed
+ * renderer (Blazor WASM) via `contextBridge`.
  *
- * All renderer→backend command traffic flows through `invokeCommand`, which
- * forwards to `ipcMain.handle('godot:invoke-command')` in main.cjs.
+ * Three namespaces are exposed on `window`:
+ *
+ *   window.godotElectron       — request/response API (invokeCommand, showOpenDialog)
+ *   window.godotElectronEvents — push-event subscriptions (backendReady, etc.)
+ *   window.godotElectronMeta   — read-only static constants (platform)
+ *
+ * No Node.js or Electron internals are forwarded to the renderer; only the
+ * specific, named channels declared in `ipcDefinitions.cjs` are accessible.
+ *
+ * Channel-to-function mapping is derived entirely from `API_CHANNELS` /
+ * `EVENT_CHANNELS` — adding or renaming a channel in `ipcDefinitions.cjs`
+ * automatically propagates here and to main.cjs without manual edits.
+ *
+ * Event subscription functions return an **unsubscribe** callback so callers
+ * can clean up listeners when a Blazor component is disposed:
+ *
+ *   const unsub = window.godotElectronEvents.backendReady(() => { ... });
+ *   // later:
+ *   unsub();
  */
-contextBridge.exposeInMainWorld('godotElectron', {
-  /** Current platform string, e.g. `'win32'`. */
-  platform: process.platform,
 
-  /**
-   * Shows the native open-folder dialog and resolves with the selected path,
-   * or `null` if the user cancelled.
-   * @param {Electron.OpenDialogOptions} [options]
-   * @returns {Promise<string|null>}
-   */
-  showOpenDialog: (options) => ipcRenderer.invoke('godot:show-open-dialog', options),
+// Request/response API → window.godotElectron
+// Each key maps to ipcRenderer.invoke(channel, ...args) where channel === key.
+exposeApiToRenderer({ _channels: API_CHANNELS }, 'godotElectron');
 
-  /**
-   * Subscribes to folder-selected events pushed from the File menu.
-   * @param {(folderPath: string) => void} callback
-   */
-  onFolderSelected: (callback) => {
-    ipcRenderer.on('godot:folder-selected', (_e, folderPath) => {
-      callback(folderPath);
-    });
-  },
+// Push events → window.godotElectronEvents
+// Each key maps to ipcRenderer.on(channel, listener) and returns unsub fn.
+exposeEventsToRenderer({ _channels: EVENT_CHANNELS }, 'godotElectronEvents');
 
-  /**
-   * Sends a versioned IPC command to the local .NET backend via the named pipe
-   * and resolves with the response envelope.
-   *
-   * @param {string} command     Versioned command name, e.g. `Config.GetAll/v1`.
-   * @param {string|null} payloadJson  JSON-stringified command payload, or null.
-   * @returns {Promise<{success: boolean, payloadJson: string|null, errorCode: string|null, errorMessage: string|null}>}
-   */
-  invokeCommand: (command, payloadJson) =>
-    ipcRenderer.invoke('godot:invoke-command', command, payloadJson),
-
-  /**
-   * Subscribes to backend-ready notifications (e.g. after a supervised restart).
-   * @param {() => void} callback
-   */
-  onBackendReady: (callback) => {
-    ipcRenderer.on('godot:backend-ready', () => callback());
-  },
-
-  /**
-   * Subscribes to backend-crashed notifications so the UI can show a degraded-state banner.
-   * @param {(detail: {code: number|null, signal: string|null}) => void} callback
-   */
-  onBackendCrashed: (callback) => {
-    ipcRenderer.on('godot:backend-crashed', (_e, detail) => callback(detail));
-  },
-
-  /**
-   * Subscribes to the permanent backend-failure event (max restarts exceeded).
-   * @param {() => void} callback
-   */
-  onBackendFailed: (callback) => {
-    ipcRenderer.on('godot:backend-failed', () => callback());
-  },
-});
+// Static constants → window.godotElectronMeta
+// Exposed without an IPC round-trip; no Node.js globals leak to the renderer.
+exposeValues({ platform: process.platform }, 'godotElectronMeta');

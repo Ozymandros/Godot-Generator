@@ -12,6 +12,7 @@ builder.Services.AddScoped<ElectronIpcTransport>();
 builder.Services.AddScoped<GodotGeneratorClientFacade>();
 
 builder.Services.AddScoped<ProjectStateService>();
+builder.Services.AddScoped<ElectronBridgeService>();
 builder.Services.AddSingleton<LogBufferService>();
 builder.Services.AddSingleton<StatusBannerService>();
 

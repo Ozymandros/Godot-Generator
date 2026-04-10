@@ -1,6 +1,7 @@
 'use strict';
 
-const { app, BrowserWindow, Menu, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
+const { defineIpcApi, defineIpcEvents }            = require('electron-message-bridge');
 const fs               = require('fs');
 const path             = require('path');
 const backendLifecycle = require('./backendLifecycle.cjs');
@@ -50,12 +51,12 @@ function installContentSecurityPolicy() {
         return;
       }
 
-      const responseHeaders = {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [csp],
-      };
-
-      callback({ responseHeaders });
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [csp],
+        },
+      });
     });
   });
 }
@@ -63,6 +64,89 @@ function installContentSecurityPolicy() {
 function safeExistsSync(p) {
   return typeof p === 'string' && p.length > 0 && fs.existsSync(p);
 }
+
+// ── IPC API (renderer → main, request / response) ────────────────────────────
+//
+// `defineIpcApi` registers one `ipcMain.handle` per key and returns a typed
+// handle carrying the channel names.  The preload's `exposeApiToRenderer`
+// reads those channel names to wire up `ipcRenderer.invoke` proxies.
+
+const ipcApi = defineIpcApi({
+  /**
+   * Opens the native open-folder dialog and resolves with the selected path,
+   * or `null` if the user cancelled.
+   * @param {{ properties?: string[] }} [options]
+   * @returns {Promise<string|null>}
+   */
+  showOpenDialog: async (options) => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      properties: options?.properties ?? ['openDirectory'],
+    });
+    return canceled ? null : (filePaths[0] ?? null);
+  },
+
+  /**
+   * Forwards a versioned IPC command to the local .NET backend via the named
+   * pipe and resolves with the raw response envelope.
+   *
+   * @param {string}      command      Versioned command name, e.g. `Config.GetAll/v1`.
+   * @param {string|null} payloadJson  JSON-stringified payload, or null.
+   * @returns {Promise<{success: boolean, payloadJson: string|null, errorCode: string|null, errorMessage: string|null}>}
+   */
+  invokeCommand: async (command, payloadJson) => {
+    if (!backendLifecycle.isReady()) {
+      return {
+        success:      false,
+        payloadJson:  null,
+        errorCode:    'BACKEND_NOT_READY',
+        errorMessage: 'The local backend is not ready yet. Please wait and retry.',
+      };
+    }
+
+    let payload = null;
+    if (payloadJson && typeof payloadJson === 'string') {
+      try {
+        payload = JSON.parse(payloadJson);
+      } catch {
+        return {
+          success:      false,
+          payloadJson:  null,
+          errorCode:    'INVALID_PAYLOAD',
+          errorMessage: 'payloadJson is not valid JSON.',
+        };
+      }
+    }
+
+    try {
+      return await pipeBroker.invoke(command, payload);
+    } catch (err) {
+      return {
+        success:      false,
+        payloadJson:  null,
+        errorCode:    'BROKER_ERROR',
+        errorMessage: err.message,
+      };
+    }
+  },
+});
+
+// ── IPC Events (main → renderer, push) ───────────────────────────────────────
+//
+// `defineIpcEvents` stores channel names and exposes a type-safe `emit` method
+// (`webContents.send` under the hood).  The preload's `exposeEventsToRenderer`
+// reads those channel names to wire up `ipcRenderer.on` subscriptions that
+// return cleanup (unsubscribe) callbacks.
+
+const ipcEvents = defineIpcEvents({
+  /** File-menu folder selection forwarded to the active renderer window. */
+  folderSelected: (_path) => {},
+  /** Backend pipe became ready (initial start or supervised restart). */
+  backendReady:   () => {},
+  /** Backend process crashed; payload: `{ code: number|null, signal: string|null }`. */
+  backendCrashed: (_detail) => {},
+  /** Backend exceeded max restart attempts; no further supervision. */
+  backendFailed:  () => {},
+});
 
 // ── Window factory ────────────────────────────────────────────────────────────
 
@@ -93,6 +177,21 @@ function createWindow() {
 function buildMenu() {
   const isMac = process.platform === 'darwin';
 
+  /** Opens the native folder picker and pushes the result to the given window. */
+  async function pickFolderAndNotify(win) {
+    const w = win || BrowserWindow.getFocusedWindow();
+    if (!w) return;
+
+    const { canceled, filePaths } = await dialog.showOpenDialog(w, {
+      properties: ['openDirectory'],
+      title:       'Select Project Folder',
+      buttonLabel: 'Open Folder',
+    });
+    if (!canceled && filePaths[0]) {
+      ipcEvents.emit(w, 'folderSelected', filePaths[0]);
+    }
+  }
+
   return Menu.buildFromTemplate([
     ...(isMac ? [{
       label: app.name,
@@ -112,31 +211,9 @@ function buildMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'Open Project Folder...',
+          label:       'Open Project Folder…',
           accelerator: 'CmdOrCtrl+O',
-          click: async (_item, focusedWindow) => {
-            const w = focusedWindow || BrowserWindow.getFocusedWindow();
-            const { canceled, filePaths } = await dialog.showOpenDialog(w ?? undefined, {
-              properties: ['openDirectory'],
-              title: 'Select Project Folder',
-              buttonLabel: 'Open Folder',
-            });
-            if (!canceled && filePaths[0] && w) {
-              w.webContents.send('godot:folder-selected', filePaths[0]);
-            }
-          },
-        },
-        {
-          label: 'Open folder…',
-          click: async (_item, focusedWindow) => {
-            const w = focusedWindow || BrowserWindow.getFocusedWindow();
-            const { canceled, filePaths } = await dialog.showOpenDialog(w ?? undefined, {
-              properties: ['openDirectory'],
-            });
-            if (!canceled && filePaths[0] && w) {
-              w.webContents.send('godot:folder-selected', filePaths[0]);
-            }
-          },
+          click: (_item, focusedWindow) => pickFolderAndNotify(focusedWindow),
         },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },
@@ -170,22 +247,17 @@ function buildMenu() {
       label: 'Tools',
       submenu: [
         {
-          label: 'Open Developer Tools',
+          label:       'Open Developer Tools',
           accelerator: 'F12',
           click: (_item, focusedWindow) => {
             const w = focusedWindow || BrowserWindow.getFocusedWindow();
-            if (w) {
-              w.webContents.toggleDevTools();
-            }
+            if (w) w.webContents.toggleDevTools();
           },
         },
         { type: 'separator' },
         {
           label: 'Open Blazor in Browser',
-          click: async () => {
-            const url = process.env.GODOT_BLAZOR_URL || defaultDevUrl;
-            await shell.openExternal(url);
-          },
+          click: async () => shell.openExternal(process.env.GODOT_BLAZOR_URL || defaultDevUrl),
         },
       ],
     },
@@ -215,9 +287,7 @@ function buildMenu() {
       submenu: [
         {
           label: 'Repository',
-          click: async () => {
-            await shell.openExternal('https://github.com/Ozymandros/Godot-Generator-Avalonia');
-          },
+          click: async () => shell.openExternal('https://github.com/Ozymandros/Godot-Generator-Avalonia'),
         },
         {
           label: 'Development Guide',
@@ -227,10 +297,10 @@ function buildMenu() {
               await shell.openPath(docsPath);
             } else {
               await dialog.showMessageBox({
-                type: 'info',
-                title: 'Documentation',
+                type:    'info',
+                title:   'Documentation',
                 message: 'Development guide not found.',
-                detail: 'Expected docs/DEVELOPMENT.md in the repository root.',
+                detail:  'Expected docs/DEVELOPMENT.md in the repository root.',
               });
             }
           },
@@ -238,14 +308,12 @@ function buildMenu() {
         { type: 'separator' },
         {
           label: 'About Godot Generator',
-          click: async () => {
-            await dialog.showMessageBox({
-              type: 'info',
-              title: 'About Godot Generator',
-              message: 'Godot Generator',
-              detail: `Version: ${app.getVersion()}\n\nAI-powered generator for Godot projects.`,
-            });
-          },
+          click: async () => dialog.showMessageBox({
+            type:    'info',
+            title:   'About Godot Generator',
+            message: 'Godot Generator',
+            detail:  `Version: ${app.getVersion()}\n\nAI-powered generator for Godot projects.`,
+          }),
         },
       ],
     },
@@ -253,9 +321,7 @@ function buildMenu() {
 }
 
 function enableContextMenu(win) {
-  if (!win) {
-    return;
-  }
+  if (!win) return;
 
   win.webContents.on('context-menu', (_event, params) => {
     const { selectionText, isEditable } = params;
@@ -284,58 +350,6 @@ function enableContextMenu(win) {
   });
 }
 
-// ── IPC handlers ──────────────────────────────────────────────────────────────
-
-/** Dialog: open-folder (existing). */
-ipcMain.handle('godot:show-open-dialog', async (_event, options) => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({
-    properties: options?.properties ?? ['openDirectory'],
-  });
-  return canceled ? null : filePaths[0] ?? null;
-});
-
-/**
- * IPC command bus: renderer sends a versioned command name + JSON payload,
- * main forwards it to the .NET backend via the named pipe, returns the response.
- *
- * Exposed to the renderer as `window.godotElectron.invokeCommand(command, payload)`.
- */
-ipcMain.handle('godot:invoke-command', async (_event, command, payloadJson) => {
-  if (!backendLifecycle.isReady()) {
-    return {
-      success:      false,
-      payloadJson:  null,
-      errorCode:    'BACKEND_NOT_READY',
-      errorMessage: 'The local backend is not ready yet. Please wait and retry.',
-    };
-  }
-
-  let payload = null;
-  if (payloadJson && typeof payloadJson === 'string') {
-    try {
-      payload = JSON.parse(payloadJson);
-    } catch {
-      return {
-        success:      false,
-        payloadJson:  null,
-        errorCode:    'INVALID_PAYLOAD',
-        errorMessage: 'payloadJson is not valid JSON.',
-      };
-    }
-  }
-
-  try {
-    return await pipeBroker.invoke(command, payload);
-  } catch (err) {
-    return {
-      success:      false,
-      payloadJson:  null,
-      errorCode:    'BROKER_ERROR',
-      errorMessage: err.message,
-    };
-  }
-});
-
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
@@ -343,49 +357,43 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(buildMenu());
 
   // Start the .NET backend; create the window immediately so the user sees the
-  // loading UI, then the Blazor app becomes fully interactive once the pipe is ready.
+  // loading UI.  The Blazor app becomes fully interactive once the pipe is ready.
   try {
     await backendLifecycle.start();
   } catch (err) {
     console.error('[main] Backend failed to start:', err.message);
-    // The window still opens; Blazor will show a degraded-state banner.
+    // Window still opens; Blazor will show a degraded-state banner.
   }
 
   const mainWindow = createWindow();
   enableContextMenu(mainWindow);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
-  // Notify all renderer windows when the backend becomes (re-)ready after a restart.
+  // Notify all renderer windows when the backend becomes (re-)ready.
   backendLifecycle.on('ready', () => {
-    BrowserWindow.getAllWindows().forEach((w) =>
-      w.webContents.send('godot:backend-ready'));
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendReady'));
   });
 
-  // Surface backend crash events so the renderer can show a degraded-state message.
-  backendLifecycle.on('crashed', ({ code, signal }) => {
-    BrowserWindow.getAllWindows().forEach((w) =>
-      w.webContents.send('godot:backend-crashed', { code, signal }));
+  // Surface backend crash events so the renderer can show a degraded-state banner.
+  backendLifecycle.on('crashed', (detail) => {
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendCrashed', detail));
   });
 
   backendLifecycle.on('failed', () => {
-    BrowserWindow.getAllWindows().forEach((w) =>
-      w.webContents.send('godot:backend-failed'));
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendFailed'));
   });
 });
 
 app.on('before-quit', async (event) => {
   event.preventDefault();
+  ipcApi.dispose();
   await backendLifecycle.stop();
   app.exit(0);
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });

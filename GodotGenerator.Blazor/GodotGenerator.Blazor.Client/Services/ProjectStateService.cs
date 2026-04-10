@@ -61,6 +61,13 @@ public sealed class ProjectStateService(IJSRuntime js)
         }
     }
 
+    /// <summary>
+    /// Updates only the active project path, preserving the current name.
+    /// Convenience overload used when a folder is selected via the Electron File menu.
+    /// </summary>
+    public Task SetActiveProjectPathAsync(string path, CancellationToken cancellationToken = default) =>
+        SetActiveProjectAsync(ActiveProjectName, path, cancellationToken);
+
     /// <summary>Persists the active project name and path under <c>unity_generator_active_project</c>.</summary>
     public async Task SetActiveProjectAsync(string name, string path, CancellationToken cancellationToken = default)
     {

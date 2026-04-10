@@ -1,5 +1,12 @@
 ﻿@inherits LayoutComponentBase
 @using GodotGenerator.Blazor.Components.Layout
+@using GodotGenerator.Blazor.Client.Components.Layout
+
+@* Headless WASM component — initialises Electron push-event subscriptions
+   (backendReady, backendCrashed, backendFailed, folderSelected) on first render.
+   Placed before the visible shell so the bridge is ready before any child
+   component that depends on ElectronBridgeService runs. *@
+<ElectronBootstrapClient @rendermode="InteractiveWebAssembly" />
 
 <a href="#main-content" class="app-skip-link">Skip to main content</a>
 
