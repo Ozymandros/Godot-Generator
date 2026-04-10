@@ -26,6 +26,8 @@
   --app-space-nav-y: 0.45rem;    /* nav-link and list-item vertical padding */
   --app-space-badge-y: 0.2rem;   /* badge / pill vertical padding           */
   --app-space-badge-x: 0.55rem;  /* badge / pill horizontal padding         */
+  --app-space-inline-lg: 1.25rem; /* common inline gutter for banners/panels */
+  --app-space-offset-md: 0.875rem; /* icon/button inset from edges           */
   /* SmartField — default control width when Width prop is unset (instance: --smart-field-width) */
   --app-smart-field-width-default: min(100%, 48rem);
   /* Form controls — shared (override with --fluent-control-width / --fluent-control-min-height on host) */
@@ -74,6 +76,13 @@
   --app-z-backdrop: 1040;
   --app-z-sidebar-drawer: 1050;
   --app-z-skip-link: 10000; /* skip-to-content link must clear all layers */
+  --app-z-error-ui: 1000;
+  --app-error-ui-padding-top: 0.625rem;
+  --app-error-ui-padding-right: var(--app-space-inline-lg);
+  --app-error-ui-padding-bottom: var(--app-space-md);
+  --app-error-ui-padding-left: var(--app-space-inline-lg);
+  --app-error-ui-dismiss-top: var(--app-space-sm);
+  --app-error-ui-dismiss-right: var(--app-space-offset-md);
   /* ── Overlay / surface hover alphas ──────────────────────────────────────
      Use these tokens instead of raw rgba(255,255,255,0.0x) for hover/separator
      surfaces so light-theme overrides apply automatically.               */
@@ -118,6 +127,12 @@
   --app-text-size-icon-lg: 1.25rem;    /* hamburger / action icon in toolbar */
   --app-text-size-title-sm: 1.15rem;    /* section title (h3-level)          */
   --app-text-size-title: 1.125rem;      /* page / panel title (h2-level)     */
+  /* ── Font-weight scale ───────────────────────────────────────────────── */
+  --app-font-weight-regular: 400;    /* default body text                  */
+  --app-font-weight-medium: 500;     /* labels and secondary emphasis      */
+  --app-font-weight-semibold: 600;   /* primary UI emphasis                */
+  --app-font-weight-bold: 700;       /* strong emphasis and kickers        */
+  --app-font-weight-extra-bold: 800; /* rare maximum emphasis              */
   /* ── Opacity scale ──────────────────────────────────────────────────────
      Named by visual impact, not raw value. Prefer these over bare
      `opacity: 0.85` literals so theme adjustments stay in one place.    */
@@ -260,7 +275,7 @@ fluent-card.app-card-interactive:hover {
 .app-field-label {
   margin-bottom: var(--app-space-xs);
   font-size: var(--app-text-size-body);
-  font-weight: 500;
+  font-weight: var(--app-font-weight-medium);
   color: var(--app-color-fg);
 }
 
@@ -525,7 +540,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-fluent-label-strong {
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   margin-bottom: var(--app-space-sm);
 }
 
@@ -559,7 +574,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .app-project-header-label {
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .app-path-break {
@@ -577,7 +592,7 @@ fluent-text-area.app-textarea-log::part(control) {
   color: var(--app-color-fg);
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-md);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   text-decoration: none;
 }
 
@@ -706,7 +721,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .app-shell__titlebar-text {
   margin: 0;
   font-size: var(--app-text-size-title);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   letter-spacing: 0.02em; /* intentional: wide tracking on app name in titlebar */
   color: var(--neutral-foreground-rest, var(--app-color-fg));
   flex: 1;
@@ -784,7 +799,7 @@ fluent-text-area.app-textarea-log::part(control) {
   border-color: var(--app-color-accent-border);
   box-shadow: inset 3px 0 0 var(--app-accent);
   color: var(--app-color-fg) !important;
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .app-nav__text {
@@ -821,7 +836,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-hub__title {
   margin: 0 0 var(--app-space-xs) 0;
   font-size: clamp(1.25rem, 2.5vw, 1.5rem);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   letter-spacing: 0.01em; /* intentional: barely-visible tracking on responsive display heading */
 }
 
@@ -888,7 +903,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-tab--active {
   color: var(--app-accent);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   box-shadow: inset 0 -2px 0 var(--app-accent);
   background: var(--app-color-accent-subtle);
 }
@@ -910,7 +925,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-card__kicker {
   font-size: var(--app-text-size-kicker);
-  font-weight: 700;
+  font-weight: var(--app-font-weight-bold);
   letter-spacing: var(--app-letter-spacing-kicker);
   text-transform: uppercase;
   color: var(--app-accent);
@@ -924,7 +939,7 @@ fluent-text-area.app-textarea-log::part(control) {
   gap: var(--app-space-sm);
   margin: 0 0 var(--app-space-lg) 0;
   font-size: var(--app-text-size-title-md);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .settings-grid-2 {
@@ -1027,7 +1042,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-providers__kicker {
   font-size: var(--app-text-size-kicker);
-  font-weight: 700;
+  font-weight: var(--app-font-weight-bold);
   letter-spacing: var(--app-letter-spacing-kicker);
   color: var(--app-accent);
 }
@@ -1083,7 +1098,7 @@ fluent-text-area.app-textarea-log::part(control) {
   border-color: var(--app-color-accent-border);
   background: var(--app-color-accent-subtle);
   color: var(--app-accent);
-  font-weight: 500;
+  font-weight: var(--app-font-weight-medium);
 }
 
 .settings-providers__id {
@@ -1167,7 +1182,7 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-models__title {
   margin: 0 0 var(--app-space-xs) 0;
   font-size: var(--app-text-size-title-sm);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .settings-models__subtitle {
@@ -1214,7 +1229,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .settings-models__table th {
   color: var(--app-color-fg-muted);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   font-size: var(--app-text-size-caption);
   text-transform: uppercase;
   letter-spacing: var(--app-letter-spacing-label);
@@ -1240,7 +1255,7 @@ fluent-text-area.app-textarea-log::part(control) {
   padding: var(--app-space-badge-y) var(--app-space-badge-x);
   border-radius: var(--app-radius-pill);
   font-size: var(--app-text-size-kicker);
-  font-weight: 700;
+  font-weight: var(--app-font-weight-bold);
   letter-spacing: var(--app-letter-spacing-badge);
 }
 
@@ -1319,7 +1334,7 @@ fluent-text-area.app-textarea-log::part(control) {
   margin: 0;
   padding: var(--app-space-md) var(--app-space-lg) 0;
   font-size: var(--app-text-size-kicker);
-  font-weight: 700;
+  font-weight: var(--app-font-weight-bold);
   letter-spacing: var(--app-letter-spacing-kicker);
   color: var(--app-accent);
 }
@@ -1372,13 +1387,13 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-prompts__title {
   margin: 0;
   font-size: var(--app-text-size-title-sm);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .settings-prompts__reset {
   color: var(--app-accent) !important;
   border-color: var(--app-color-accent-border-strong) !important;
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   font-size: var(--app-text-size-caption);
   letter-spacing: var(--app-letter-spacing-badge);
 }
@@ -1413,7 +1428,7 @@ fluent-text-area.app-textarea-log::part(control) {
   padding: var(--app-space-badge-y) var(--app-space-badge-x);
   border-radius: var(--app-radius-sm);
   font-size: var(--app-text-size-badge);
-  font-weight: 800;
+  font-weight: var(--app-font-weight-extra-bold);
   letter-spacing: var(--app-letter-spacing-kicker);
 }
 
@@ -1510,11 +1525,11 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-secrets__title {
   margin: 0;
   font-size: var(--app-text-size-title-sm);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .settings-secrets__cta {
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   letter-spacing: var(--app-letter-spacing-label);
   white-space: nowrap;
 }
@@ -1562,7 +1577,7 @@ fluent-text-area.app-textarea-log::part(control) {
   text-align: start;
   padding: var(--app-space-md) var(--app-space-md);
   border-bottom: 1px solid var(--neutral-stroke-divider);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   color: var(--app-color-fg-muted);
   font-size: var(--app-text-size-caption);
   letter-spacing: var(--app-letter-spacing-label);
@@ -1580,7 +1595,7 @@ fluent-text-area.app-textarea-log::part(control) {
 }
 
 .settings-secrets__handle {
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   word-break: break-word;
 }
 
@@ -1771,7 +1786,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .generation-workspace__result-title {
   margin: var(--app-space-lg) 0 var(--app-space-sm) 0;
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
 }
 
 .advanced-options-section__stack {
@@ -1794,7 +1809,7 @@ fluent-text-area.app-textarea-log::part(control) {
 
 .advanced-options-section__summary {
   cursor: pointer;
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   list-style: none;
   display: flex;
   align-items: center;
@@ -2017,7 +2032,7 @@ h1:focus {
 .home-hero__title {
   margin: 0;
   font-size: clamp(1.5rem, 3vw, 2rem);
-  font-weight: 700;
+  font-weight: var(--app-font-weight-bold);
   letter-spacing: -0.01em; /* intentional: negative tracking on display text */
   color: var(--app-color-fg);
   line-height: var(--app-line-height-tight);
@@ -2067,7 +2082,7 @@ h1:focus {
 .home-card__title {
   margin: 0 0 var(--app-space-xs) 0;
   font-size: var(--app-text-size-base);
-  font-weight: 600;
+  font-weight: var(--app-font-weight-semibold);
   color: var(--app-color-fg);
   line-height: var(--app-line-height-snug);
 }
@@ -2161,4 +2176,5 @@ h1:focus {
   --app-badge-neutral-border: rgba(0, 0, 0, 0.12);
 
   /* Bootstrap snippet */
-  --bs-secondary-color: var(--app-color-fg
+  --bs-secondary-color: var(--app-color-fg-muted);
+}

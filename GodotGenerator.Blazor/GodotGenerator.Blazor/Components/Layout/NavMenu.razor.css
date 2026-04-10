@@ -20,16 +20,16 @@
     flex-shrink: 0;
     width: 1.125rem;
     height: 1.125rem;
-    opacity: 0.65;
-    transition: opacity 0.12s ease;
+    opacity: var(--app-opacity-soft);
+    transition: opacity var(--app-transition-fast);
 }
 
 ::deep .app-nav__link:hover .nav-icon {
-    opacity: 0.9;
+    opacity: var(--app-opacity-strong);
 }
 
 ::deep .app-nav__link.active .nav-icon {
-    opacity: 1;
+    opacity: var(--app-opacity-near-full);
 }
 
 /* ── Active pill ─────────────────────────────────────────────────────────── */
@@ -41,5 +41,5 @@
 /* ── Footer repo link ───────────────────────────────────────────────────── */
 ::deep .app-nav__repo {
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--app-space-sm);
 }
