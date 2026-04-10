@@ -4,11 +4,11 @@
 <div class="settings-models">
     @if (!string.IsNullOrEmpty(_panelError))
     {
-        <FluentMessageBar Intent="MessageIntent.Error" Class="settings-models__msg">@_panelError</FluentMessageBar>
+        <AppMessageBar Intent="MessageIntent.Error" Class="settings-models__msg">@_panelError</AppMessageBar>
     }
     @if (!string.IsNullOrEmpty(_panelInfo))
     {
-        <FluentMessageBar Intent="MessageIntent.Success" Class="settings-models__msg">@_panelInfo</FluentMessageBar>
+        <AppMessageBar Intent="MessageIntent.Success" Class="settings-models__msg">@_panelInfo</AppMessageBar>
     }
 
     <div class="settings-models__head">
@@ -424,3 +424,4 @@
             Modality = m.Modality,
         };
 }
+

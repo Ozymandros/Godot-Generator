@@ -22,6 +22,7 @@ public sealed class GodotKernelFactory(
     private readonly SemaphoreSlim _initLock = new(1, 1);
     private readonly Dictionary<string, Kernel> _kernelsByProviderAndModel = new(StringComparer.Ordinal);
     private bool _pluginInitialized;
+    private bool _pluginInitializationSkipped;
 
     /// <inheritdoc />
     public async Task<Kernel> GetOrCreateKernelAsync(
@@ -51,10 +52,20 @@ public sealed class GodotKernelFactory(
 
             var kernel = BuildKernel(apiKey!, modelId);
             _kernelsByProviderAndModel[cacheKey] = kernel;
-            logger.LogInformation(
-                "Kernel ready with Godot MCP tools for provider {Provider}, model {ModelId}.",
-                effectiveProvider,
-                modelId);
+            if (_pluginInitializationSkipped)
+            {
+                logger.LogInformation(
+                    "Kernel ready without Godot MCP tools for provider {Provider}, model {ModelId}.",
+                    effectiveProvider,
+                    modelId);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Kernel ready with Godot MCP tools for provider {Provider}, model {ModelId}.",
+                    effectiveProvider,
+                    modelId);
+            }
             return kernel;
         }
         finally
@@ -154,6 +165,17 @@ public sealed class GodotKernelFactory(
         }
         catch (Exception ex)
         {
+            if (IsKnownToolSchemaShapeMismatch(ex))
+            {
+                _pluginInitializationSkipped = true;
+                _pluginInitialized = true;
+                logger.LogWarning(
+                    ex,
+                    "Detected a known Godot MCP tool-schema mismatch (string vs array). " +
+                    "Continuing without Godot MCP plugin tools for this process.");
+                return;
+            }
+
             logger.LogError(ex, "Failed during Godot MCP plugin initialization phase.");
             throw new InvalidOperationException("Failed to initialize Godot MCP plugin.", ex);
         }
@@ -174,8 +196,17 @@ public sealed class GodotKernelFactory(
             kernelBuilder.AddOpenAIChatCompletion(modelId, apiKey);
 
             var kernel = kernelBuilder.Build();
-            kernel.RegisterGodotTools(rootServices);
-            logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+            if (_pluginInitializationSkipped)
+            {
+                logger.LogWarning(
+                    "Godot MCP plugin tools are unavailable due to schema mismatch; kernel created without Godot tools for model {ModelId}.",
+                    modelId);
+            }
+            else
+            {
+                kernel.RegisterGodotTools(rootServices);
+                logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+            }
             return kernel;
         }
         catch (Exception ex)
@@ -183,5 +214,15 @@ public sealed class GodotKernelFactory(
             logger.LogError(ex, "Failed during kernel build or Godot tool registration for model {ModelId}.", modelId);
             throw new InvalidOperationException("Failed to build Semantic Kernel with Godot tools.", ex);
         }
+    }
+
+    private static bool IsKnownToolSchemaShapeMismatch(Exception ex)
+    {
+        var message = ex.Message;
+        var stack = ex.StackTrace;
+        return message.Contains("requires an element of type 'String'", StringComparison.OrdinalIgnoreCase)
+            && message.Contains("target element has type 'Array'", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(stack)
+            && stack.Contains("GodotMcpToolDefinitionMapper.ParseInputSchema", StringComparison.Ordinal);
     }
 }

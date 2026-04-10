@@ -5,8 +5,8 @@
     "context": ".."
   },
   "remoteUser": "root",
-  "workspaceFolder": "/workspaces/Godot-Generator-Avalonia",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/Godot-Generator-Avalonia,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/Godot-Generator",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/Godot-Generator,type=bind,consistency=cached",
   "customizations": {
     "vscode": {
       "settings": {

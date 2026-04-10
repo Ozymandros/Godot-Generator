@@ -1,77 +1,118 @@
 .page {
-    position: relative;
-    display: flex;
-    flex-direction: column;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 main {
-    flex: 1;
+  flex: 1;
 }
 
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+  background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
 }
 
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
-    display: flex;
-    align-items: center;
+  background-color: #f7f7f7;
+  border-bottom: 1px solid #d6d5d5;
+  justify-content: flex-end;
+  height: 3.5rem;
+  display: flex;
+  align-items: center;
 }
 
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
+.top-row ::deep a,
+.top-row ::deep .btn-link {
+  white-space: nowrap;
+  margin-left: 1.5rem;
+  text-decoration: none;
+}
 
-    .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
-    }
+.top-row ::deep a:hover,
+.top-row ::deep .btn-link:hover {
+  text-decoration: underline;
+}
 
-    .top-row ::deep a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+.top-row ::deep a:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 @media (max-width: 640.98px) {
-    .top-row {
-        justify-content: space-between;
-    }
+  .top-row {
+    justify-content: space-between;
+  }
 
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        margin-left: 0;
-    }
+  .top-row ::deep a,
+  .top-row ::deep .btn-link {
+    margin-left: 0;
+  }
 }
 
 @media (min-width: 641px) {
-    .page {
-        flex-direction: row;
-    }
+  .page {
+    flex-direction: row;
+  }
 
-    .sidebar {
-        width: 250px;
-        height: 100vh;
-        position: sticky;
-        top: 0;
-    }
+  .sidebar {
+    width: 250px;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+  }
 
-    .top-row {
-        position: sticky;
-        top: 0;
-        z-index: 1;
-    }
+  .top-row {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 
-    .top-row.auth ::deep a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
-    }
+  .top-row.auth ::deep a:first-child {
+    flex: 1;
+    text-align: right;
+    width: 0;
+  }
 
-    .top-row, article {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
-    }
+  .top-row,
+  article {
+    padding-left: 2rem !important;
+    padding-right: 1.5rem !important;
+  }
+}
+
+/* Fluent MessageBar overrides aligned with app theme tokens. */
+::deep .fluent-messagebar-message.intent-success {
+  background-color: var(--app-color-status-ok, #3fcc7a) !important;
+  border: 1px solid var(--app-color-status-ok-border, #9fd89f) !important;
+  color: var(--app-color-status-ok-fg, #102313) !important;
+  font-weight: var(--app-font-weight-semibold, 600) !important;
+  font-size: var(--app-text-size-statusbar, 0.7813rem) !important;
+  line-height: var(--app-line-height-tight, 1.2) !important;
+}
+
+::deep .fluent-messagebar-message.intent-warning {
+  background-color: var(--app-color-status-warn, #f5b83d) !important;
+  border: 1px solid var(--app-color-status-warn-border, #f1cd80) !important;
+  color: var(--app-color-status-warn-fg, #2f2208) !important;
+  font-weight: var(--app-font-weight-semibold, 600) !important;
+  font-size: var(--app-text-size-statusbar, 0.7813rem) !important;
+  line-height: var(--app-line-height-tight, 1.2) !important;
+}
+
+::deep .fluent-messagebar-message.intent-error {
+  background-color: var(--app-color-validation-error, #e50000) !important;
+  border: 1px solid var(--app-color-validation-error-border, #f08a8a) !important;
+  color: var(--app-color-validation-error-fg, #ffffff) !important;
+  font-weight: var(--app-font-weight-semibold, 600) !important;
+  font-size: var(--app-text-size-statusbar, 0.7813rem) !important;
+  line-height: var(--app-line-height-tight, 1.2) !important;
+}
+
+::deep .fluent-messagebar-message.intent-info {
+  background-color: var(--app-color-accent-subtle, rgba(91, 143, 212, 0.14)) !important;
+  border: 1px solid var(--app-color-accent-border, rgba(91, 143, 212, 0.32)) !important;
+  color: var(--app-color-accent, #5b8fd4) !important;
+  font-weight: var(--app-font-weight-semibold, 600) !important;
+  font-size: var(--app-text-size-statusbar, 0.7813rem) !important;
+  line-height: var(--app-line-height-tight, 1.2) !important;
 }

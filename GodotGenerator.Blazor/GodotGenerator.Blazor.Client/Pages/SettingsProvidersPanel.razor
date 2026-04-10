@@ -4,11 +4,11 @@
 <div class="settings-providers">
     @if (!string.IsNullOrEmpty(_panelError))
     {
-        <FluentMessageBar Intent="MessageIntent.Error" Class="settings-providers__msg">@_panelError</FluentMessageBar>
+        <AppMessageBar Intent="MessageIntent.Error" Class="settings-providers__msg">@_panelError</AppMessageBar>
     }
     @if (!string.IsNullOrEmpty(_panelInfo))
     {
-        <FluentMessageBar Intent="MessageIntent.Success" Class="settings-providers__msg">@_panelInfo</FluentMessageBar>
+        <AppMessageBar Intent="MessageIntent.Success" Class="settings-providers__msg">@_panelInfo</AppMessageBar>
     }
 
     <div class="settings-providers__layout">
@@ -540,3 +540,4 @@
             Modalities = [.. p.Modalities],
         };
 }
+

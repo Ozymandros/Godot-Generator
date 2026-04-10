@@ -30,7 +30,7 @@
     @if (_browseHint is not null)
     {
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="4" Class="app-content-wide">
-            <FluentMessageBar Intent="MessageIntent.Info">@_browseHint</FluentMessageBar>
+            <AppMessageBar Intent="MessageIntent.Info">@_browseHint</AppMessageBar>
             <FluentButton Appearance="Appearance.Lightweight" OnClick="DismissBrowseHintAsync">Dismiss</FluentButton>
         </FluentStack>
     }
@@ -145,3 +145,4 @@
         Bridge.FolderSelected -= OnFolderSelectedFromMenu;
     }
 }
+

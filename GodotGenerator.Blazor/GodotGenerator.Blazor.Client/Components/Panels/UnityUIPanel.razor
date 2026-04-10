@@ -34,7 +34,7 @@
 
 @if (!string.IsNullOrEmpty(_error))
 {
-    <FluentMessageBar Intent="MessageIntent.Error">@_error</FluentMessageBar>
+    <AppMessageBar Intent="MessageIntent.Error">@_error</AppMessageBar>
 }
 
 @if (!string.IsNullOrEmpty(_result))
@@ -163,3 +163,4 @@
         return options.Count > 0 ? options : null;
     }
 }
+

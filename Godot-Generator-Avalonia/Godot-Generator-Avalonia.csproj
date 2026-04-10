@@ -29,6 +29,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.5" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.92.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\GodotGenerator.Application\GodotGenerator.Application.csproj" />

@@ -63,7 +63,7 @@
 
             @if (!string.IsNullOrEmpty(_error))
             {
-                <FluentMessageBar Intent="MessageIntent.Error">@_error</FluentMessageBar>
+                <AppMessageBar Intent="MessageIntent.Error">@_error</AppMessageBar>
             }
         </div>
 
@@ -236,3 +236,4 @@
         }
     }
 }
+

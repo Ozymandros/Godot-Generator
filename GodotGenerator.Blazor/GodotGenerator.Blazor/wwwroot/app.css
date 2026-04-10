@@ -107,6 +107,16 @@
   --app-color-border-hover: rgba(255, 255, 255, 0.13);
   /* ── Status glow ─────────────────────────────────────────────────────────*/
   --app-color-status-ok-glow: rgba(63, 204, 122, 0.55);
+  --app-color-status-ok-border: rgba(63, 204, 122, 0.4);
+  --app-color-status-ok-fg: #c9f2dc;
+  --app-color-status-info: var(--app-color-accent-subtle);
+  --app-color-status-info-border: var(--app-color-accent-border);
+  --app-color-status-info-fg: var(--app-color-accent);
+  --app-color-status-warn: rgba(245, 184, 61, 0.16);
+  --app-color-status-warn-border: rgba(245, 184, 61, 0.38);
+  --app-color-status-warn-fg: #f7d282;
+  --app-color-validation-error-border: rgba(229, 0, 0, 0.45);
+  --app-color-validation-error-fg: #ffd6d6;
   /* ── Validation success ──────────────────────────────────────────────────*/
   --app-color-validation-success: #26b050;
   /* ── Typography scale ────────────────────────────────────────────────────
@@ -851,6 +861,53 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-hub__banner {
   margin-bottom: var(--app-space-md);
   max-width: var(--app-content-max);
+}
+
+/* Shared app wrapper over FluentMessageBar for stable theming control. */
+.app-messagebar,
+.app-messagebar > fluent-message-bar,
+.app-messagebar > .app-messagebar__inner,
+.app-messagebar .fluent-messagebar-message {
+  font-weight: var(--app-font-weight-semibold) !important;
+  font-size: var(--app-text-size-statusbar) !important;
+  line-height: var(--app-line-height-tight) !important;
+  border-radius: var(--app-radius-md) !important;
+}
+
+.app-messagebar.app-messagebar--success,
+.app-messagebar.app-messagebar--success > fluent-message-bar,
+.app-messagebar.app-messagebar--success > .app-messagebar__inner,
+.app-messagebar.app-messagebar--success .fluent-messagebar-message {
+  background-color: var(--app-color-status-ok) !important;
+  border: 1px solid var(--app-color-status-ok-border) !important;
+  color: var(--app-color-status-ok-fg) !important;
+}
+
+.app-messagebar.app-messagebar--warning,
+.app-messagebar.app-messagebar--warning > fluent-message-bar,
+.app-messagebar.app-messagebar--warning > .app-messagebar__inner,
+.app-messagebar.app-messagebar--warning .fluent-messagebar-message {
+  background-color: var(--app-color-status-warn) !important;
+  border: 1px solid var(--app-color-status-warn-border) !important;
+  color: var(--app-color-status-warn-fg) !important;
+}
+
+.app-messagebar.app-messagebar--error,
+.app-messagebar.app-messagebar--error > fluent-message-bar,
+.app-messagebar.app-messagebar--error > .app-messagebar__inner,
+.app-messagebar.app-messagebar--error .fluent-messagebar-message {
+  background-color: var(--app-color-validation-error) !important;
+  border: 1px solid var(--app-color-validation-error-border) !important;
+  color: var(--app-color-validation-error-fg) !important;
+}
+
+.app-messagebar.app-messagebar--info,
+.app-messagebar.app-messagebar--info > fluent-message-bar,
+.app-messagebar.app-messagebar--info > .app-messagebar__inner,
+.app-messagebar.app-messagebar--info .fluent-messagebar-message {
+  background-color: var(--app-color-status-info) !important;
+  border: 1px solid var(--app-color-status-info-border) !important;
+  color: var(--app-color-status-info-fg) !important;
 }
 
 .settings-tab-strip {
