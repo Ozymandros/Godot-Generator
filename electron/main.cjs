@@ -2,8 +2,10 @@
 
 const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
 const { defineIpcApi, defineIpcEvents }            = require('electron-message-bridge');
-const fs               = require('fs');
-const path             = require('path');
+const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
+  require('electron-message-bridge/menus');
+const fs   = require('fs');
+const path = require('path');
 const backendLifecycle = require('./backendLifecycle.cjs');
 const pipeBroker       = require('./pipeBroker.cjs');
 
@@ -39,11 +41,7 @@ function installContentSecurityPolicy() {
   app.on('session-created', (session) => {
     session.webRequest.onHeadersReceived((details, callback) => {
       const currentOrigin = (() => {
-        try {
-          return new URL(details.url).origin;
-        } catch {
-          return '';
-        }
+        try { return new URL(details.url).origin; } catch { return ''; }
       })();
 
       if (currentOrigin !== blazorOrigin) {
@@ -157,7 +155,9 @@ function createWindow() {
     webPreferences: {
       preload:          path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
-      sandbox:          true,
+      // Preload uses CommonJS `require(...)` (electron-message-bridge + local modules).
+      // With sandbox enabled, preload require surface is restricted and bridge injection can fail.
+      sandbox:          false,
     },
   });
 
@@ -173,26 +173,127 @@ function createWindow() {
 }
 
 // ── App menu ──────────────────────────────────────────────────────────────────
+//
+// The cross-platform menu structure lives in menu.json as `DeclarativeMenuItem[]`.
+// Each clickable item carries an `actionId` that is resolved here in the action
+// registry using typed descriptors from `electron-message-bridge/menus`:
+//
+//   commandAction(fn) — local async logic, main-process only
+//   serviceAction(fn) — shared service function also called by IPC handlers
+//   emitAction(fn)    — zero-arg closure that fires an ipcEvents.emit(...)
+//
+// Platform-specific items that cannot be expressed in a static JSON (macOS app
+// menu needing `app.name`, macOS Speech submenu, Windows-only Window menu) are
+// assembled inline and merged around the JSON-derived template.
 
-function buildMenu() {
+/**
+ * Loads `menu.json`, builds the typed action registry, and sets the application
+ * menu.  Must be awaited inside `app.whenReady()`.
+ */
+async function buildAndSetMenuAsync() {
   const isMac = process.platform === 'darwin';
 
-  /** Opens the native folder picker and pushes the result to the given window. */
-  async function pickFolderAndNotify(win) {
-    const w = win || BrowserWindow.getFocusedWindow();
-    if (!w) return;
+  // ── Action registry ─────────────────────────────────────────────────────────
+  // Maps each actionId declared in menu.json to a typed ActionDescriptor.
+  // Errors thrown by handlers are caught and logged by the bridge resolver.
 
-    const { canceled, filePaths } = await dialog.showOpenDialog(w, {
-      properties: ['openDirectory'],
-      title:       'Select Project Folder',
-      buttonLabel: 'Open Folder',
-    });
-    if (!canceled && filePaths[0]) {
-      ipcEvents.emit(w, 'folderSelected', filePaths[0]);
+  const actions = {
+    /**
+     * File › Open Project Folder…
+     * Shows a native open-directory dialog; emits `folderSelected` to the
+     * focused renderer so the project-header component auto-populates the path.
+     */
+    'file.openProjectFolder': commandAction(async () => {
+      const w = BrowserWindow.getFocusedWindow();
+      if (!w) return;
+      const { canceled, filePaths } = await dialog.showOpenDialog(w, {
+        properties: ['openDirectory'],
+        title:       'Select Project Folder',
+        buttonLabel: 'Open Folder',
+      });
+      if (!canceled && filePaths[0]) {
+        ipcEvents.emit(w, 'folderSelected', filePaths[0]);
+      }
+    }),
+
+    /**
+     * Tools › Open Developer Tools
+     * Toggles the Chromium DevTools panel for the focused window.
+     */
+    'tools.devtools': commandAction(() => {
+      const w = BrowserWindow.getFocusedWindow();
+      if (w) w.webContents.toggleDevTools();
+    }),
+
+    /**
+     * Tools › Open Blazor in Browser
+     * Opens the Kestrel dev URL in the system default browser.
+     */
+    'tools.openInBrowser': commandAction(async () => {
+      await shell.openExternal(process.env.GODOT_BLAZOR_URL || defaultDevUrl);
+    }),
+
+    /**
+     * Help › Repository
+     * Opens the project GitHub page in the system browser.
+     */
+    'help.repository': commandAction(async () => {
+      await shell.openExternal('https://github.com/Ozymandros/Godot-Generator-Avalonia');
+    }),
+
+    /**
+     * Help › Development Guide
+     * Opens docs/DEVELOPMENT.md with the system viewer, or shows an info
+     * dialog if the file does not exist (e.g. in production bundles).
+     */
+    'help.devGuide': commandAction(async () => {
+      const docsPath = path.join(__dirname, '..', 'docs', 'DEVELOPMENT.md');
+      if (safeExistsSync(docsPath)) {
+        await shell.openPath(docsPath);
+      } else {
+        await dialog.showMessageBox({
+          type:    'info',
+          title:   'Documentation',
+          message: 'Development guide not found.',
+          detail:  'Expected docs/DEVELOPMENT.md in the repository root.',
+        });
+      }
+    }),
+
+    /**
+     * Help › About Godot Generator
+     * Shows a native about dialog with the app version.
+     */
+    'help.about': commandAction(async () => {
+      await dialog.showMessageBox({
+        type:    'info',
+        title:   'About Godot Generator',
+        message: 'Godot Generator',
+        detail:  `Version: ${app.getVersion()}\n\nAI-powered generator for Godot projects.`,
+      });
+    }),
+  };
+
+  // ── Load declarative spec and build cross-platform template ─────────────────
+
+  const spec = await loadMenuSpecFromFile(path.join(__dirname, 'menu.json'));
+  const crossPlatform = buildMenuTemplate(spec.items, { actions });
+
+  // macOS Speech submenu: append to the Edit menu (not in JSON — macOS-only).
+  if (isMac) {
+    const editMenu = crossPlatform.find((m) => m.label === 'Edit');
+    if (editMenu?.submenu && Array.isArray(editMenu.submenu)) {
+      editMenu.submenu.push(
+        { type: 'separator' },
+        { label: 'Speech', submenu: [{ role: 'startSpeaking' }, { role: 'stopSpeaking' }] },
+      );
     }
   }
 
-  return Menu.buildFromTemplate([
+  // ── Assemble final platform-aware template ───────────────────────────────────
+
+  const template = [
+    // macOS: prepend the app-name menu (requires runtime `app.name`, not in JSON).
     ...(isMac ? [{
       label: app.name,
       submenu: [
@@ -207,74 +308,11 @@ function buildMenu() {
         { role: 'quit' },
       ],
     }] : []),
-    {
-      label: 'File',
-      submenu: [
-        {
-          label:       'Open Project Folder…',
-          accelerator: 'CmdOrCtrl+O',
-          click: (_item, focusedWindow) => pickFolderAndNotify(focusedWindow),
-        },
-        { type: 'separator' },
-        isMac ? { role: 'close' } : { role: 'quit' },
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        ...(isMac
-          ? [
-            { role: 'pasteAndMatchStyle' },
-            { role: 'delete' },
-            { role: 'selectAll' },
-            { type: 'separator' },
-            { label: 'Speech', submenu: [{ role: 'startSpeaking' }, { role: 'stopSpeaking' }] },
-          ]
-          : [
-            { role: 'delete' },
-            { type: 'separator' },
-            { role: 'selectAll' },
-          ]),
-      ],
-    },
-    {
-      label: 'Tools',
-      submenu: [
-        {
-          label:       'Open Developer Tools',
-          accelerator: 'F12',
-          click: (_item, focusedWindow) => {
-            const w = focusedWindow || BrowserWindow.getFocusedWindow();
-            if (w) w.webContents.toggleDevTools();
-          },
-        },
-        { type: 'separator' },
-        {
-          label: 'Open Blazor in Browser',
-          click: async () => shell.openExternal(process.env.GODOT_BLAZOR_URL || defaultDevUrl),
-        },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
-      ],
-    },
+
+    // Cross-platform items resolved from menu.json.
+    ...crossPlatform,
+
+    // Windows/Linux: append a Window menu (macOS has this built-in via roles).
     ...(!isMac ? [{
       label: 'Window',
       submenu: [
@@ -282,43 +320,12 @@ function buildMenu() {
         { role: 'close' },
       ],
     }] : []),
-    {
-      role: 'help',
-      submenu: [
-        {
-          label: 'Repository',
-          click: async () => shell.openExternal('https://github.com/Ozymandros/Godot-Generator-Avalonia'),
-        },
-        {
-          label: 'Development Guide',
-          click: async () => {
-            const docsPath = path.join(__dirname, '..', 'docs', 'DEVELOPMENT.md');
-            if (safeExistsSync(docsPath)) {
-              await shell.openPath(docsPath);
-            } else {
-              await dialog.showMessageBox({
-                type:    'info',
-                title:   'Documentation',
-                message: 'Development guide not found.',
-                detail:  'Expected docs/DEVELOPMENT.md in the repository root.',
-              });
-            }
-          },
-        },
-        { type: 'separator' },
-        {
-          label: 'About Godot Generator',
-          click: async () => dialog.showMessageBox({
-            type:    'info',
-            title:   'About Godot Generator',
-            message: 'Godot Generator',
-            detail:  `Version: ${app.getVersion()}\n\nAI-powered generator for Godot projects.`,
-          }),
-        },
-      ],
-    },
-  ]);
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
+
+// ── Context menu (dynamic — stays inline, not suitable for a static JSON spec) ──
 
 function enableContextMenu(win) {
   if (!win) return;
@@ -354,7 +361,9 @@ function enableContextMenu(win) {
 
 app.whenReady().then(async () => {
   installContentSecurityPolicy();
-  Menu.setApplicationMenu(buildMenu());
+
+  // Build and apply the application menu from the declarative JSON spec.
+  await buildAndSetMenuAsync();
 
   // Start the .NET backend; create the window immediately so the user sees the
   // loading UI.  The Blazor app becomes fully interactive once the pipe is ready.

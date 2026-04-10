@@ -107,7 +107,7 @@ public sealed class ElectronIpcTransport : IGodotGeneratorClientTransport
         try
         {
             envelope = await _js.InvokeAsync<IpcResponseJs?>(
-                "godotElectron.invokeCommand",
+                "godotElectronInterop.invokeCommand",
                 cancellationToken,
                 command,
                 payloadJson);
