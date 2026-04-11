@@ -98,22 +98,22 @@ internal sealed class GenerateCommandHandler : ICommandHandler
         CancellationToken ct) =>
         command switch
         {
-            GenerateCommandNames.Text         => apiService.GenerateTextAsync(request, ct),
-            GenerateCommandNames.Code         => apiService.GenerateCodeAsync(request, ct),
-            GenerateCommandNames.Image        => apiService.GenerateImageAsync(request, ct),
-            GenerateCommandNames.Audio        => apiService.GenerateAudioAsync(request, ct),
-            GenerateCommandNames.Video        => apiService.GenerateVideoAsync(request, ct),
-            GenerateCommandNames.Sprites      => apiService.GenerateSpritesAsync(request, ct),
-            GenerateCommandNames.GodotUi       => apiService.GenerateGodotUiAsync(request, ct),
-            GenerateCommandNames.GodotPhysics  => apiService.GenerateGodotPhysicsAsync(request, ct),
-            GenerateCommandNames.GodotProject  => apiService.GenerateGodotProjectAsync(request, ct),
-            GenerateCommandNames.Scenes        => apiService.CreateSceneAsync(request, ct),
-            GenerateCommandNames.Animations    => apiService.GenerateAnimationsAsync(request, ct),
+            GenerateCommandNames.Text => apiService.GenerateTextAsync(request, ct),
+            GenerateCommandNames.Code => apiService.GenerateCodeAsync(request, ct),
+            GenerateCommandNames.Image => apiService.GenerateImageAsync(request, ct),
+            GenerateCommandNames.Audio => apiService.GenerateAudioAsync(request, ct),
+            GenerateCommandNames.Video => apiService.GenerateVideoAsync(request, ct),
+            GenerateCommandNames.Sprites => apiService.GenerateSpritesAsync(request, ct),
+            GenerateCommandNames.GodotUi => apiService.GenerateGodotUiAsync(request, ct),
+            GenerateCommandNames.GodotPhysics => apiService.GenerateGodotPhysicsAsync(request, ct),
+            GenerateCommandNames.GodotProject => apiService.GenerateGodotProjectAsync(request, ct),
+            GenerateCommandNames.Scenes => apiService.CreateSceneAsync(request, ct),
+            GenerateCommandNames.Animations => apiService.GenerateAnimationsAsync(request, ct),
             GenerateCommandNames.GodotLighting => apiService.GenerateGodotLightingAsync(request, ct),
-            GenerateCommandNames.GodotCamera   => apiService.GenerateGodotCameraAsync(request, ct),
-            GenerateCommandNames.GodotShaders  => apiService.GenerateGodotShadersAsync(request, ct),
-            GenerateCommandNames.GodotSignals  => apiService.GenerateGodotSignalsAsync(request, ct),
-            GenerateCommandNames.GodotNodes    => apiService.GenerateGodotNodesAsync(request, ct),
+            GenerateCommandNames.GodotCamera => apiService.GenerateGodotCameraAsync(request, ct),
+            GenerateCommandNames.GodotShaders => apiService.GenerateGodotShadersAsync(request, ct),
+            GenerateCommandNames.GodotSignals => apiService.GenerateGodotSignalsAsync(request, ct),
+            GenerateCommandNames.GodotNodes => apiService.GenerateGodotNodesAsync(request, ct),
             _ => throw new InvalidOperationException($"No modality mapping for command '{command}'.")
         };
 

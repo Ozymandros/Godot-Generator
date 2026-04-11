@@ -8,7 +8,7 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddFluentUIComponents();
 
 // IPC-only transport: all backend calls go via Electron named-pipe bridge.
-builder.Services.AddScoped<ElectronIpcTransport>();
+builder.Services.AddScoped<IGodotGeneratorClientTransport, ElectronIpcTransport>();
 builder.Services.AddScoped<GodotGeneratorClientFacade>();
 
 builder.Services.AddScoped<ProjectStateService>();

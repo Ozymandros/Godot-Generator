@@ -3,28 +3,13 @@
 
 <GenerationWorkspace Modality="GenerationModality.Code"
                      Title="Code"
-                     Description="Generate GDScript or C# snippets."
+                     Description="Generate GDScript or C# snippets. Use Advanced Options → Preferred language to choose GDScript or C# for this request."
                      PromptPlaceholder="Describe the code behavior…"
-                     CreateRequest="BuildRequest">
-    <AdditionalFields>
-        <SmartField Label="Preferred language" Placeholder="e.g. English" @bind-Value="_preferredLanguage" />
-    </AdditionalFields>
-</GenerationWorkspace>
+                     CreateRequest="BuildRequest" />
 
 @code {
-    private string _preferredLanguage = string.Empty;
-
-    private GenerateRequest BuildRequest(string prompt)
-    {
-        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        if (!string.IsNullOrWhiteSpace(_preferredLanguage))
-        {
-            options[GenerationOptionKeys.PreferredLanguage] = _preferredLanguage.Trim();
-        }
-
-        return new GenerateRequest(
+    private GenerateRequest BuildRequest(string prompt) =>
+        new GenerateRequest(
             Prompt: prompt,
-            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
-            Options: options.Count > 0 ? options : null);
-    }
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
 }

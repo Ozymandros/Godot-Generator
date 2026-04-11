@@ -11,6 +11,6 @@ public sealed class GenerationAdvancedOptions
 
     public string SystemPromptOverride { get; set; } = string.Empty;
 
-    /// <summary>Empty = not set; otherwise GDScript or C#.</summary>
+    /// <summary>Empty = no preference; otherwise <c>GDScript</c> or <c>C#</c> (programming language for generated code).</summary>
     public string PreferredScriptLanguage { get; set; } = string.Empty;
 }

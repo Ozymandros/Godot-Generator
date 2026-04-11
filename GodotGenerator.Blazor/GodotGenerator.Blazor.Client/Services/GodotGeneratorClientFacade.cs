@@ -8,10 +8,9 @@ namespace GodotGenerator.Blazor.Client.Services;
 
 /// <summary>
 /// Unified client service façade that delegates all calls to the
-/// <see cref="ElectronIpcTransport"/>.  The application runs exclusively inside
-/// the Electron shell; HTTP is not used for UI ↔ backend communication.
+/// <see cref="IGodotGeneratorClientTransport"/> implementation (typically <see cref="ElectronIpcTransport"/> in the Electron shell).
 /// </summary>
-public sealed class GodotGeneratorClientFacade(ElectronIpcTransport transport)
+public sealed class GodotGeneratorClientFacade(IGodotGeneratorClientTransport transport)
 {
     // ── Core API ──────────────────────────────────────────────────────────────
 

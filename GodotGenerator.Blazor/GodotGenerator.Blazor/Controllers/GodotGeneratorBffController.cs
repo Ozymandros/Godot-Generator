@@ -8,6 +8,7 @@ namespace GodotGenerator.Blazor.Controllers;
 /// HTTP BFF for the Blazor WebAssembly client; delegates to <see cref="IGodotGeneratorApiService"/>.
 /// </summary>
 [ApiController]
+[IgnoreAntiforgeryToken]
 [Route("api")]
 public sealed class GodotGeneratorBffController(IGodotGeneratorApiService api) : ControllerBase
 {

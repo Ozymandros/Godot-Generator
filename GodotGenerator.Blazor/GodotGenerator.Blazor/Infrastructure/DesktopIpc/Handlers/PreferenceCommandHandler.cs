@@ -39,8 +39,8 @@ internal sealed class PreferenceCommandHandler : ICommandHandler
 
         return envelope.Command switch
         {
-            PreferenceCommandNames.Get  => await HandleGetAsync(envelope, ct).ConfigureAwait(false),
-            PreferenceCommandNames.Set  => await HandleSetAsync(envelope, ct).ConfigureAwait(false),
+            PreferenceCommandNames.Get => await HandleGetAsync(envelope, ct).ConfigureAwait(false),
+            PreferenceCommandNames.Set => await HandleSetAsync(envelope, ct).ConfigureAwait(false),
             _ => Failure(envelope.CorrelationId, DesktopErrorCode.UnknownCommand,
                     $"Unhandled preference command '{envelope.Command}'.")
         };

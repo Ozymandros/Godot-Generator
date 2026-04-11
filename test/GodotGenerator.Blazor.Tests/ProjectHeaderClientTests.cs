@@ -79,6 +79,8 @@ public sealed class ProjectHeaderClientTests
     {
         var ctx = new BunitContext();
         ((IServiceCollection)ctx.Services).AddFluentUIComponents();
+        ((IServiceCollection)ctx.Services).AddSingleton<StatusBannerService>();
+        ((IServiceCollection)ctx.Services).AddScoped<ElectronBridgeService>();
         return ctx;
     }
 

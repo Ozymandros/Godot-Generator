@@ -6,6 +6,7 @@ using GodotGenerator.Blazor.Components;
 using GodotGenerator.Blazor.Infrastructure.DesktopIpc;
 using GodotGenerator.Infrastructure.Ai.DependencyInjection;
 using GodotGenerator.Infrastructure.Persistence.DependencyInjection;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,8 +26,9 @@ builder.Services.AddScoped<ProjectStateService>();
 builder.Services.AddScoped<ElectronBridgeService>();
 builder.Services.AddSingleton<LogBufferService>();
 builder.Services.AddSingleton<StatusBannerService>();
-builder.Services.AddScoped<ElectronIpcTransport>();
+builder.Services.AddScoped<IGodotGeneratorClientTransport, ElectronIpcTransport>();
 builder.Services.AddScoped<GodotGeneratorClientFacade>();
+builder.Services.AddControllers();
 
 // Register the named-pipe IPC host when running in desktop mode.
 // The GODOT_DESKTOP_IPC environment variable is set by the Electron backend lifecycle manager.
@@ -52,6 +54,7 @@ else
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseAntiforgery();
 
+app.MapControllers();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()

@@ -1,4 +1,5 @@
 @using GodotGenerator.Api.Dtos
+@using GodotGenerator.Application.Orchestration
 @inject GodotGeneratorClientFacade Api
 @inject ProjectStateService ProjectState
 @inject LogBufferService Logs
@@ -27,18 +28,28 @@
                 </div>
             </FluentCard>
 
+            <div class="generation-workspace__row-controls">
+                <SmartField Label="Provider"
+                            FieldType="@SmartFieldType.Select"
+                            Placeholder="—"
+                            SelectOptions="_providerOptions"
+                            Value="@_providerOverride"
+                            ValueChanged="OnProviderOverrideChanged" />
+                <SmartField Label="Model"
+                            FieldType="@SmartFieldType.Select"
+                            Placeholder="—"
+                            SelectOptions="_modelOptions"
+                            Value="@_modelOverride"
+                            ValueChanged="OnModelOverrideChanged" />
+                <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end" OnClick="@(() => _showModelModal = true)">+</FluentButton>
+            </div>
+
             @if (AdditionalFields is not null)
             {
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Class="generation-workspace__additional-stack">
                     @AdditionalFields
                 </FluentStack>
             }
-
-            <div class="generation-workspace__row-controls">
-                <SmartField Label="Provider" Placeholder="e.g. openai" Value="@_providerOverride" ValueChanged="OnProviderOverrideChanged" />
-                <SmartField Label="Model" Placeholder="Model id" Value="@_modelOverride" ValueChanged="OnModelOverrideChanged" />
-                <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end" OnClick="@(() => _showModelModal = true)">+</FluentButton>
-            </div>
 
             <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt" />
 
@@ -101,6 +112,9 @@
     private string _prompt = string.Empty;
     private string _providerOverride = string.Empty;
     private string _modelOverride = string.Empty;
+    private readonly List<string> _providerOptions = [];
+    private readonly List<string> _modelOptions = [];
+    private readonly Dictionary<string, List<string>> _modelsByProvider = new(StringComparer.OrdinalIgnoreCase);
     private string _result = string.Empty;
     private string? _error;
     private bool _busy;
@@ -116,6 +130,7 @@
     protected override async Task OnInitializedAsync()
     {
         await ProjectState.LoadAsync().ConfigureAwait(false);
+        await LoadRegistryAsync().ConfigureAwait(false);
     }
 
     private Task OnAdvancedOptionsChanged()
@@ -126,14 +141,94 @@
 
     private Task OnProviderOverrideChanged(string value)
     {
-        _providerOverride = value;
+        _providerOverride = value.Trim();
+        SyncModelOptionsForCurrentProvider();
         return Task.CompletedTask;
     }
 
     private Task OnModelOverrideChanged(string value)
     {
-        _modelOverride = value;
+        _modelOverride = value.Trim();
         return Task.CompletedTask;
+    }
+
+    private async Task LoadRegistryAsync()
+    {
+        var envelope = await Api.GetConfigEnvelopeAsync().ConfigureAwait(false);
+        if (!envelope.Success || envelope.Data is null)
+        {
+            return;
+        }
+
+        GeneratorRegistryOptionsLoader.Fill(envelope.Data, _providerOptions, _modelsByProvider);
+        var prefs = GeneratorRegistryOptionsLoader.ParsePreferences(envelope.Data);
+        ApplyDefaultsFromPreferences(prefs);
+    }
+
+    private void ApplyDefaultsFromPreferences(IReadOnlyDictionary<string, string?> prefs)
+    {
+        var slug = ModalityRoutes.GetSlug(Modality);
+        var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
+
+        var defaultProvider = GetPreferenceString(prefs, providerKey);
+        var defaultModel = GetPreferenceString(prefs, modelKey);
+
+        _providerOverride = string.Empty;
+        _modelOverride = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(defaultProvider))
+        {
+            var registered = FindRegisteredCase(_providerOptions, defaultProvider);
+            if (registered is not null)
+            {
+                _providerOverride = registered;
+            }
+        }
+
+        SyncModelOptionsForCurrentProvider();
+
+        if (!string.IsNullOrWhiteSpace(defaultModel))
+        {
+            var registeredModel = FindRegisteredCase(_modelOptions, defaultModel);
+            if (registeredModel is not null)
+            {
+                _modelOverride = registeredModel;
+            }
+        }
+    }
+
+    private static string GetPreferenceString(IReadOnlyDictionary<string, string?> prefs, string key) =>
+        prefs.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : string.Empty;
+
+    private static string? FindRegisteredCase(IReadOnlyList<string> registered, string candidate)
+    {
+        foreach (var x in registered)
+        {
+            if (string.Equals(x, candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return x;
+            }
+        }
+
+        return null;
+    }
+
+    private void SyncModelOptionsForCurrentProvider()
+    {
+        _modelOptions.Clear();
+        if (string.IsNullOrWhiteSpace(_providerOverride) ||
+            !_modelsByProvider.TryGetValue(_providerOverride.Trim(), out var rows))
+        {
+            _modelOverride = string.Empty;
+            return;
+        }
+
+        _modelOptions.AddRange(rows);
+        if (!string.IsNullOrEmpty(_modelOverride) &&
+            !_modelOptions.Contains(_modelOverride, StringComparer.OrdinalIgnoreCase))
+        {
+            _modelOverride = string.Empty;
+        }
     }
 
     private GenerateRequest ApplyAdvancedAndOverrides(GenerateRequest r)

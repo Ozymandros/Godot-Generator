@@ -273,7 +273,8 @@ fluent-card.app-card-interactive:hover {
 
 .smart-field fluent-text-field,
 .smart-field fluent-text-area,
-.smart-field fluent-select {
+.smart-field fluent-select,
+.smart-field fluent-combobox {
   width: 100%;
   min-width: 0;
 }
@@ -316,7 +317,8 @@ fluent-card.app-card-interactive:hover {
 /* Fluent text inputs — default sizing; .smart-field ::deep rules override width for SmartField */
 fluent-text-field,
 fluent-text-area,
-fluent-select {
+fluent-select,
+fluent-combobox {
   width: var(--fluent-control-width, var(--app-control-width-default));
   min-width: var(--fluent-control-min-width, 0);
   max-width: 100%;
@@ -358,7 +360,8 @@ fluent-text-area {
 .app-input-like::part(control),
 .app-combobox-like::part(control),
 .smart-field fluent-text-field::part(control),
-.smart-field fluent-text-area::part(control) {
+.smart-field fluent-text-area::part(control),
+.smart-field fluent-combobox::part(control) {
   min-height: var(--app-field-height);
   border-radius: var(--app-field-radius);
   background: var(--app-field-bg);
@@ -374,7 +377,8 @@ fluent-text-area {
 .app-input-like::part(root),
 .app-combobox-like::part(root),
 .smart-field fluent-text-field::part(root),
-.smart-field fluent-select::part(root) {
+.smart-field fluent-select::part(root),
+.smart-field fluent-combobox::part(root) {
   min-height: var(--app-field-height);
   box-sizing: border-box;
 }
@@ -401,14 +405,16 @@ fluent-text-area {
 .app-input-like:hover::part(control),
 .app-combobox-like:hover::part(control),
 .smart-field fluent-text-field:hover::part(control),
-.smart-field fluent-text-area:hover::part(control) {
+.smart-field fluent-text-area:hover::part(control),
+.smart-field fluent-combobox:hover::part(control) {
   border-color: var(--app-field-border-hover);
 }
 
 .app-input-like:focus-within::part(control),
 .app-combobox-like:focus-within::part(control),
 .smart-field fluent-text-field:focus-within::part(control),
-.smart-field fluent-text-area:focus-within::part(control) {
+.smart-field fluent-text-area:focus-within::part(control),
+.smart-field fluent-combobox:focus-within::part(control) {
   border-color: var(--app-field-focus);
   box-shadow: var(--app-field-shadow-focus);
 }

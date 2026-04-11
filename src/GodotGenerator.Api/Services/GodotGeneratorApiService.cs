@@ -299,7 +299,8 @@ public sealed class GodotGeneratorApiService(
                 mergedSystem,
                 request.ProjectName,
                 effective.ModelId,
-                request.Options) with { Provider = effective.Provider };
+                request.Options) with
+            { Provider = effective.Provider };
 
             var turn = await runAgentTurn.ExecuteAsync(turnRequest, cancellationToken).ConfigureAwait(false);
             if (!turn.Success)

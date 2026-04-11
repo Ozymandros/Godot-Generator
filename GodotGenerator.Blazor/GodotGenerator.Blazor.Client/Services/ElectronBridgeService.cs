@@ -20,13 +20,14 @@ namespace GodotGenerator.Blazor.Client.Services;
 /// Registered as Scoped in both the client and the server-side host so that the
 /// <see cref="IJSRuntime"/> scope is respected.
 /// </remarks>
-public sealed class ElectronBridgeService : IAsyncDisposable
+public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
 {
     private readonly IJSRuntime _js;
     private readonly StatusBannerService _statusBanner;
 
     private DotNetObjectReference<ElectronBridgeService>? _dotNetRef;
     private bool _initialized;
+    private bool _disposed;
 
     /// <summary>Initialises the service with required dependencies.</summary>
     public ElectronBridgeService(IJSRuntime js, StatusBannerService statusBanner)
@@ -93,7 +94,7 @@ public sealed class ElectronBridgeService : IAsyncDisposable
     [JSInvokable]
     public void OnBackendCrashed(int? code, string? signal)
     {
-        var detail = code.HasValue    ? $" (exit code {code})"
+        var detail = code.HasValue ? $" (exit code {code})"
                    : signal is not null ? $" (signal {signal})"
                    : string.Empty;
 
@@ -120,7 +121,24 @@ public sealed class ElectronBridgeService : IAsyncDisposable
     public void OnFolderSelected(string path) =>
         FolderSelected?.Invoke(path);
 
-    // ── IAsyncDisposable ──────────────────────────────────────────────────────
+    // ── IDisposable / IAsyncDisposable ─────────────────────────────────────────
+
+    /// <summary>
+    /// Synchronous disposal path used when a host disposes the DI scope without
+    /// <see cref="DisposeAsync"/> (for example bUnit's test service provider).
+    /// Releases the DotNet reference; async JS teardown is skipped.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+        _disposed = true;
+    }
 
     /// <summary>
     /// Removes all Electron push-event subscriptions registered during
@@ -128,6 +146,11 @@ public sealed class ElectronBridgeService : IAsyncDisposable
     /// </summary>
     public async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         if (_initialized)
         {
             try
@@ -142,5 +165,7 @@ public sealed class ElectronBridgeService : IAsyncDisposable
         }
 
         _dotNetRef?.Dispose();
+        _dotNetRef = null;
+        _disposed = true;
     }
 }

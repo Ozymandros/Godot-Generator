@@ -1,66 +1,28 @@
-@* Godot UI modality panel (Unity-Generator UnityUIPanel parity: extra UI context + request options). *@
+@* Godot UI modality panel — uses GenerationWorkspace for Provider/Model selects and shared generation UX. *@
 @using System.Text
 @using GodotGenerator.Api.Dtos
-@inject GodotGeneratorClientFacade Api
 @inject ProjectStateService ProjectState
-@inject LogBufferService Logs
-@inject StatusBannerService StatusBanner
 
-<PageTitle>Godot UI</PageTitle>
-
-<FluentLabel Typo="Typography.H4" Class="app-fluent-label-margin-title">Godot UI</FluentLabel>
-<FluentLabel Typo="Typography.Body" Class="app-ui-panel-intro app-opacity-muted">
-    Control trees, themes, and containers. Optional fields add context for the model; use the active project path when you want MCP tools to run against a real <code>project.godot</code> root.
-</FluentLabel>
-
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Class="unity-ui-panel__fields app-content-wide">
-    <SmartField Label="Preferred language" Placeholder="e.g. English" @bind-Value="_preferredLanguage" />
-    <SmartField Label="UI parent path" Placeholder="e.g. /root/Main/UI or CanvasLayer path" @bind-Value="_uiParentPath" />
-    <SmartField Label="Theme / layout notes" FieldType="SmartFieldType.Multiline" Placeholder="Anchors, min size, Theme resource, etc." @bind-Value="_layoutNotes" />
-    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
-        <FluentSwitch Value="_useActiveProjectForValidation" ValueChanged="OnValidationSwitchChanged">Use active project path for MCP validation</FluentSwitch>
-    </FluentStack>
-</FluentStack>
-
-<PromptInputSection Title="Prompt" Placeholder="Describe the UI to generate or adjust…" @bind-Prompt="_prompt" />
-
-<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Class="app-ui-panel-actions">
-    <FluentButton Appearance="Appearance.Accent" OnClick="RunAsync" Disabled="@_busy">Generate</FluentButton>
-    @if (_busy)
-    {
-        <FluentProgressRing />
-    }
-</FluentStack>
-
-@if (!string.IsNullOrEmpty(_error))
-{
-    <AppMessageBar Intent="MessageIntent.Error">@_error</AppMessageBar>
-}
-
-@if (!string.IsNullOrEmpty(_result))
-{
-    <FluentCard Class="app-card-padding app-card-pre-wrap">
-        <FluentLabel Typo="Typography.Body">@_result</FluentLabel>
-    </FluentCard>
-}
+<GenerationWorkspace Modality="GenerationModality.GodotUi"
+                     Title="Godot UI"
+                     Description="Control trees, themes, and containers. Optional fields add context for the model; use the active project path when you want MCP tools to run against a real project.godot root."
+                     PromptPlaceholder="Describe the UI to generate or adjust…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Preferred language" Placeholder="e.g. English" @bind-Value="_preferredLanguage" />
+        <SmartField Label="UI parent path" Placeholder="e.g. /root/Main/UI or CanvasLayer path" @bind-Value="_uiParentPath" />
+        <SmartField Label="Theme / layout notes" FieldType="SmartFieldType.Multiline" Placeholder="Anchors, min size, Theme resource, etc." @bind-Value="_layoutNotes" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useActiveProjectForValidation" ValueChanged="OnValidationSwitchChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
 
 @code {
-    private const string PanelTitle = "Godot UI";
-
     private string _preferredLanguage = string.Empty;
     private string _uiParentPath = string.Empty;
     private string _layoutNotes = string.Empty;
     private bool _useActiveProjectForValidation = true;
-
-    private string _prompt = string.Empty;
-    private string _result = string.Empty;
-    private string? _error;
-    private bool _busy;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await ProjectState.LoadAsync().ConfigureAwait(false);
-    }
 
     private Task OnValidationSwitchChanged(bool value)
     {
@@ -68,56 +30,19 @@
         return Task.CompletedTask;
     }
 
-    private async Task RunAsync()
+    private GenerateRequest BuildRequest(string prompt)
     {
-        _error = null;
-        _result = string.Empty;
-        if (string.IsNullOrWhiteSpace(_prompt))
-        {
-            _error = "Prompt cannot be empty.";
-            StatusBanner.Set($"{PanelTitle}: prompt empty.", MessageIntent.Warning);
-            return;
-        }
+        var composedPrompt = ComposePromptWithUiContext(prompt);
+        var options = BuildOptions();
 
-        _busy = true;
-        try
-        {
-            var composedPrompt = ComposePromptWithUiContext();
-            var options = BuildOptions();
-
-            var request = new GenerateRequest(
-                Prompt: composedPrompt,
-                ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
-                Options: options);
-
-            var response = await Api.GenerateAsync(GenerationModality.GodotUi, request).ConfigureAwait(false);
-            if (!response.Success)
-            {
-                _error = response.Error ?? "Generation failed.";
-                Logs.Append($"{PanelTitle}: error {_error}");
-                StatusBanner.Set($"{PanelTitle}: {_error}", MessageIntent.Error);
-                return;
-            }
-
-            _result = GenerationResponseFormatter.ExtractMessage(response.Data);
-            Logs.Append($"{PanelTitle}: completed.");
-            StatusBanner.Set($"{PanelTitle}: completed.", MessageIntent.Success);
-        }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-            Logs.Append($"{PanelTitle}: exception {ex.Message}");
-            StatusBanner.Set($"{PanelTitle}: {ex.Message}", MessageIntent.Error);
-        }
-        finally
-        {
-            _busy = false;
-        }
+        return new GenerateRequest(
+            Prompt: composedPrompt,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options);
     }
 
-    private string ComposePromptWithUiContext()
+    private string ComposePromptWithUiContext(string userPrompt)
     {
-        var userPrompt = _prompt.Trim();
         var sb = new StringBuilder();
         var hasContext = false;
 
@@ -142,7 +67,7 @@
             sb.AppendLine();
         }
 
-        sb.Append(userPrompt);
+        sb.Append(userPrompt.Trim());
         return sb.ToString();
     }
 
@@ -163,4 +88,3 @@
         return options.Count > 0 ? options : null;
     }
 }
-
