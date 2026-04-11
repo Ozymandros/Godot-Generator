@@ -9,8 +9,16 @@
         }
         else if (FieldType == SmartFieldType.Select)
         {
-            <FluentSelect Value="@Value" ValueChanged="ValueChanged" Appearance="Appearance.Outline"
-                Placeholder="@Placeholder" Items="@SelectOptions" Disabled="@Disabled" Class="@SelectClass" />
+            <select class="@SelectClass" value="@Value" @onchange="OnSelectChanged" disabled="@Disabled">
+                @if (!string.IsNullOrWhiteSpace(Placeholder))
+                {
+                    <option value="">@Placeholder</option>
+                }
+                @foreach (var option in SelectOptions)
+                {
+                    <option value="@option">@option</option>
+                }
+            </select>
         }
         else if (FieldType == SmartFieldType.Password)
         {
@@ -83,4 +91,10 @@
 
     private static string JoinClass(string first, string? second) =>
     string.IsNullOrWhiteSpace(second) ? first : $"{first} {second.Trim()}";
+
+    private Task OnSelectChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString() ?? string.Empty;
+        return ValueChanged.InvokeAsync(value);
+    }
 }

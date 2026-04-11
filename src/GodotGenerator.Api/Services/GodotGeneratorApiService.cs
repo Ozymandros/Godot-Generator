@@ -9,8 +9,6 @@ using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.Services;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Text.Json;
 using static GodotGenerator.Application.PreferenceKeys;
 
 namespace GodotGenerator.Api.Services;
@@ -29,8 +27,6 @@ public sealed class GodotGeneratorApiService(
     IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
 {
-    private const string AgentDebugLogPath = "debug-cb9046.log";
-
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateTextAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         GenerateByModalityAsync("text", request, cancellationToken);
@@ -146,36 +142,6 @@ public sealed class GodotGeneratorApiService(
             x => x.Key,
             x => (object?)x.Value,
             StringComparer.OrdinalIgnoreCase);
-
-        // #region agent log
-        try
-        {
-            var line = JsonSerializer.Serialize(new
-            {
-                sessionId = "cb9046",
-                runId = "ui-verify",
-                hypothesisId = "H8",
-                location = "GodotGeneratorApiService.cs:GetAllConfigAsync",
-                message = "Config envelope prepared for client",
-                data = new
-                {
-                    preferredLlmProvider = snapshot.Preferences.GetValueOrDefault(PreferredLlmProvider),
-                    preferredLlmModel = snapshot.Preferences.GetValueOrDefault(PreferredLlmModel),
-                    preferredImageProvider = snapshot.Preferences.GetValueOrDefault(PreferredImageProvider),
-                    preferredImageModel = snapshot.Preferences.GetValueOrDefault(PreferredImageModel),
-                    providersCount = providers.Count,
-                    modelProviderCount = models.Count,
-                    defaultChatModelId = snapshot.DefaultChatModelId
-                },
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            });
-            File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-        }
-        catch
-        {
-            // no-op
-        }
-        // #endregion
 
         return ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>
         {

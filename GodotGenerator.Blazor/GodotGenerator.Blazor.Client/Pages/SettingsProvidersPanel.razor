@@ -100,7 +100,6 @@
 </div>
 
 @code {
-    private const string AgentDebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-cb9046.log";
     private readonly List<ProviderRegistryEntry> _entries = [];
     private ProviderRegistryEntry? _selected;
     private string _modalitiesString = string.Empty;
@@ -318,32 +317,6 @@
 
     private async Task CommitAsync()
     {
-        #region agent log
-        try
-        {
-            var line = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                sessionId = "cb9046",
-                runId = "initial",
-                hypothesisId = "H8",
-                location = "SettingsProvidersPanel.razor:CommitAsync",
-                message = "Providers commit invoked",
-                data = new
-                {
-                    entriesCount = _entries.Count,
-                    hasSelected = _selected is not null,
-                    disabled = Disabled,
-                    busy = _busy
-                },
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            });
-            File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-        }
-        catch
-        {
-            // no-op
-        }
-        #endregion
         _panelError = null;
         _panelInfo = null;
         if (_busy)
@@ -364,78 +337,14 @@
             var err = ConfigurationRegistryService.ValidateProviderRegistry(doc);
             if (err is not null)
             {
-                #region agent log
-                try
-                {
-                    var line = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        sessionId = "cb9046",
-                        runId = "initial",
-                        hypothesisId = "H8",
-                        location = "SettingsProvidersPanel.razor:CommitAsync",
-                        message = "Providers commit validation failed",
-                        data = new { error = err },
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    });
-                    File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-                }
-                catch
-                {
-                    // no-op
-                }
-                #endregion
                 _panelError = err;
                 return;
             }
 
             var json = ConfigurationRegistryService.Serialize(doc);
-            #region agent log
-            try
-            {
-                var line = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    sessionId = "cb9046",
-                    runId = "initial",
-                    hypothesisId = "H8",
-                    location = "SettingsProvidersPanel.razor:CommitAsync",
-                    message = "Providers commit posting preference",
-                    data = new
-                    {
-                        key = PreferenceKeys.ProvidersRegistryV1,
-                        payloadLength = json.Length
-                    },
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                });
-                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-            }
-            catch
-            {
-                // no-op
-            }
-            #endregion
             var res = await Api.SetPreferenceEnvelopeAsync(new SetPreferenceRequest(PreferenceKeys.ProvidersRegistryV1, json));
             if (!res.Success)
             {
-                #region agent log
-                try
-                {
-                    var line = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        sessionId = "cb9046",
-                        runId = "initial",
-                        hypothesisId = "H8",
-                        location = "SettingsProvidersPanel.razor:CommitAsync",
-                        message = "Providers commit API failed",
-                        data = new { error = res.Error ?? "unknown" },
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    });
-                    File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-                }
-                catch
-                {
-                    // no-op
-                }
-                #endregion
                 _panelError = res.Error ?? "Failed to save provider registry.";
                 return;
             }
@@ -445,26 +354,6 @@
             var verify = await Api.GetPreferenceAsync(PreferenceKeys.ProvidersRegistryV1);
             if (!verify.Success)
             {
-                #region agent log
-                try
-                {
-                    var line = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        sessionId = "cb9046",
-                        runId = "initial",
-                        hypothesisId = "H8",
-                        location = "SettingsProvidersPanel.razor:CommitAsync",
-                        message = "Providers commit verify call failed",
-                        data = new { error = verify.Error ?? "unknown" },
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    });
-                    File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-                }
-                catch
-                {
-                    // no-op
-                }
-                #endregion
                 _panelError = verify.Error ?? "Provider registry saved, but verification failed.";
                 return;
             }
@@ -472,50 +361,10 @@
             var stored = verify.Data?.GetValueOrDefault("value");
             if (string.IsNullOrWhiteSpace(stored))
             {
-                #region agent log
-                try
-                {
-                    var line = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        sessionId = "cb9046",
-                        runId = "initial",
-                        hypothesisId = "H8",
-                        location = "SettingsProvidersPanel.razor:CommitAsync",
-                        message = "Providers commit verify empty",
-                        data = new { valueLength = 0 },
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                    });
-                    File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-                }
-                catch
-                {
-                    // no-op
-                }
-                #endregion
                 _panelError = "Provider registry save verification failed: stored value is empty.";
                 return;
             }
 
-            #region agent log
-            try
-            {
-                var line = System.Text.Json.JsonSerializer.Serialize(new
-                {
-                    sessionId = "cb9046",
-                    runId = "initial",
-                    hypothesisId = "H8",
-                    location = "SettingsProvidersPanel.razor:CommitAsync",
-                    message = "Providers commit succeeded",
-                    data = new { storedLength = stored.Length },
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                });
-                File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-            }
-            catch
-            {
-                // no-op
-            }
-            #endregion
             _panelInfo = "Provider registry saved.";
             await OnRegistrySaved.InvokeAsync();
         }
