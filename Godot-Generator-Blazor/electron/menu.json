@@ -1,0 +1,69 @@
+{
+  "items": [
+    {
+      "label": "File",
+      "submenu": [
+        {
+          "label": "Open Project Folder\u2026",
+          "accelerator": "CmdOrCtrl+O",
+          "actionId": "file.openProjectFolder"
+        },
+        { "type": "separator" },
+        { "role": "quit" }
+      ]
+    },
+    {
+      "label": "Edit",
+      "submenu": [
+        { "role": "undo" },
+        { "role": "redo" },
+        { "type": "separator" },
+        { "role": "cut" },
+        { "role": "copy" },
+        { "role": "paste" },
+        { "role": "pasteAndMatchStyle" },
+        { "role": "delete" },
+        { "type": "separator" },
+        { "role": "selectAll" }
+      ]
+    },
+    {
+      "label": "Tools",
+      "submenu": [
+        {
+          "label": "Open Developer Tools",
+          "accelerator": "F12",
+          "actionId": "tools.devtools"
+        },
+        { "type": "separator" },
+        {
+          "label": "Open Blazor in Browser",
+          "actionId": "tools.openInBrowser"
+        }
+      ]
+    },
+    {
+      "label": "View",
+      "submenu": [
+        { "role": "reload" },
+        { "role": "forceReload" },
+        { "role": "toggleDevTools" },
+        { "type": "separator" },
+        { "role": "resetZoom" },
+        { "role": "zoomIn" },
+        { "role": "zoomOut" },
+        { "type": "separator" },
+        { "role": "togglefullscreen" }
+      ]
+    },
+    {
+      "role": "help",
+      "submenu": [
+        { "label": "Repository",            "actionId": "help.repository" },
+        { "label": "Development Guide",     "actionId": "help.devGuide"   },
+        { "type": "separator" },
+        { "label": "About Godot Generator", "actionId": "help.about"      }
+      ]
+    }
+  ]
+}

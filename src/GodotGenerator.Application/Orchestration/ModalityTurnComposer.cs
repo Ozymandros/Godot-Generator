@@ -111,6 +111,11 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             "sprites" => "You help with sprite and 2D asset generation prompts for Godot games.",
             "godot-ui" => "You design and describe Godot Control nodes, themes, and UI layouts (Godot 4).",
             "godot-physics" => "You assist with Godot 4 physics: RigidBody, CharacterBody, Area, joints, and collision layers.",
+            "godot-lighting" => "You configure Godot 4 lighting: DirectionalLight3D, OmniLight3D, SpotLight3D, WorldEnvironment, sky resources, and exposure settings. Emit ready-to-paste GDScript or C# snippets and scene property blocks.",
+            "godot-camera" => "You set up Godot 4 cameras: Camera3D and Camera2D properties (FOV, projection, near/far, zoom), CameraPath3D, Viewport configuration, and split-screen layouts.",
+            "godot-shaders" => "You write Godot 4 shaders using the Godot shading language or VisualShader graphs. Output complete, well-commented shader code with clear uniform declarations and usage examples.",
+            "godot-signals" => "You wire Godot 4 signals: declare custom signals, connect them in code or the editor, write handler stubs, and use call_deferred and connect flags correctly.",
+            "godot-nodes" => "You perform Godot 4 node operations via GDScript or C#: instantiate, add_child, reparent, set properties, call methods, queue_free, and manage scene-tree ownership correctly.",
             _ => "You assist the user as a Godot development copilot with access to Godot tools when appropriate.",
         };
     }

@@ -9,23 +9,35 @@
         }
         else if (FieldType == SmartFieldType.Select)
         {
-            <FluentSelect Value="@Value" ValueChanged="ValueChanged" Appearance="Appearance.Outline"
-                Placeholder="@Placeholder" Items="@SelectOptions" Disabled="@Disabled" Class="@SelectClass" />
+            <FluentCombobox TOption="string"
+                            Items="@_comboItemsMaterialized"
+                            OptionText="@ComboOptionText"
+                            OptionValue="@(static s => s)"
+                            Value="@Value"
+                            ValueChanged="ValueChanged"
+                            Placeholder="@Placeholder"
+                            Autocomplete="ComboboxAutocomplete.Both"
+                            Disabled="@Disabled"
+                            ReadOnly="@ReadOnly"
+                            Class="@SelectClass" />
         }
         else if (FieldType == SmartFieldType.Password)
         {
-            <FluentTextField Value="@Value" ValueChanged="ValueChanged" Appearance="FluentInputAppearance.Filled" Placeholder="@Placeholder" Disabled="@Disabled"
-                ReadOnly="@ReadOnly" TextFieldType="TextFieldType.Password" Class="@TextClass" />
+            <FluentTextField Value="@Value" ValueChanged="ValueChanged" Appearance="FluentInputAppearance.Filled"
+                Placeholder="@Placeholder" Disabled="@Disabled" ReadOnly="@ReadOnly" TextFieldType="TextFieldType.Password"
+                Class="@TextClass" />
         }
         else
         {
-            <FluentTextField Value="@Value" ValueChanged="ValueChanged" Appearance="FluentInputAppearance.Filled" Placeholder="@Placeholder" Disabled="@Disabled"
-                ReadOnly="@ReadOnly" Class="@TextClass"  />
+            <FluentTextField Value="@Value" ValueChanged="ValueChanged" Appearance="FluentInputAppearance.Filled"
+                Placeholder="@Placeholder" Disabled="@Disabled" ReadOnly="@ReadOnly" Class="@TextClass" />
         }
     </BaseField>
 </div>
 
 @code {
+    private IReadOnlyList<string> _comboItemsMaterialized = Array.Empty<string>();
+
     /// <summary>Label text.</summary>
     [Parameter] public string? Label { get; set; }
 
@@ -73,7 +85,7 @@
 
     /// <summary>CSS style for the field width.</summary>
     private string? FieldWidthStyle =>
-    string.IsNullOrWhiteSpace(Width) ? null : $"--smart-field-width:{Width.Trim()};";
+        string.IsNullOrWhiteSpace(Width) ? null : $"--smart-field-width:{Width.Trim()};";
 
     private string TextClass => JoinClass("app-input-like", InputClass);
 
@@ -82,5 +94,30 @@
     private string SelectClass => JoinClass("app-combobox-like", InputClass);
 
     private static string JoinClass(string first, string? second) =>
-    string.IsNullOrWhiteSpace(second) ? first : $"{first} {second.Trim()}";
+        string.IsNullOrWhiteSpace(second) ? first : $"{first} {second.Trim()}";
+
+    protected override void OnParametersSet()
+    {
+        if (FieldType != SmartFieldType.Select)
+        {
+            _comboItemsMaterialized = Array.Empty<string>();
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Placeholder))
+        {
+            var list = new List<string>(1 + SelectOptions.Count) { string.Empty };
+            list.AddRange(SelectOptions);
+            _comboItemsMaterialized = list;
+        }
+        else
+        {
+            _comboItemsMaterialized = SelectOptions.Count == 0
+                ? Array.Empty<string>()
+                : SelectOptions.ToArray();
+        }
+    }
+
+    private string? ComboOptionText(string item) =>
+        item.Length == 0 && !string.IsNullOrWhiteSpace(Placeholder) ? Placeholder : item;
 }

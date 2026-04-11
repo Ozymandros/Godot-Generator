@@ -9,8 +9,6 @@ using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.Services;
 using GodotGenerator.Application.UseCases;
 using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Text.Json;
 using static GodotGenerator.Application.PreferenceKeys;
 
 namespace GodotGenerator.Api.Services;
@@ -29,8 +27,6 @@ public sealed class GodotGeneratorApiService(
     IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
 {
-    private const string AgentDebugLogPath = "debug-cb9046.log";
-
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateTextAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         GenerateByModalityAsync("text", request, cancellationToken);
@@ -74,6 +70,26 @@ public sealed class GodotGeneratorApiService(
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateAnimationsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         GenerateByModalityAsync("animations", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotLightingAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-lighting", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotCameraAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-camera", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotShadersAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-shaders", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotSignalsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-signals", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-nodes", request, cancellationToken);
 
     /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)
@@ -147,36 +163,6 @@ public sealed class GodotGeneratorApiService(
             x => (object?)x.Value,
             StringComparer.OrdinalIgnoreCase);
 
-        // #region agent log
-        try
-        {
-            var line = JsonSerializer.Serialize(new
-            {
-                sessionId = "cb9046",
-                runId = "ui-verify",
-                hypothesisId = "H8",
-                location = "GodotGeneratorApiService.cs:GetAllConfigAsync",
-                message = "Config envelope prepared for client",
-                data = new
-                {
-                    preferredLlmProvider = snapshot.Preferences.GetValueOrDefault(PreferredLlmProvider),
-                    preferredLlmModel = snapshot.Preferences.GetValueOrDefault(PreferredLlmModel),
-                    preferredImageProvider = snapshot.Preferences.GetValueOrDefault(PreferredImageProvider),
-                    preferredImageModel = snapshot.Preferences.GetValueOrDefault(PreferredImageModel),
-                    providersCount = providers.Count,
-                    modelProviderCount = models.Count,
-                    defaultChatModelId = snapshot.DefaultChatModelId
-                },
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            });
-            File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-        }
-        catch
-        {
-            // no-op
-        }
-        // #endregion
-
         return ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>
         {
             ["preferences"] = snapshot.Preferences,
@@ -224,6 +210,11 @@ public sealed class GodotGeneratorApiService(
             [PromptsCodeLegacy] = await getPreference.ExecuteAsync(PromptsCodeLegacy, cancellationToken).ConfigureAwait(false),
             [PromptsGodotUiLegacy] = await getPreference.ExecuteAsync(PromptsGodotUiLegacy, cancellationToken).ConfigureAwait(false),
             [PromptsGodotPhysicsLegacy] = await getPreference.ExecuteAsync(PromptsGodotPhysicsLegacy, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotLighting] = await getPreference.ExecuteAsync(PromptsGodotLighting, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotCamera] = await getPreference.ExecuteAsync(PromptsGodotCamera, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotShaders] = await getPreference.ExecuteAsync(PromptsGodotShaders, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotSignals] = await getPreference.ExecuteAsync(PromptsGodotSignals, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotNodes] = await getPreference.ExecuteAsync(PromptsGodotNodes, cancellationToken).ConfigureAwait(false),
         };
         ConfigurationRegistryService.MergeLegacyPrompts(prefs, doc);
         var key = MapModalityToPromptKey(modalityKey);
@@ -246,6 +237,11 @@ public sealed class GodotGeneratorApiService(
             "godot-project" => "godot-project",
             "scenes" => "scenes",
             "animations" => "animations",
+            "godot-lighting" => "godot-lighting",
+            "godot-camera" => "godot-camera",
+            "godot-shaders" => "godot-shaders",
+            "godot-signals" => "godot-signals",
+            "godot-nodes" => "godot-nodes",
             _ => "text",
         };
     }
@@ -303,7 +299,8 @@ public sealed class GodotGeneratorApiService(
                 mergedSystem,
                 request.ProjectName,
                 effective.ModelId,
-                request.Options) with { Provider = effective.Provider };
+                request.Options) with
+            { Provider = effective.Provider };
 
             var turn = await runAgentTurn.ExecuteAsync(turnRequest, cancellationToken).ConfigureAwait(false);
             if (!turn.Success)

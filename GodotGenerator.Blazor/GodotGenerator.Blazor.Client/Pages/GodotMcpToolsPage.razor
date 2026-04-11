@@ -1,0 +1,51 @@
+@page "/generate/godot-mcp"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Godot MCP tools</PageTitle>
+
+<div class="app-content-wide godot-mcp-hub">
+    <FluentLabel Typo="Typography.H4" Class="app-fluent-label-margin-title">Godot MCP tools</FluentLabel>
+    <FluentLabel Typo="Typography.Body" Class="app-fluent-intro-desc">
+        These panels drive the local <strong>godot-mcp</strong> tool surface (lights, cameras, scene graph, resources, signals). Set your active project in the header when you want <code>project.godot</code> validated before a turn.
+    </FluentLabel>
+
+    <FluentGrid Spacing="12" Class="godot-mcp-hub__grid">
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Lighting</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">MCP <code>light.*</code> — list, create, update, validate.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-lighting" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Camera</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">MCP <code>camera.*</code> — Camera2D/Camera3D and validation.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-camera" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Shaders</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">Resources, scripts, materials — align prompts with <code>resource.*</code> / shader workflows.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-shaders" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Signals</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">Connect handlers, scene + script context for signal wiring.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-signals" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Nodes</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">MCP <code>scene.*</code> — hierarchy, properties, reparenting.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-nodes" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Godot UI</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">Control trees, themes, <code>ui.*</code> tooling.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-ui" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+        <FluentCard Class="app-card-padding">
+            <FluentLabel Typo="Typography.H6">Godot Physics</FluentLabel>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">Bodies, shapes, layers — <code>physics.*</code>.</FluentLabel>
+            <FluentAnchor Href="/generate/godot-physics" Appearance="Appearance.Accent">Open panel</FluentAnchor>
+        </FluentCard>
+    </FluentGrid>
+
+    <FluentAnchor Href="/" Appearance="Appearance.Neutral" Class="app-margin-top-md">Back to home</FluentAnchor>
+</div>

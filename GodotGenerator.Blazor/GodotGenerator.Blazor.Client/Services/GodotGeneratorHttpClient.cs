@@ -33,6 +33,11 @@ public sealed class GodotGeneratorHttpClient(HttpClient http)
             GenerationModality.Scenes => "api/generate/scenes",
             GenerationModality.GodotProject => "api/generate/godot-project",
             GenerationModality.Animations => "api/generate/animations",
+            GenerationModality.GodotLighting => "api/generate/godot-lighting",
+            GenerationModality.GodotCamera => "api/generate/godot-camera",
+            GenerationModality.GodotShaders => "api/generate/godot-shaders",
+            GenerationModality.GodotSignals => "api/generate/godot-signals",
+            GenerationModality.GodotNodes => "api/generate/godot-nodes",
             _ => throw new ArgumentOutOfRangeException(nameof(modality), modality, null),
         };
 

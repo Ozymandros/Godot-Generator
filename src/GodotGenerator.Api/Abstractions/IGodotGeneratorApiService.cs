@@ -41,6 +41,21 @@ public interface IGodotGeneratorApiService
     /// <summary>Generates Godot animations.</summary>
     Task<ApiResponse<Dictionary<string, object?>>> GenerateAnimationsAsync(GenerateRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Generates Godot lighting setup (lights, environment, sky).</summary>
+    Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotLightingAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Generates Godot camera configuration (Camera3D/Camera2D, viewports).</summary>
+    Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotCameraAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Generates Godot shaders (VisualShader, ShaderMaterial, GLSL-like code).</summary>
+    Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotShadersAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Generates Godot signal wiring (declarations, connect calls, handlers).</summary>
+    Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotSignalsAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Generates Godot node operations (add, configure, reparent, set properties).</summary>
+    Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Gets a preference value by key.</summary>
     Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default);
 

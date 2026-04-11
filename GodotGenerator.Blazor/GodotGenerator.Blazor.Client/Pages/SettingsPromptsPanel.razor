@@ -4,11 +4,11 @@
 <div class="settings-prompts">
     @if (!string.IsNullOrEmpty(_panelError))
     {
-        <FluentMessageBar Intent="MessageIntent.Error" Class="settings-prompts__msg">@_panelError</FluentMessageBar>
+        <AppMessageBar Intent="MessageIntent.Error" Class="settings-prompts__msg">@_panelError</AppMessageBar>
     }
     @if (!string.IsNullOrEmpty(_panelInfo))
     {
-        <FluentMessageBar Intent="MessageIntent.Success" Class="settings-prompts__msg">@_panelInfo</FluentMessageBar>
+        <AppMessageBar Intent="MessageIntent.Success" Class="settings-prompts__msg">@_panelInfo</AppMessageBar>
     }
 
     <div class="settings-prompts__head">
@@ -58,6 +58,7 @@
     [
         "text", "code", "image", "audio", "music", "video", "sprites",
         "godot-ui", "godot-physics", "scenes", "godot-project", "animations",
+        "godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes",
     ];
 
     private readonly Dictionary<string, string> _working = new(StringComparer.OrdinalIgnoreCase);
@@ -234,6 +235,11 @@
             "scenes" => "SCENES",
             "godot-project" => "PROJECT",
             "animations" => "ANIMATIONS",
+            "godot-lighting" => "LIGHTING",
+            "godot-camera" => "CAMERA",
+            "godot-shaders" => "SHADERS",
+            "godot-signals" => "SIGNALS",
+            "godot-nodes" => "NODES",
             _ => key.ToUpperInvariant(),
         };
 
@@ -252,6 +258,12 @@
             "scenes" => "settings-prompts__badge--scenes",
             "godot-project" => "settings-prompts__badge--project",
             "animations" => "settings-prompts__badge--animations",
+            "godot-lighting" => "settings-prompts__badge--other",
+            "godot-camera" => "settings-prompts__badge--other",
+            "godot-shaders" => "settings-prompts__badge--other",
+            "godot-signals" => "settings-prompts__badge--other",
+            "godot-nodes" => "settings-prompts__badge--other",
             _ => "settings-prompts__badge--other",
         };
 }
+

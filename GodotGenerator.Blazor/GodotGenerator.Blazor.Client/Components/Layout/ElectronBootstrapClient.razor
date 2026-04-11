@@ -1,0 +1,21 @@
+@inject ElectronBridgeService Bridge
+
+@* Renders nothing.
+   Initialises Electron IPC push-event subscriptions on the first interactive
+   render so that backend lifecycle notifications (backendReady, backendCrashed,
+   backendFailed) and File-menu folder selections are forwarded to C# services.
+
+   Render mode must be InteractiveWebAssembly — specified at the use site in
+   MainLayout.razor so that this component can be added without a
+   @rendermode directive that would prevent server pre-rendering of the layout. *@
+
+@code {
+    /// <inheritdoc />
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Bridge.InitializeAsync().ConfigureAwait(false);
+        }
+    }
+}

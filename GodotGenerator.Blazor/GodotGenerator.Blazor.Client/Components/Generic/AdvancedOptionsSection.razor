@@ -11,6 +11,15 @@
             @ChildContent
         }
 
+        <SmartField Label="Preferred language"
+            Help="Programming language for generated code when applicable: GDScript or C#. Applied to every generation request (merged into the system prompt)."
+            FieldType="@SmartFieldType.Select"
+            Placeholder="Default (no preference)"
+            SelectOptions="ScriptLanguageOptions"
+            Value="@Options.PreferredScriptLanguage"
+            ValueChanged="OnScriptLanguageChanged"
+            Width="100%" />
+
         <SmartField Label="Temperature (creativity)"
             Help="0 = focused, 2 = more random. Passed to the model when supported." Placeholder="0.0 to 2.0"
             Value="@TemperatureText" ValueChanged="OnTemperatureChanged" Width="100%" />
@@ -23,16 +32,11 @@
         <SmartField Label="System prompt override" FieldType="SmartFieldType.Multiline" Rows="4"
             Placeholder="Additional system instructions for this request…" Width="100%"
             Value="@Options.SystemPromptOverride" ValueChanged="OnSystemPromptChanged" />
-
-        <SmartField Label="Preferred script language (code generation)"
-            Help="Hint merged into the system prompt for code-related modalities." FieldType="@SmartFieldType.Select"
-            Placeholder="(use default)" SelectOptions="ScriptLanguageOptions" Value="@Options.PreferredScriptLanguage"
-            ValueChanged="OnScriptLanguageChanged" Width="100%" />
     </FluentAccordion>
 </details>
 
 @code {
-    private static readonly string[] ScriptLanguageOptions = ["", "GDScript", "C#"];
+    private static readonly string[] ScriptLanguageOptions = ["GDScript", "C#"];
 
     [Parameter, EditorRequired]
     public GenerationAdvancedOptions Options { get; set; } = null!;

@@ -48,7 +48,11 @@ public sealed class AiOrchestrationService(
             }
 
             var kernel = await kernelFactory
-                .GetOrCreateKernelAsync(request.Provider, request.PreferredModelId, effectiveCancellationToken)
+                .GetOrCreateKernelAsync(
+                    request.Provider,
+                    request.PreferredModelId,
+                    request.Modality,
+                    effectiveCancellationToken)
                 .ConfigureAwait(false);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
 

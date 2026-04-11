@@ -61,6 +61,23 @@ public sealed class GodotGeneratorBffControllerTests
     }
 
     [Fact]
+    public async Task GenerateGodotLighting_returns_Ok_and_calls_api()
+    {
+        var mock = new Mock<IGodotGeneratorApiService>(MockBehavior.Strict);
+        mock.Setup(a => a.GenerateGodotLightingAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?> { ["message"] = "lit" }));
+
+        var sut = new GodotGeneratorBffController(mock.Object);
+        var result = await sut.GenerateGodotLighting(new GenerateRequest("sun"), CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var body = Assert.IsType<ApiResponse<Dictionary<string, object?>>>(ok.Value);
+        Assert.True(body.Success);
+        Assert.Equal("lit", body.Data?["message"]?.ToString());
+        mock.Verify(a => a.GenerateGodotLightingAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task GetPreference_forwards_key()
     {
         var mock = new Mock<IGodotGeneratorApiService>(MockBehavior.Strict);

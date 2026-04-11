@@ -107,7 +107,7 @@ public sealed class ElectronIpcTransport : IGodotGeneratorClientTransport
         try
         {
             envelope = await _js.InvokeAsync<IpcResponseJs?>(
-                "godotElectron.invokeCommand",
+                "godotElectronInterop.invokeCommand",
                 cancellationToken,
                 command,
                 payloadJson);
@@ -156,17 +156,22 @@ public sealed class ElectronIpcTransport : IGodotGeneratorClientTransport
 
     private static string ModalityToCommand(GenerationModality modality) => modality switch
     {
-        GenerationModality.Text          => GenerateCommandNames.Text,
-        GenerationModality.Code          => GenerateCommandNames.Code,
-        GenerationModality.Image         => GenerateCommandNames.Image,
-        GenerationModality.Audio         => GenerateCommandNames.Audio,
-        GenerationModality.Video         => GenerateCommandNames.Video,
-        GenerationModality.Sprites       => GenerateCommandNames.Sprites,
-        GenerationModality.GodotUi       => GenerateCommandNames.GodotUi,
-        GenerationModality.GodotPhysics  => GenerateCommandNames.GodotPhysics,
-        GenerationModality.GodotProject  => GenerateCommandNames.GodotProject,
-        GenerationModality.Scenes        => GenerateCommandNames.Scenes,
-        GenerationModality.Animations    => GenerateCommandNames.Animations,
+        GenerationModality.Text => GenerateCommandNames.Text,
+        GenerationModality.Code => GenerateCommandNames.Code,
+        GenerationModality.Image => GenerateCommandNames.Image,
+        GenerationModality.Audio => GenerateCommandNames.Audio,
+        GenerationModality.Video => GenerateCommandNames.Video,
+        GenerationModality.Sprites => GenerateCommandNames.Sprites,
+        GenerationModality.GodotUi => GenerateCommandNames.GodotUi,
+        GenerationModality.GodotPhysics => GenerateCommandNames.GodotPhysics,
+        GenerationModality.GodotProject => GenerateCommandNames.GodotProject,
+        GenerationModality.Scenes => GenerateCommandNames.Scenes,
+        GenerationModality.Animations => GenerateCommandNames.Animations,
+        GenerationModality.GodotLighting => GenerateCommandNames.GodotLighting,
+        GenerationModality.GodotCamera => GenerateCommandNames.GodotCamera,
+        GenerationModality.GodotShaders => GenerateCommandNames.GodotShaders,
+        GenerationModality.GodotSignals => GenerateCommandNames.GodotSignals,
+        GenerationModality.GodotNodes => GenerateCommandNames.GodotNodes,
         _ => throw new ArgumentOutOfRangeException(nameof(modality), modality, null),
     };
 

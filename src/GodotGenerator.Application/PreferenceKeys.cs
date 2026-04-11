@@ -66,4 +66,21 @@ public static class PreferenceKeys
 
     /// <summary>Legacy prompt key for Godot physics generation.</summary>
     public const string PromptsGodotPhysicsLegacy = "prompts.godot_physics";
+
+    // ── New Godot-specific modality prompt keys ──────────────────────────────
+
+    /// <summary>System prompt key for Godot lighting generation.</summary>
+    public const string PromptsGodotLighting = "prompts.godot_lighting";
+
+    /// <summary>System prompt key for Godot camera generation.</summary>
+    public const string PromptsGodotCamera = "prompts.godot_camera";
+
+    /// <summary>System prompt key for Godot shader generation.</summary>
+    public const string PromptsGodotShaders = "prompts.godot_shaders";
+
+    /// <summary>System prompt key for Godot signal wiring.</summary>
+    public const string PromptsGodotSignals = "prompts.godot_signals";
+
+    /// <summary>System prompt key for Godot node operations.</summary>
+    public const string PromptsGodotNodes = "prompts.godot_nodes";
 }

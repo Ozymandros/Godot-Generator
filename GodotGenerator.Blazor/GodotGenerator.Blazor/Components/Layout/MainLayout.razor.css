@@ -16,23 +16,23 @@
     box-sizing: border-box;
     display: none;
     left: 0;
-    padding: 0.625rem 1.25rem 0.75rem 1.25rem;
+    padding: var(--app-error-ui-padding-top) var(--app-error-ui-padding-right) var(--app-error-ui-padding-bottom) var(--app-error-ui-padding-left);
     position: fixed;
     width: 100%;
-    z-index: 1000;
-    font-size: 0.875rem;
-    line-height: 1.5;
+    z-index: var(--app-z-error-ui);
+    font-size: var(--app-text-size-body);
+    line-height: var(--app-line-height-relaxed);
 }
 
 #blazor-error-ui .dismiss {
     cursor: pointer;
     position: absolute;
-    right: 0.875rem;
-    top: 0.5rem;
-    opacity: 0.6;
-    transition: opacity 0.12s ease;
+    right: var(--app-error-ui-dismiss-right);
+    top: var(--app-error-ui-dismiss-top);
+    opacity: var(--app-opacity-faint);
+    transition: opacity var(--app-transition-fast);
 }
 
 #blazor-error-ui .dismiss:hover {
-    opacity: 1;
+    opacity: var(--app-opacity-near-full);
 }

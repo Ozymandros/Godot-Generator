@@ -49,6 +49,11 @@ public sealed class GenerateCommandHandlerTests
     [InlineData(GenerateCommandNames.GodotProject)]
     [InlineData(GenerateCommandNames.Scenes)]
     [InlineData(GenerateCommandNames.Animations)]
+    [InlineData(GenerateCommandNames.GodotLighting)]
+    [InlineData(GenerateCommandNames.GodotCamera)]
+    [InlineData(GenerateCommandNames.GodotShaders)]
+    [InlineData(GenerateCommandNames.GodotSignals)]
+    [InlineData(GenerateCommandNames.GodotNodes)]
     public async Task HandleAsync_ValidCommand_ReturnsSuccess(string command)
     {
         var api = new Mock<IGodotGeneratorApiService>();
@@ -73,6 +78,16 @@ public sealed class GenerateCommandHandlerTests
         api.Setup(a => a.CreateSceneAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
         api.Setup(a => a.GenerateAnimationsAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotLightingAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotCameraAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotShadersAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotSignalsAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.GenerateGodotNodesAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
 
         var h   = Build(api.Object);

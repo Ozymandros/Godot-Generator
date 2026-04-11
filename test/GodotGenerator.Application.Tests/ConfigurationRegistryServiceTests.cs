@@ -1,4 +1,5 @@
 #nullable enable
+using GodotGenerator.Application;
 using GodotGenerator.Application.Configuration;
 using GodotGenerator.Application.Services;
 using Xunit;
@@ -57,5 +58,18 @@ public sealed class ConfigurationRegistryServiceTests
 
         ConfigurationRegistryService.MergeLegacyPrompts(prefs, doc);
         Assert.Equal("legacy-text", doc.Prompts["text"]);
+    }
+
+    [Fact]
+    public void MergeLegacyPrompts_maps_godot_lighting_legacy_key()
+    {
+        var doc = new SystemPromptsDocument();
+        var prefs = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            [PreferenceKeys.PromptsGodotLighting] = "legacy-lighting-overlay",
+        };
+
+        ConfigurationRegistryService.MergeLegacyPrompts(prefs, doc);
+        Assert.Equal("legacy-lighting-overlay", doc.Prompts["godot-lighting"]);
     }
 }

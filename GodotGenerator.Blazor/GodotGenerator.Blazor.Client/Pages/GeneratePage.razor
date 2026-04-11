@@ -1,66 +1,81 @@
-@page "/generate/{Slug}"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-
-@if (_modality is { } m)
-{
-    @switch (m)
-    {
-        case GenerationModality.Text:
-            <TextPanel />
-            break;
-        case GenerationModality.Code:
-            <CodePanel />
-            break;
-        case GenerationModality.Image:
-            <ImagePanel />
-            break;
-        case GenerationModality.Audio:
-            <AudioPanel />
-            break;
-        case GenerationModality.Video:
-            <VideoPanel />
-            break;
-        case GenerationModality.Sprites:
-            <SpritesPanel />
-            break;
-        case GenerationModality.Animations:
-            <AnimationsPanel />
-            break;
-        case GenerationModality.GodotUi:
-            <UnityUIPanel />
-            break;
-        case GenerationModality.GodotPhysics:
-            <UnityPhysicsPanel />
-            break;
-        case GenerationModality.Scenes:
-            <ScenesPanel />
-            break;
-        case GenerationModality.GodotProject:
-            <UnityProjectPanel />
-            break;
-        default:
-            <FluentLabel Typo="Typography.Body">Unknown modality.</FluentLabel>
-            break;
-    }
-}
-else
-{
-    <FluentLabel Typo="Typography.Body">Unknown modality.</FluentLabel>
-}
-
-@code {
-    [Parameter] public string Slug { get; set; } = string.Empty;
-
-    private GenerationModality? _modality;
-
-    protected override void OnParametersSet()
-    {
-        if (!ModalityRoutes.TryGet(Slug, out var modality))
-        {
-            _modality = null;
-            return;
-        }
-
-        _modality = modality;
-    }
-}
+@page "/generate/{Slug}"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@if (_modality is { } m)
+{
+    @switch (m)
+    {
+        case GenerationModality.Text:
+            <TextPanel />
+            break;
+        case GenerationModality.Code:
+            <CodePanel />
+            break;
+        case GenerationModality.Image:
+            <ImagePanel />
+            break;
+        case GenerationModality.Audio:
+            <AudioPanel />
+            break;
+        case GenerationModality.Video:
+            <VideoPanel />
+            break;
+        case GenerationModality.Sprites:
+            <SpritesPanel />
+            break;
+        case GenerationModality.Animations:
+            <AnimationsPanel />
+            break;
+        case GenerationModality.GodotUi:
+            <UnityUIPanel />
+            break;
+        case GenerationModality.GodotPhysics:
+            <UnityPhysicsPanel />
+            break;
+        case GenerationModality.Scenes:
+            <ScenesPanel />
+            break;
+        case GenerationModality.GodotProject:
+            <UnityProjectPanel />
+            break;
+        case GenerationModality.GodotLighting:
+            <LightingPanel />
+            break;
+        case GenerationModality.GodotCamera:
+            <CameraPanel />
+            break;
+        case GenerationModality.GodotShaders:
+            <ShadersPanel />
+            break;
+        case GenerationModality.GodotSignals:
+            <SignalsPanel />
+            break;
+        case GenerationModality.GodotNodes:
+            <NodesPanel />
+            break;
+        default:
+            <FluentLabel Typo="Typography.Body">Unknown modality.</FluentLabel>
+            break;
+    }
+}
+else
+{
+    <FluentLabel Typo="Typography.Body">Unknown modality.</FluentLabel>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private GenerationModality? _modality;
+
+    protected override void OnParametersSet()
+    {
+        if (!ModalityRoutes.TryGet(Slug, out var modality))
+        {
+            _modality = null;
+            return;
+        }
+
+        _modality = modality;
+    }
+}

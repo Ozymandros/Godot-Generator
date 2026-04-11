@@ -10,6 +10,7 @@ using GodotGenerator.Blazor.Client.Components.Generic;
 using GodotGenerator.Blazor.Client.Models;
 using GodotGenerator.Blazor.Client.Pages;
 using GodotGenerator.Blazor.Client.Services;
+using GodotGenerator.Blazor.Client.Services.Transport;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,17 +56,9 @@ public sealed class SettingsUiTests
     [Fact]
     public async Task SettingsProvidersPanel_commit_posts_providers_registry_preference()
     {
-        using var ctx = CreateFluentContext();
+        using var ctx = CreateFluentContext(out var transport);
         ctx.JSInterop.Mode = Bunit.JSRuntimeMode.Loose;
         ctx.JSInterop.Setup<bool>("confirm").SetResult(true);
-
-        string? postedKey = null;
-        string? postedValue = null;
-        ((IServiceCollection)ctx.Services).AddSingleton(_ => CreateHttpClientForPreferences((key, value) =>
-        {
-            postedKey = key;
-            postedValue = value;
-        }));
 
         var entry = new ProviderRegistryEntry
         {
@@ -88,9 +81,9 @@ public sealed class SettingsUiTests
         Assert.NotNull(commit);
         await cut.InvokeAsync(async () => await commit!.ClickAsync(new MouseEventArgs()));
 
-        Assert.Equal(PreferenceKeys.ProvidersRegistryV1, postedKey);
-        Assert.False(string.IsNullOrWhiteSpace(postedValue));
-        using var doc = JsonDocument.Parse(postedValue!);
+        var last = Assert.Single(transport.SetPreferenceCalls, c => c.Key == PreferenceKeys.ProvidersRegistryV1);
+        Assert.False(string.IsNullOrWhiteSpace(last.Value));
+        using var doc = JsonDocument.Parse(last.Value!);
         Assert.Equal(1, doc.RootElement.GetProperty("version").GetInt32());
         Assert.Equal("acme", doc.RootElement.GetProperty("providers")[0].GetProperty("id").GetString());
     }
@@ -98,17 +91,9 @@ public sealed class SettingsUiTests
     [Fact]
     public async Task SettingsModelsPanel_commit_posts_models_registry_preference()
     {
-        using var ctx = CreateFluentContext();
+        using var ctx = CreateFluentContext(out var transport);
         ctx.JSInterop.Mode = Bunit.JSRuntimeMode.Loose;
         ctx.JSInterop.Setup<bool>("confirm").SetResult(true);
-
-        string? postedKey = null;
-        string? postedValue = null;
-        ((IServiceCollection)ctx.Services).AddSingleton(_ => CreateHttpClientForPreferences((key, value) =>
-        {
-            postedKey = key;
-            postedValue = value;
-        }));
 
         var entry = new ModelRegistryEntry
         {
@@ -130,9 +115,9 @@ public sealed class SettingsUiTests
         Assert.NotNull(commit);
         await cut.InvokeAsync(async () => await commit!.ClickAsync(new MouseEventArgs()));
 
-        Assert.Equal(PreferenceKeys.ModelsRegistryV1, postedKey);
-        Assert.False(string.IsNullOrWhiteSpace(postedValue));
-        using var doc = JsonDocument.Parse(postedValue!);
+        var last = Assert.Single(transport.SetPreferenceCalls, c => c.Key == PreferenceKeys.ModelsRegistryV1);
+        Assert.False(string.IsNullOrWhiteSpace(last.Value));
+        using var doc = JsonDocument.Parse(last.Value!);
         Assert.Equal(1, doc.RootElement.GetProperty("version").GetInt32());
         Assert.Equal("google", doc.RootElement.GetProperty("models")[0].GetProperty("providerId").GetString());
         Assert.Equal("gemini-1.5-flash-001", doc.RootElement.GetProperty("models")[0].GetProperty("engineValue").GetString());
@@ -141,14 +126,7 @@ public sealed class SettingsUiTests
     [Fact]
     public async Task SettingsPromptsPanel_commit_posts_prompts_system_preference()
     {
-        using var ctx = CreateFluentContext();
-        string? postedKey = null;
-        string? postedValue = null;
-        ((IServiceCollection)ctx.Services).AddSingleton(_ => CreateHttpClientForPreferences((key, value) =>
-        {
-            postedKey = key;
-            postedValue = value;
-        }));
+        using var ctx = CreateFluentContext(out var transport);
 
         var src = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -165,9 +143,9 @@ public sealed class SettingsUiTests
         Assert.NotNull(save);
         await cut.InvokeAsync(async () => await save!.ClickAsync(new MouseEventArgs()));
 
-        Assert.Equal(PreferenceKeys.PromptsSystemV1, postedKey);
-        Assert.False(string.IsNullOrWhiteSpace(postedValue));
-        using var doc = JsonDocument.Parse(postedValue!);
+        var last = Assert.Single(transport.SetPreferenceCalls, c => c.Key == PreferenceKeys.PromptsSystemV1);
+        Assert.False(string.IsNullOrWhiteSpace(last.Value));
+        using var doc = JsonDocument.Parse(last.Value!);
         Assert.Equal(1, doc.RootElement.GetProperty("version").GetInt32());
         Assert.Equal("You are a test code assistant.", doc.RootElement.GetProperty("prompts").GetProperty("code").GetString());
     }
@@ -201,11 +179,16 @@ public sealed class SettingsUiTests
 
     private Task OnRegistrySavedNoOp() => Task.CompletedTask;
 
-    private static BunitContext CreateFluentContext()
+    private static BunitContext CreateFluentContext() => CreateFluentContext(out _);
+
+    private static BunitContext CreateFluentContext(out TestGodotGeneratorClientTransport transport)
     {
+        transport = new TestGodotGeneratorClientTransport();
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = Bunit.JSRuntimeMode.Loose;
         ((IServiceCollection)ctx.Services).AddFluentUIComponents();
+        ((IServiceCollection)ctx.Services).AddSingleton<IGodotGeneratorClientTransport>(transport);
+        ((IServiceCollection)ctx.Services).AddSingleton<GodotGeneratorClientFacade>();
         return ctx;
     }
 

@@ -1,0 +1,31 @@
+<div class="@WrapperClass" @attributes="AdditionalAttributes">
+    <Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar Intent="@Intent" Class="app-messagebar__inner">
+        @ChildContent
+    </Microsoft.FluentUI.AspNetCore.Components.FluentMessageBar>
+</div>
+
+@code {
+    [Parameter]
+    public MessageIntent Intent { get; set; } = MessageIntent.Info;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string WrapperClass => string.IsNullOrWhiteSpace(Class)
+        ? $"app-messagebar {IntentClass}"
+        : $"app-messagebar {IntentClass} {Class}";
+
+    private string IntentClass => Intent switch
+    {
+        MessageIntent.Success => "app-messagebar--success",
+        MessageIntent.Warning => "app-messagebar--warning",
+        MessageIntent.Error => "app-messagebar--error",
+        _ => "app-messagebar--info",
+    };
+}

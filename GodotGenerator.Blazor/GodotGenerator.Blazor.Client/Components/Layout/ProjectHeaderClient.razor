@@ -1,4 +1,5 @@
 @inject ProjectStateService ProjectState
+@inject ElectronBridgeService Bridge
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -29,7 +30,7 @@
     @if (_browseHint is not null)
     {
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="4" Class="app-content-wide">
-            <FluentMessageBar Intent="MessageIntent.Info">@_browseHint</FluentMessageBar>
+            <AppMessageBar Intent="MessageIntent.Info">@_browseHint</AppMessageBar>
             <FluentButton Appearance="Appearance.Lightweight" OnClick="DismissBrowseHintAsync">Dismiss</FluentButton>
         </FluentStack>
     }
@@ -48,12 +49,32 @@
         await ProjectState.LoadAsync().ConfigureAwait(false);
         SyncFromState();
         ProjectState.Changed += OnProjectChanged;
+        Bridge.FolderSelected += OnFolderSelectedFromMenu;
     }
 
     private void OnProjectChanged()
     {
         SyncFromState();
         InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Handles a folder path pushed from the Electron File menu
+    /// ("Open Project Folder…"). Persists the path immediately so the user
+    /// does not have to press Save after a menu-driven folder selection.
+    /// </summary>
+    private async void OnFolderSelectedFromMenu(string path)
+    {
+        try
+        {
+            await ProjectState.SetActiveProjectPathAsync(path).ConfigureAwait(false);
+            // SetActiveProjectPathAsync fires ProjectState.Changed, which calls
+            // OnProjectChanged → SyncFromState → StateHasChanged automatically.
+        }
+        catch
+        {
+            // Ignore JS interop errors during menu-driven folder selection.
+        }
     }
 
     private void SyncFromState()
@@ -121,5 +142,7 @@
     public void Dispose()
     {
         ProjectState.Changed -= OnProjectChanged;
+        Bridge.FolderSelected -= OnFolderSelectedFromMenu;
     }
 }
+

@@ -42,11 +42,11 @@
 
 @if (!string.IsNullOrEmpty(_bannerError))
 {
-    <FluentMessageBar Intent="MessageIntent.Error" Class="settings-hub__banner app-content-wide">@_bannerError</FluentMessageBar>
+    <AppMessageBar Intent="MessageIntent.Error" Class="settings-hub__banner app-content-wide">@_bannerError</AppMessageBar>
 }
 @if (!string.IsNullOrEmpty(_bannerInfo))
 {
-    <FluentMessageBar Intent="MessageIntent.Success" Class="settings-hub__banner app-content-wide">@_bannerInfo</FluentMessageBar>
+    <AppMessageBar Intent="MessageIntent.Success" Class="settings-hub__banner app-content-wide">@_bannerInfo</AppMessageBar>
 }
 
 <div role="tabpanel" id="settings-panel-0" aria-labelledby="settings-tab-0" class="settings-tab-panel app-content-wide" hidden="@(_tab != 0)">
@@ -653,3 +653,4 @@
         }
     }
 }
+

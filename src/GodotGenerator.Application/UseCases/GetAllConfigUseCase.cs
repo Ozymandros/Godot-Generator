@@ -1,5 +1,4 @@
 #nullable enable
-using System.IO;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Configuration;
 using GodotGenerator.Application.Services;
@@ -15,7 +14,6 @@ public sealed class GetAllConfigUseCase(
     GetPreferenceUseCase getPreference,
     ILlmDiscoveryInfoProvider llmDiscovery)
 {
-    private const string AgentDebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-cb9046.log";
     /// <summary>
     /// Builds a configuration snapshot for API-style discovery calls.
     /// </summary>
@@ -44,6 +42,11 @@ public sealed class GetAllConfigUseCase(
             PromptsCodeLegacy,
             PromptsGodotUiLegacy,
             PromptsGodotPhysicsLegacy,
+            PromptsGodotLighting,
+            PromptsGodotCamera,
+            PromptsGodotShaders,
+            PromptsGodotSignals,
+            PromptsGodotNodes,
         };
 
         var preferences = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -51,33 +54,6 @@ public sealed class GetAllConfigUseCase(
         {
             preferences[key] = await getPreference.ExecuteAsync(key, cancellationToken).ConfigureAwait(false);
         }
-        #region agent log
-        try
-        {
-            var providersRaw = preferences.GetValueOrDefault(ProvidersRegistryV1);
-            var line = System.Text.Json.JsonSerializer.Serialize(new
-            {
-                sessionId = "cb9046",
-                runId = "initial",
-                hypothesisId = "H2_H3",
-                location = "GetAllConfigUseCase.cs:ExecuteAsync",
-                message = "Loaded preference snapshot",
-                data = new
-                {
-                    providersRegistryLength = providersRaw?.Length ?? 0,
-                    hasProvidersRegistry = !string.IsNullOrWhiteSpace(providersRaw),
-                    modelsRegistryLength = preferences.GetValueOrDefault(ModelsRegistryV1)?.Length ?? 0,
-                    promptsRegistryLength = preferences.GetValueOrDefault(PromptsSystemV1)?.Length ?? 0
-                },
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-            });
-            File.AppendAllText(AgentDebugLogPath, line + Environment.NewLine);
-        }
-        catch
-        {
-            // no-op
-        }
-        #endregion
 
         if (string.IsNullOrWhiteSpace(preferences.GetValueOrDefault(PreferredLanguage)))
         {

@@ -6,7 +6,8 @@
 }
 
 .smart-field ::deep fluent-text-field,
-.smart-field ::deep fluent-text-area {
+.smart-field ::deep fluent-text-area,
+.smart-field ::deep fluent-combobox {
     width: var(--smart-field-width, var(--app-smart-field-width-default));
     max-width: 100%;
     box-sizing: border-box;
