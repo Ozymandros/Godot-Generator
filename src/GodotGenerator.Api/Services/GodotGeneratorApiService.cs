@@ -72,6 +72,26 @@ public sealed class GodotGeneratorApiService(
         GenerateByModalityAsync("animations", request, cancellationToken);
 
     /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotLightingAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-lighting", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotCameraAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-camera", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotShadersAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-shaders", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotSignalsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-signals", request, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        GenerateByModalityAsync("godot-nodes", request, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -212,6 +232,11 @@ public sealed class GodotGeneratorApiService(
             "godot-project" => "godot-project",
             "scenes" => "scenes",
             "animations" => "animations",
+            "godot-lighting" => "godot-lighting",
+            "godot-camera" => "godot-camera",
+            "godot-shaders" => "godot-shaders",
+            "godot-signals" => "godot-signals",
+            "godot-nodes" => "godot-nodes",
             _ => "text",
         };
     }

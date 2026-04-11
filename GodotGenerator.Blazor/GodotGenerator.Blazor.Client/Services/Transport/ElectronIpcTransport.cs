@@ -167,6 +167,11 @@ public sealed class ElectronIpcTransport : IGodotGeneratorClientTransport
         GenerationModality.GodotProject  => GenerateCommandNames.GodotProject,
         GenerationModality.Scenes        => GenerateCommandNames.Scenes,
         GenerationModality.Animations    => GenerateCommandNames.Animations,
+        GenerationModality.GodotLighting => GenerateCommandNames.GodotLighting,
+        GenerationModality.GodotCamera   => GenerateCommandNames.GodotCamera,
+        GenerationModality.GodotShaders  => GenerateCommandNames.GodotShaders,
+        GenerationModality.GodotSignals  => GenerateCommandNames.GodotSignals,
+        GenerationModality.GodotNodes    => GenerateCommandNames.GodotNodes,
         _ => throw new ArgumentOutOfRangeException(nameof(modality), modality, null),
     };
 

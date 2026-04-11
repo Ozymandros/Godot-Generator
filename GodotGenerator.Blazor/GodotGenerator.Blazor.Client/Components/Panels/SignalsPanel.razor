@@ -1,0 +1,49 @@
+@* Godot signals modality — signal declarations, connect calls, handler stubs. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotSignals"
+                     Title="Godot Signals"
+                     Description="Declare custom signals, connect them in code or the editor, and generate handler stubs with correct connect flags."
+                     PromptPlaceholder="Describe the signal flow…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Emitter node path" Placeholder="e.g. Player, Area2D" @bind-Value="_emitterPath" />
+        <SmartField Label="Signal name(s)" Placeholder="e.g. health_changed, jumped" @bind-Value="_signalNames" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _emitterPath = string.Empty;
+    private string _signalNames = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_emitterPath))
+            parts.Add($"Emitter node: {_emitterPath.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_signalNames))
+            parts.Add($"Signals: {_signalNames.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

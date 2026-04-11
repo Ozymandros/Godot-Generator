@@ -38,11 +38,27 @@ public static class GenerateCommandNames
     /// <summary>Generates Godot animations.</summary>
     public const string Animations = "Generate.Animations/v1";
 
+    /// <summary>Generates Godot lighting setup (lights, environment, sky).</summary>
+    public const string GodotLighting = "Generate.GodotLighting/v1";
+
+    /// <summary>Generates Godot camera configuration (Camera3D/Camera2D, viewports).</summary>
+    public const string GodotCamera = "Generate.GodotCamera/v1";
+
+    /// <summary>Generates Godot shaders (VisualShader, ShaderMaterial, GLSL-like code).</summary>
+    public const string GodotShaders = "Generate.GodotShaders/v1";
+
+    /// <summary>Generates Godot signal wiring (declarations, connect calls, handlers).</summary>
+    public const string GodotSignals = "Generate.GodotSignals/v1";
+
+    /// <summary>Generates Godot node operations (add, configure, reparent, set properties).</summary>
+    public const string GodotNodes = "Generate.GodotNodes/v1";
+
     /// <summary>Ordered list of all generate command names; used to register handlers.</summary>
     public static readonly IReadOnlyList<string> All =
     [
         Text, Code, Image, Audio, Video, Sprites,
         GodotUi, GodotPhysics, GodotProject, Scenes, Animations,
+        GodotLighting, GodotCamera, GodotShaders, GodotSignals, GodotNodes,
     ];
 }
 

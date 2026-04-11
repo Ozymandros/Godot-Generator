@@ -21,4 +21,9 @@ public static class AppIconFactory
     public static Icon DataArea { get; } = new FluentIcons.Regular.Size20.DataArea();
     public static Icon DocumentBulletList { get; } = new FluentIcons.Regular.Size20.DocumentBulletList();
     public static Icon BranchFork { get; } = new FluentIcons.Regular.Size20.BranchFork();
+    public static Icon LightBulb { get; } = new FluentIcons.Regular.Size20.LightbulbFilament();
+    public static Icon Camera { get; } = new FluentIcons.Regular.Size20.Camera();
+    public static Icon PaintBrush { get; } = new FluentIcons.Regular.Size20.PaintBrush();
+    public static Icon ArrowSync { get; } = new FluentIcons.Regular.Size20.ArrowSync();
+    public static Icon TreeDeciduous { get; } = new FluentIcons.Regular.Size20.TreeDeciduous();
 }

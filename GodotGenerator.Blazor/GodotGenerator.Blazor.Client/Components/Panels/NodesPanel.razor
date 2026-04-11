@@ -1,0 +1,53 @@
+@* Godot nodes modality — instantiate, add_child, reparent, set properties, queue_free. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotNodes"
+                     Title="Godot Nodes"
+                     Description="Instantiate, add, configure, reparent, and remove nodes via GDScript or C# with correct scene-tree ownership."
+                     PromptPlaceholder="Describe the node operation…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Target node type" Placeholder="e.g. CharacterBody3D, Sprite2D" @bind-Value="_nodeType" />
+        <SmartField Label="Parent path" Placeholder="e.g. World/Entities" @bind-Value="_parentPath" />
+        <SmartField Label="Property / method notes" FieldType="SmartFieldType.Multiline" Placeholder="Properties to set, methods to call, ownership notes…" @bind-Value="_propertyNotes" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _nodeType = string.Empty;
+    private string _parentPath = string.Empty;
+    private string _propertyNotes = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_nodeType))
+            parts.Add($"Node type: {_nodeType.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_parentPath))
+            parts.Add($"Parent path: {_parentPath.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_propertyNotes))
+            parts.Add($"Property / method notes: {_propertyNotes.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

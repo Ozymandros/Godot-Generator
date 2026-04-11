@@ -1,0 +1,38 @@
+@* Godot shaders modality — Godot shading language, VisualShader, ShaderMaterial. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotShaders"
+                     Title="Godot Shaders"
+                     Description="Write Godot 4 shader code or VisualShader graphs with uniform declarations and usage examples."
+                     PromptPlaceholder="Describe the shader effect…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Shader type" Placeholder="e.g. spatial, canvas_item, particles" @bind-Value="_shaderType" />
+        <SmartField Label="Material / node path" Placeholder="e.g. MeshInstance3D/material" @bind-Value="_materialPath" />
+        <SmartField Label="Uniform hints" FieldType="SmartFieldType.Multiline" Placeholder="Describe uniforms, textures, flags…" @bind-Value="_uniformNotes" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _shaderType = string.Empty;
+    private string _materialPath = string.Empty;
+    private string _uniformNotes = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_shaderType))
+            parts.Add($"Shader type: {_shaderType.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_materialPath))
+            parts.Add($"Material path: {_materialPath.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_uniformNotes))
+            parts.Add($"Uniform hints: {_uniformNotes.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+    }
+}

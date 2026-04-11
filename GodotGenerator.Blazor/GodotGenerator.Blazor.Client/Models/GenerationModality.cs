@@ -16,4 +16,9 @@ public enum GenerationModality
     Scenes,
     GodotProject,
     Animations,
+    GodotLighting,
+    GodotCamera,
+    GodotShaders,
+    GodotSignals,
+    GodotNodes,
 }

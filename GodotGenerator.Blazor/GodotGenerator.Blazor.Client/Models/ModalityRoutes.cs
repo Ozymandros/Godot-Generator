@@ -18,6 +18,11 @@ public static class ModalityRoutes
         ["scenes"] = GenerationModality.Scenes,
         ["godot-project"] = GenerationModality.GodotProject,
         ["animations"] = GenerationModality.Animations,
+        ["godot-lighting"] = GenerationModality.GodotLighting,
+        ["godot-camera"] = GenerationModality.GodotCamera,
+        ["godot-shaders"] = GenerationModality.GodotShaders,
+        ["godot-signals"] = GenerationModality.GodotSignals,
+        ["godot-nodes"] = GenerationModality.GodotNodes,
     };
 
     public static bool TryGet(string slug, out GenerationModality modality) => Map.TryGetValue(slug, out modality);

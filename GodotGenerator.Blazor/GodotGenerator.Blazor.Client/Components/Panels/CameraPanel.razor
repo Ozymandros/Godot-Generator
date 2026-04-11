@@ -1,0 +1,49 @@
+@* Godot camera modality — Camera3D / Camera2D, viewports, CameraPath3D. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotCamera"
+                     Title="Godot Camera"
+                     Description="Camera3D and Camera2D properties, FOV, projection, Viewport configuration and split-screen layouts."
+                     PromptPlaceholder="Describe the camera setup…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Camera type" Placeholder="e.g. Camera3D, Camera2D" @bind-Value="_cameraType" />
+        <SmartField Label="Node path hint" Placeholder="e.g. Player/Camera3D" @bind-Value="_nodePath" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _cameraType = string.Empty;
+    private string _nodePath = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_cameraType))
+            parts.Add($"Camera type: {_cameraType.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_nodePath))
+            parts.Add($"Node path: {_nodePath.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}
