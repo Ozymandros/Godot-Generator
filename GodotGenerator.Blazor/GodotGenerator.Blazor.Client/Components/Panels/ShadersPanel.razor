@@ -3,13 +3,17 @@
 
 <GenerationWorkspace Modality="GenerationModality.GodotShaders"
                      Title="Godot Shaders"
+                     Badge="MCP resource / shaders"
                      Description="Write Godot 4 shader code or VisualShader graphs with uniform declarations and usage examples."
                      PromptPlaceholder="Describe the shader effect…"
                      CreateRequest="BuildRequest">
     <AdditionalFields>
+        <GodotMcpPanelIntro Subtitle="Pairs with resource.* and material workflows when tools are enabled for this modality." />
         <SmartField Label="Shader type" Placeholder="e.g. spatial, canvas_item, particles" @bind-Value="_shaderType" />
         <SmartField Label="Material / node path" Placeholder="e.g. MeshInstance3D/material" @bind-Value="_materialPath" />
         <SmartField Label="Uniform hints" FieldType="SmartFieldType.Multiline" Placeholder="Describe uniforms, textures, flags…" @bind-Value="_uniformNotes" />
+        <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
+        <GodotProjectValidationSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged" />
     </AdditionalFields>
 </GenerationWorkspace>
 
@@ -17,6 +21,14 @@
     private string _shaderType = string.Empty;
     private string _materialPath = string.Empty;
     private string _uniformNotes = string.Empty;
+    private string _scenePath = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
 
     private GenerateRequest BuildRequest(string prompt)
     {
@@ -27,12 +39,19 @@
             parts.Add($"Material path: {_materialPath.Trim()}");
         if (!string.IsNullOrWhiteSpace(_uniformNotes))
             parts.Add($"Uniform hints: {_uniformNotes.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_scenePath))
+            parts.Add($"Scene path: {_scenePath.Trim()}");
         parts.Add(prompt);
 
         var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
 
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
         return new GenerateRequest(
             Prompt: body,
-            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
     }
 }

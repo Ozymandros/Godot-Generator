@@ -1,0 +1,17 @@
+@* Optional subtitle + link to upstream Godot MCP Server tool reference. *@
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="6" Class="godot-mcp-panel-intro app-margin-bottom-sm">
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">@Subtitle</FluentLabel>
+    }
+    <FluentAnchor Href="@DocsHref" Target="_blank" Rel="noopener noreferrer">@DocsAnchorText</FluentAnchor>
+</FluentStack>
+
+@code {
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter] public string DocsHref { get; set; } = "https://github.com/Ozymandros/Godot-MCP-Server";
+
+    [Parameter] public string DocsAnchorText { get; set; } = "Godot MCP Server — tool reference";
+}

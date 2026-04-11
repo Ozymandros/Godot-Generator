@@ -28,4 +28,9 @@ public sealed class OrchestrationOptions
     /// Maximum duration for one orchestration turn. Zero or negative disables timeout.
     /// </summary>
     public int TurnTimeoutSeconds { get; set; } = 120;
+
+    /// <summary>
+    /// When true, registered Godot MCP kernel functions are narrowed by modality policy for known <c>godot-*</c> modalities.
+    /// </summary>
+    public bool EnableModalityToolFiltering { get; set; } = true;
 }

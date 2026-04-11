@@ -1,0 +1,12 @@
+@* Shared switch: validate project.godot via MCP before generation. *@
+
+<FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+    <FluentSwitch Value="@Value" ValueChanged="ValueChanged">Use active project path for MCP validation</FluentSwitch>
+</FluentStack>
+
+@code {
+    /// <summary>When true, <see cref="GenerationOptionKeys.GodotProjectPath"/> is sent with the request if a project path is set.</summary>
+    [Parameter] public bool Value { get; set; }
+
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+}

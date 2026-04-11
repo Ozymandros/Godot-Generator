@@ -23,8 +23,30 @@ public sealed class GodotGeneratorHttpClientTests
             Task.FromResult(_respond(request));
     }
 
-    [Fact]
-    public async Task GenerateAsync_posts_to_expected_route_for_each_modality()
+    public static TheoryData<GenerationModality, string> ExpectedGenerateRoutes =>
+        new()
+        {
+            { GenerationModality.Text, "/api/generate/text" },
+            { GenerationModality.Code, "/api/generate/code" },
+            { GenerationModality.Image, "/api/generate/image" },
+            { GenerationModality.Audio, "/api/generate/audio" },
+            { GenerationModality.Video, "/api/generate/video" },
+            { GenerationModality.Sprites, "/api/generate/sprites" },
+            { GenerationModality.GodotUi, "/api/generate/godot-ui" },
+            { GenerationModality.GodotPhysics, "/api/generate/godot-physics" },
+            { GenerationModality.Scenes, "/api/generate/scenes" },
+            { GenerationModality.GodotProject, "/api/generate/godot-project" },
+            { GenerationModality.Animations, "/api/generate/animations" },
+            { GenerationModality.GodotLighting, "/api/generate/godot-lighting" },
+            { GenerationModality.GodotCamera, "/api/generate/godot-camera" },
+            { GenerationModality.GodotShaders, "/api/generate/godot-shaders" },
+            { GenerationModality.GodotSignals, "/api/generate/godot-signals" },
+            { GenerationModality.GodotNodes, "/api/generate/godot-nodes" },
+        };
+
+    [Theory]
+    [MemberData(nameof(ExpectedGenerateRoutes))]
+    public async Task GenerateAsync_posts_to_expected_route_for_modality(GenerationModality modality, string expectedPath)
     {
         string? lastUri = null;
         var handler = new StubHandler(req =>
@@ -42,9 +64,9 @@ public sealed class GodotGeneratorHttpClientTests
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         var sut = new GodotGeneratorHttpClient(http);
 
-        _ = await sut.GenerateAsync(GenerationModality.Animations, new GenerateRequest("x"), CancellationToken.None);
+        _ = await sut.GenerateAsync(modality, new GenerateRequest("x"), CancellationToken.None);
 
-        Assert.Equal("/api/generate/animations", lastUri);
+        Assert.Equal(expectedPath, lastUri);
     }
 
     [Fact]

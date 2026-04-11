@@ -48,6 +48,21 @@ public sealed class FakeGodotGeneratorApiService : IGodotGeneratorApiService
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateAnimationsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(OkGen("animations"));
 
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotLightingAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(OkGen("godot-lighting"));
+
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotCameraAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(OkGen("godot-camera"));
+
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotShadersAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(OkGen("godot-shaders"));
+
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotSignalsAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(OkGen("godot-signals"));
+
+    public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(OkGen("godot-nodes"));
+
     public Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default) =>
         Task.FromResult(ApiResponse<Dictionary<string, string?>>.Ok(new Dictionary<string, string?> { ["value"] = null }));
 

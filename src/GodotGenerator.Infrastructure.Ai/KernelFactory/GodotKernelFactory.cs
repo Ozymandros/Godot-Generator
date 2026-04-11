@@ -1,7 +1,9 @@
 #nullable enable
+using GodotGenerator.Application.Orchestration;
 using GodotMcp.Plugin;
 using GodotMcp.Plugin.Extensions;
 using GodotGenerator.Infrastructure.Ai.Options;
+using GodotGenerator.Infrastructure.Ai.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -15,12 +17,13 @@ namespace GodotGenerator.Infrastructure.Ai.KernelFactory;
 public sealed class GodotKernelFactory(
     IServiceProvider rootServices,
     IOptions<LlmOptions> llmOptions,
+    IOptions<OrchestrationOptions> orchestrationOptions,
     Services.IProviderSecretResolver providerSecretResolver,
     ILoggerFactory loggerFactory,
     ILogger<GodotKernelFactory> logger) : IKernelFactory
 {
     private readonly SemaphoreSlim _initLock = new(1, 1);
-    private readonly Dictionary<string, Kernel> _kernelsByProviderAndModel = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Kernel> _kernelsByCacheKey = new(StringComparer.Ordinal);
     private bool _pluginInitialized;
     private bool _pluginInitializationSkipped;
 
@@ -28,12 +31,18 @@ public sealed class GodotKernelFactory(
     public async Task<Kernel> GetOrCreateKernelAsync(
         string? provider = null,
         string? preferredModelId = null,
+        string? modalityKeyForToolFiltering = null,
         CancellationToken cancellationToken = default)
     {
         var effectiveProvider = ResolveProvider(provider);
         var modelId = ResolveModelId(preferredModelId);
-        var cacheKey = BuildCacheKey(effectiveProvider, modelId);
-        if (_kernelsByProviderAndModel.TryGetValue(cacheKey, out var cached))
+        var applyFiltering = orchestrationOptions.Value.EnableModalityToolFiltering
+            && ModalityMcpToolPolicy.ShouldApplyFiltering(modalityKeyForToolFiltering);
+        var filterSegment = applyFiltering
+            ? EffectiveSelectionPolicy.NormalizeModality(modalityKeyForToolFiltering!.Trim())
+            : "full";
+        var cacheKey = BuildCacheKey(effectiveProvider, modelId, filterSegment);
+        if (_kernelsByCacheKey.TryGetValue(cacheKey, out var cached))
         {
             return cached;
         }
@@ -41,7 +50,7 @@ public sealed class GodotKernelFactory(
         await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_kernelsByProviderAndModel.TryGetValue(cacheKey, out cached))
+            if (_kernelsByCacheKey.TryGetValue(cacheKey, out cached))
             {
                 return cached;
             }
@@ -50,8 +59,8 @@ public sealed class GodotKernelFactory(
             EnsureApiKeyConfigured(apiKey, effectiveProvider);
             await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-            var kernel = BuildKernel(apiKey!, modelId);
-            _kernelsByProviderAndModel[cacheKey] = kernel;
+            var kernel = BuildKernel(apiKey!, modelId, modalityKeyForToolFiltering, applyFiltering);
+            _kernelsByCacheKey[cacheKey] = kernel;
             if (_pluginInitializationSkipped)
             {
                 logger.LogInformation(
@@ -87,8 +96,10 @@ public sealed class GodotKernelFactory(
     /// </summary>
     /// <param name="provider">Provider identifier used for the cache key.</param>
     /// <param name="modelId">Model id used for the cache key.</param>
+    /// <param name="toolFilterSegment">Normalized modality segment or <c>full</c> when no tool filtering applies.</param>
     /// <returns>The effective cache key to use for the kernel.</returns>
-    private static string BuildCacheKey(string provider, string modelId) => $"{provider}::{modelId}";
+    private static string BuildCacheKey(string provider, string modelId, string toolFilterSegment) =>
+        $"{provider}::{modelId}::{toolFilterSegment}";
 
     /// <summary>
     /// Resolves the model id for kernel creation, applying optional request-level overrides.
@@ -186,8 +197,10 @@ public sealed class GodotKernelFactory(
     /// </summary>
     /// <param name="apiKey">Provider API key.</param>
     /// <param name="modelId">Resolved model id.</param>
+    /// <param name="modalityKeyForToolFiltering">Modality key when filtering is enabled.</param>
+    /// <param name="applyToolFiltering">Whether to narrow Godot MCP functions for the modality.</param>
     /// <returns>Ready-to-use kernel instance.</returns>
-    private Kernel BuildKernel(string apiKey, string modelId)
+    private Kernel BuildKernel(string apiKey, string modelId, string? modalityKeyForToolFiltering, bool applyToolFiltering)
     {
         try
         {
@@ -206,6 +219,10 @@ public sealed class GodotKernelFactory(
             {
                 kernel.RegisterGodotTools(rootServices);
                 logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+                if (applyToolFiltering && !string.IsNullOrWhiteSpace(modalityKeyForToolFiltering))
+                {
+                    ModalityGodotToolFilter.Apply(kernel, modalityKeyForToolFiltering, logger);
+                }
             }
             return kernel;
         }

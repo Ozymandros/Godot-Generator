@@ -2110,6 +2110,39 @@ h1:focus {
   max-width: var(--app-content-max);
 }
 
+.home-section-heading {
+  margin: var(--app-space-2xl) 0 var(--app-space-sm) 0;
+  font-size: var(--app-text-size-title-sm);
+  font-weight: var(--app-font-weight-semibold);
+  color: var(--app-color-fg);
+  line-height: var(--app-line-height-snug);
+}
+
+.home-section-lead {
+  margin: 0 0 var(--app-space-lg) 0;
+  font-size: var(--app-text-size-body);
+  color: var(--app-color-fg-muted);
+  line-height: var(--app-line-height-relaxed);
+  max-width: 42rem;
+}
+
+.home-mcp-hub-link {
+  margin-top: var(--app-space-lg);
+  max-width: var(--app-content-max);
+}
+
+.godot-mcp-hub__grid {
+  margin-top: var(--app-space-lg);
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(var(--app-management-grid-min), 1fr)
+  );
+}
+
+.godot-mcp-hub .app-fluent-intro-desc {
+  margin-top: var(--app-space-sm);
+}
+
 .home-card {
   display: flex !important;
   flex-direction: column;

@@ -55,6 +55,26 @@ public sealed class GodotGeneratorBffController(IGodotGeneratorApiService api) :
     public Task<IActionResult> GenerateAnimations([FromBody] GenerateRequest request, CancellationToken cancellationToken) =>
         Map(api.GenerateAnimationsAsync(request, cancellationToken));
 
+    [HttpPost("generate/godot-lighting")]
+    public Task<IActionResult> GenerateGodotLighting([FromBody] GenerateRequest request, CancellationToken cancellationToken) =>
+        Map(api.GenerateGodotLightingAsync(request, cancellationToken));
+
+    [HttpPost("generate/godot-camera")]
+    public Task<IActionResult> GenerateGodotCamera([FromBody] GenerateRequest request, CancellationToken cancellationToken) =>
+        Map(api.GenerateGodotCameraAsync(request, cancellationToken));
+
+    [HttpPost("generate/godot-shaders")]
+    public Task<IActionResult> GenerateGodotShaders([FromBody] GenerateRequest request, CancellationToken cancellationToken) =>
+        Map(api.GenerateGodotShadersAsync(request, cancellationToken));
+
+    [HttpPost("generate/godot-signals")]
+    public Task<IActionResult> GenerateGodotSignals([FromBody] GenerateRequest request, CancellationToken cancellationToken) =>
+        Map(api.GenerateGodotSignalsAsync(request, cancellationToken));
+
+    [HttpPost("generate/godot-nodes")]
+    public Task<IActionResult> GenerateGodotNodes([FromBody] GenerateRequest request, CancellationToken cancellationToken) =>
+        Map(api.GenerateGodotNodesAsync(request, cancellationToken));
+
     [HttpGet("preference/{key}")]
     public async Task<IActionResult> GetPreference(string key, CancellationToken cancellationToken)
     {

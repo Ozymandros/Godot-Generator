@@ -178,6 +178,11 @@ public static class ConfigurationRegistryService
         SetIfEmpty("sprites", preferences.GetValueOrDefault("prompts.sprites.legacy"));
         SetIfEmpty("scenes", preferences.GetValueOrDefault("prompts.scenes.legacy")); // Placeholder for future mapping
         SetIfEmpty("godot-project", preferences.GetValueOrDefault("prompts.project.legacy"));
+        SetIfEmpty("godot-lighting", preferences.GetValueOrDefault(PromptsGodotLighting));
+        SetIfEmpty("godot-camera", preferences.GetValueOrDefault(PromptsGodotCamera));
+        SetIfEmpty("godot-shaders", preferences.GetValueOrDefault(PromptsGodotShaders));
+        SetIfEmpty("godot-signals", preferences.GetValueOrDefault(PromptsGodotSignals));
+        SetIfEmpty("godot-nodes", preferences.GetValueOrDefault(PromptsGodotNodes));
 
         return document;
     }

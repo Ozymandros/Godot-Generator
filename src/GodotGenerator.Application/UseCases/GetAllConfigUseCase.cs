@@ -42,6 +42,11 @@ public sealed class GetAllConfigUseCase(
             PromptsCodeLegacy,
             PromptsGodotUiLegacy,
             PromptsGodotPhysicsLegacy,
+            PromptsGodotLighting,
+            PromptsGodotCamera,
+            PromptsGodotShaders,
+            PromptsGodotSignals,
+            PromptsGodotNodes,
         };
 
         var preferences = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);

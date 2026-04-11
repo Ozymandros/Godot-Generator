@@ -22,7 +22,7 @@ public sealed class GodotMcpToolCatalogTests
         var kernel = Kernel.CreateBuilder().Build();
         var factory = new Mock<IKernelFactory>();
         factory
-            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(kernel);
 
         var sut = new GodotMcpToolCatalog(factory.Object, NullLogger<GodotMcpToolCatalog>.Instance);
@@ -39,7 +39,7 @@ public sealed class GodotMcpToolCatalogTests
     {
         var factory = new Mock<IKernelFactory>();
         factory
-            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("mcp unavailable"));
 
         var sut = new GodotMcpToolCatalog(factory.Object, NullLogger<GodotMcpToolCatalog>.Instance);

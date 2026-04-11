@@ -210,6 +210,11 @@ public sealed class GodotGeneratorApiService(
             [PromptsCodeLegacy] = await getPreference.ExecuteAsync(PromptsCodeLegacy, cancellationToken).ConfigureAwait(false),
             [PromptsGodotUiLegacy] = await getPreference.ExecuteAsync(PromptsGodotUiLegacy, cancellationToken).ConfigureAwait(false),
             [PromptsGodotPhysicsLegacy] = await getPreference.ExecuteAsync(PromptsGodotPhysicsLegacy, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotLighting] = await getPreference.ExecuteAsync(PromptsGodotLighting, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotCamera] = await getPreference.ExecuteAsync(PromptsGodotCamera, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotShaders] = await getPreference.ExecuteAsync(PromptsGodotShaders, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotSignals] = await getPreference.ExecuteAsync(PromptsGodotSignals, cancellationToken).ConfigureAwait(false),
+            [PromptsGodotNodes] = await getPreference.ExecuteAsync(PromptsGodotNodes, cancellationToken).ConfigureAwait(false),
         };
         ConfigurationRegistryService.MergeLegacyPrompts(prefs, doc);
         var key = MapModalityToPromptKey(modalityKey);

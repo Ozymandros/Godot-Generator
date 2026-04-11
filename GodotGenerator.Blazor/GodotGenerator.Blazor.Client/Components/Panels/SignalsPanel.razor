@@ -3,21 +3,23 @@
 
 <GenerationWorkspace Modality="GenerationModality.GodotSignals"
                      Title="Godot Signals"
+                     Badge="MCP signals / scripting"
                      Description="Declare custom signals, connect them in code or the editor, and generate handler stubs with correct connect flags."
                      PromptPlaceholder="Describe the signal flow…"
                      CreateRequest="BuildRequest">
     <AdditionalFields>
+        <GodotMcpPanelIntro Subtitle="Include emitter and receiver paths so generated code matches your scene tree." />
         <SmartField Label="Emitter node path" Placeholder="e.g. Player, Area2D" @bind-Value="_emitterPath" />
         <SmartField Label="Signal name(s)" Placeholder="e.g. health_changed, jumped" @bind-Value="_signalNames" />
-        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
-            <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
-        </FluentStack>
+        <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
+        <GodotProjectValidationSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged" />
     </AdditionalFields>
 </GenerationWorkspace>
 
 @code {
     private string _emitterPath = string.Empty;
     private string _signalNames = string.Empty;
+    private string _scenePath = string.Empty;
     private bool _useProjectPath = true;
 
     private Task OnProjectPathChanged(bool value)
@@ -33,6 +35,8 @@
             parts.Add($"Emitter node: {_emitterPath.Trim()}");
         if (!string.IsNullOrWhiteSpace(_signalNames))
             parts.Add($"Signals: {_signalNames.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_scenePath))
+            parts.Add($"Scene path: {_scenePath.Trim()}");
         parts.Add(prompt);
 
         var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
