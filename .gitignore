@@ -2,6 +2,9 @@ out/
 debug-*.log
 **/node_modules/
 test-results/
+coverage-report/
+coverage-report-core/
+coverage-report-core2/
 playwright-report/
 playwright/.cache/
 .vs/

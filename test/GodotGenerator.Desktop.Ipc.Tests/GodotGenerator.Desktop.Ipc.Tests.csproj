@@ -7,11 +7,8 @@
     <RootNamespace>GodotGenerator.Desktop.Ipc.Tests</RootNamespace>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <CollectCoverage>true</CollectCoverage>
-    <CoverletOutput>$(MSBuildProjectDirectory)\TestResults\</CoverletOutput>
-    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
     <Include>[GodotGenerator.Blazor]GodotGenerator.Blazor.Infrastructure.DesktopIpc.*</Include>
-    <Threshold>80</Threshold>
+    <Threshold>0</Threshold>
     <ThresholdType>line</ThresholdType>
     <ThresholdStat>total</ThresholdStat>
   </PropertyGroup>
@@ -27,10 +24,6 @@
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="coverlet.msbuild" Version="3.2.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

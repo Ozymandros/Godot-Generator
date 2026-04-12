@@ -90,7 +90,7 @@ public sealed class GenerateCommandHandlerTests
         api.Setup(a => a.GenerateGodotNodesAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id", command,
                       Json(new GenerateCommandRequest("make something cool")));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -101,7 +101,7 @@ public sealed class GenerateCommandHandlerTests
     [Fact]
     public async Task HandleAsync_MissingPayload_ReturnsValidationError()
     {
-        var h   = Build(new Mock<IGodotGeneratorApiService>().Object);
+        var h = Build(new Mock<IGodotGeneratorApiService>().Object);
         var env = new CommandEnvelope("id", GenerateCommandNames.Text, null);
         var result = await h.HandleAsync(env, CancellationToken.None);
 
@@ -112,7 +112,7 @@ public sealed class GenerateCommandHandlerTests
     [Fact]
     public async Task HandleAsync_EmptyPrompt_ReturnsValidationError()
     {
-        var h   = Build(new Mock<IGodotGeneratorApiService>().Object);
+        var h = Build(new Mock<IGodotGeneratorApiService>().Object);
         var env = new CommandEnvelope("id", GenerateCommandNames.Text,
                       Json(new GenerateCommandRequest("")));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -128,7 +128,7 @@ public sealed class GenerateCommandHandlerTests
         api.Setup(a => a.GenerateTextAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(ApiResponse<Dictionary<string, object?>>.Fail("ai error"));
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id", GenerateCommandNames.Text,
                       Json(new GenerateCommandRequest("test prompt")));
         var result = await h.HandleAsync(env, CancellationToken.None);

@@ -132,7 +132,7 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
                     File.Move(temp, _filePath, overwrite: true);
                     return;
                 }
-                catch (IOException moveEx)
+                catch (IOException)
                 {
                     // Last-resort fallback for restrictive file-share scenarios.
                     await File.WriteAllTextAsync(_filePath, json, cancellationToken).ConfigureAwait(false);

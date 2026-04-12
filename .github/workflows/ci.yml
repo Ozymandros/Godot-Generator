@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Setup Node (Playwright E2E)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: test/GodotGenerator.Blazor.E2E/package-lock.json
+
+      - name: dotnet tool restore
+        run: dotnet tool restore
+
+      - name: dotnet restore
+        run: dotnet restore Godot-Generator-Avalonia.sln
+
+      - name: dotnet format (verify no changes)
+        run: dotnet format Godot-Generator-Avalonia.sln --verify-no-changes --no-restore
+
+      - name: dotnet build (Release, analyzers, warnings as errors)
+        run: |
+          dotnet build Godot-Generator-Avalonia.sln -c Release --no-restore --nologo \
+            -p:RunAnalyzers=true \
+            -p:EnforceCodeStyleInBuild=true \
+            -p:TreatWarningsAsErrors=true \
+            -warnaserror
+
+      - name: dotnet test
+        run: dotnet test Godot-Generator-Avalonia.sln -c Release --no-build --no-restore --nologo
+
+      - name: Coverage gate (Application + Persistence, merged line ≥80%)
+        run: pwsh -File tools/check-coverage.ps1 -Threshold 80 -Configuration Release
+
+      - name: Playwright E2E
+        working-directory: test/GodotGenerator.Blazor.E2E
+        env:
+          CI: true
+          DOTNET_CONFIGURATION: Release
+          E2E_WEBSERVER_PREBUILT: "1"
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+          npx playwright test

@@ -16,6 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="GodotGenerator.Blazor.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\GodotGenerator.Api\GodotGenerator.Api.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Application\GodotGenerator.Application.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Desktop.Contracts\GodotGenerator.Desktop.Contracts.csproj" />

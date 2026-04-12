@@ -43,7 +43,7 @@ public sealed class PreferenceCommandHandlerTests
            .ReturnsAsync(ApiResponse<Dictionary<string, string?>>.Ok(
                new Dictionary<string, string?> { ["key"] = "theme", ["value"] = "dark" }));
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id1", PreferenceCommandNames.Get,
                       Json(new PreferenceGetRequest("theme")));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -55,7 +55,7 @@ public sealed class PreferenceCommandHandlerTests
     [Fact]
     public async Task HandleAsync_Get_MissingPayload_ReturnsValidationError()
     {
-        var h   = Build(new Mock<IGodotGeneratorApiService>().Object);
+        var h = Build(new Mock<IGodotGeneratorApiService>().Object);
         var env = new CommandEnvelope("id2", PreferenceCommandNames.Get, null);
         var result = await h.HandleAsync(env, CancellationToken.None);
 
@@ -70,7 +70,7 @@ public sealed class PreferenceCommandHandlerTests
         api.Setup(a => a.GetPreferenceAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(ApiResponse<Dictionary<string, string?>>.Fail("store error"));
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id3", PreferenceCommandNames.Get,
                       Json(new PreferenceGetRequest("key1")));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -89,7 +89,7 @@ public sealed class PreferenceCommandHandlerTests
            .ReturnsAsync(ApiResponse<Dictionary<string, string?>>.Ok(
                new Dictionary<string, string?> { ["key"] = "lang", ["value"] = "en" }));
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id4", PreferenceCommandNames.Set,
                       Json(new PreferenceSetRequest("lang", "en")));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -103,7 +103,7 @@ public sealed class PreferenceCommandHandlerTests
     [Fact]
     public async Task HandleAsync_Set_MissingPayload_ReturnsValidationError()
     {
-        var h   = Build(new Mock<IGodotGeneratorApiService>().Object);
+        var h = Build(new Mock<IGodotGeneratorApiService>().Object);
         var env = new CommandEnvelope("id5", PreferenceCommandNames.Set, null);
         var result = await h.HandleAsync(env, CancellationToken.None);
 

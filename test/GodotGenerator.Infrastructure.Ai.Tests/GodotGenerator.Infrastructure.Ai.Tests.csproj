@@ -4,18 +4,10 @@
     <IsPackable>false</IsPackable>
     <RootNamespace>GodotGenerator.Infrastructure.Ai.Tests</RootNamespace>
   </PropertyGroup>
-  <!-- Enable coverage collection and enforce minimum coverage threshold -->
   <PropertyGroup>
-    <!-- Avoid failing local dotnet test runs on coverage gate; CI can override. -->
-    <CollectCoverage>false</CollectCoverage>
-    <!-- Output folder for coverage reports -->
-    <CoverletOutput>$(MSBuildProjectDirectory)\TestResults\</CoverletOutput>
-    <!-- Produce Cobertura format (useful for many CI systems) -->
-    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
     <!-- Measure only AI infrastructure; kernel factory is integration-heavy (MCP process). -->
     <Include>[GodotGenerator.Infrastructure.Ai]*</Include>
     <ExcludeByFile>**/KernelFactory/GodotKernelFactory.cs,**/DependencyInjection/*.cs,**/GodotProjectPathValidator.cs</ExcludeByFile>
-    <!-- Excludes kernel factory and DI glue; core services ~63% line. -->
     <Threshold>0</Threshold>
     <ThresholdType>line</ThresholdType>
     <ThresholdStat>total</ThresholdStat>
@@ -28,7 +20,6 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="coverlet.msbuild" Version="3.2.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

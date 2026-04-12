@@ -38,7 +38,7 @@ public sealed class KeysCommandHandlerTests
            .ReturnsAsync(ApiResponse<Dictionary<string, IReadOnlyList<string>>>.Ok(
                new Dictionary<string, IReadOnlyList<string>> { ["saved"] = ["openai"] }));
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id1", KeysCommandNames.Save,
                       Json(new KeysSaveRequest(new Dictionary<string, string?> { ["openai"] = "sk-test" })));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -52,7 +52,7 @@ public sealed class KeysCommandHandlerTests
     [Fact]
     public async Task HandleAsync_EmptyKeys_ReturnsValidationError()
     {
-        var h   = Build(new Mock<IGodotGeneratorApiService>().Object);
+        var h = Build(new Mock<IGodotGeneratorApiService>().Object);
         var env = new CommandEnvelope("id2", KeysCommandNames.Save,
                       Json(new KeysSaveRequest(new Dictionary<string, string?>())));
         var result = await h.HandleAsync(env, CancellationToken.None);
@@ -64,7 +64,7 @@ public sealed class KeysCommandHandlerTests
     [Fact]
     public async Task HandleAsync_NullPayload_ReturnsValidationError()
     {
-        var h   = Build(new Mock<IGodotGeneratorApiService>().Object);
+        var h = Build(new Mock<IGodotGeneratorApiService>().Object);
         var env = new CommandEnvelope("id3", KeysCommandNames.Save, null);
         var result = await h.HandleAsync(env, CancellationToken.None);
 
@@ -79,7 +79,7 @@ public sealed class KeysCommandHandlerTests
         api.Setup(a => a.SaveApiKeysAsync(It.IsAny<ApiKeysRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(ApiResponse<Dictionary<string, IReadOnlyList<string>>>.Fail("store error"));
 
-        var h   = Build(api.Object);
+        var h = Build(api.Object);
         var env = new CommandEnvelope("id4", KeysCommandNames.Save,
                       Json(new KeysSaveRequest(new Dictionary<string, string?> { ["x"] = "val" })));
         var result = await h.HandleAsync(env, CancellationToken.None);
