@@ -85,7 +85,7 @@
 
                     <div class="settings-providers__modalities">
                         <span class="app-field-label">Modalities</span>
-                        <p class="settings-providers__modalities-hint">Capabilities for this engine. Add from the list; remove with ×.</p>
+                        <p class="settings-providers__modalities-hint">Tags which panels use to offer this engine (e.g. llm, image). A provider appears on a Generate panel when at least one tag matches that panel. Add from the list; remove with ×. If none remain, llm is restored.</p>
                         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Wrap="true" Class="settings-providers__modality-chips">
                             @foreach (var m in _selected!.Modalities.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
                             {

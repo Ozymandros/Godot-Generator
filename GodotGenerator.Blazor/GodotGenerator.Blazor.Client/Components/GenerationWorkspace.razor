@@ -1,4 +1,5 @@
 @using GodotGenerator.Api.Dtos
+@using GodotGenerator.Application
 @using GodotGenerator.Application.Orchestration
 @inject GodotGeneratorClientFacade Api
 @inject ProjectStateService ProjectState
@@ -17,7 +18,7 @@
         <FluentLabel Typo="Typography.Body" Class="app-fluent-intro-desc">@Description</FluentLabel>
     </div>
 
-    <div class="generation-workspace__layout @(ShowResultSplit ? "generation-workspace__layout--split" : null)">
+    <div class="generation-workspace__layout">
         <div class="generation-workspace__form app-content-wide">
             <FluentCard Class="settings-card-host">
                 <div class="settings-card__inner">
@@ -68,6 +69,20 @@
                 <FluentProgressRing Class="app-progress-ring-margin" />
             }
 
+            <section class="generation-workspace__preview app-content-wide" aria-label="Generation result preview">
+                <p class="generation-workspace__result-title">Preview</p>
+                <FluentCard Class="settings-card-host generation-workspace__result">
+                    <div class="settings-card__inner generation-workspace__result-inner">
+                        <FluentTextArea Value="@_result"
+                                        ValueChanged="OnResultPreviewChanged"
+                                        ReadOnly="true"
+                                        Rows="@ResultPreviewRows"
+                                        Placeholder="Generation output will appear here after you run Generate."
+                                        Class="generation-workspace__result-textarea app-input-like app-input-like--textarea" />
+                    </div>
+                </FluentCard>
+            </section>
+
             <ModelManagerModal Visible="_showModelModal" Title="Models" OnClose="@(() => _showModelModal = false)">
                 <FluentLabel Typo="Typography.Body">Configure default models under Settings → Models; use Provider/Model fields above for per-request overrides.</FluentLabel>
             </ModelManagerModal>
@@ -77,18 +92,6 @@
                 <AppMessageBar Intent="MessageIntent.Error">@_error</AppMessageBar>
             }
         </div>
-
-        @if (!string.IsNullOrEmpty(_result))
-        {
-            <aside class="generation-workspace__result-pane app-content-wide" aria-label="Generation result">
-                <p class="generation-workspace__result-title">Result</p>
-                <FluentCard Class="settings-card-host generation-workspace__result">
-                    <div class="settings-card__inner generation-workspace__result-pre">
-                        <FluentLabel Typo="Typography.Body">@_result</FluentLabel>
-                    </div>
-                </FluentCard>
-            </aside>
-        }
     </div>
 </div>
 
@@ -109,6 +112,9 @@
 
     [Parameter] public Func<string, GenerateRequest>? CreateRequest { get; set; }
 
+    /// <summary>Visible rows for the readonly result preview textarea.</summary>
+    [Parameter] public int ResultPreviewRows { get; set; } = 14;
+
     private string _prompt = string.Empty;
     private string _providerOverride = string.Empty;
     private string _modelOverride = string.Empty;
@@ -123,9 +129,12 @@
     private string _lastModel = "(not run yet)";
     private readonly GenerationAdvancedOptions _advanced = new();
 
-    private bool ShowResultSplit => !string.IsNullOrEmpty(_result);
-
     private string GenerateButtonLabel => $"Generate — {Title}";
+
+    private Task OnResultPreviewChanged(string _)
+    {
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -160,7 +169,7 @@
             return;
         }
 
-        GeneratorRegistryOptionsLoader.Fill(envelope.Data, _providerOptions, _modelsByProvider);
+        GeneratorRegistryOptionsLoader.Fill(envelope.Data, _providerOptions, _modelsByProvider, Modality);
         var prefs = GeneratorRegistryOptionsLoader.ParsePreferences(envelope.Data);
         ApplyDefaultsFromPreferences(prefs);
     }
@@ -195,6 +204,9 @@
                 _modelOverride = registeredModel;
             }
         }
+
+        _advanced.PreferredScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(
+            GetPreferenceString(prefs, PreferenceKeys.PreferredLanguage));
     }
 
     private static string GetPreferenceString(IReadOnlyDictionary<string, string?> prefs, string key) =>
@@ -277,6 +289,7 @@
         if (string.IsNullOrWhiteSpace(_prompt))
         {
             _error = "Prompt cannot be empty.";
+            _result = _error;
             StatusBanner.Set($"{Title}: prompt empty.", MessageIntent.Warning);
             return;
         }
@@ -297,6 +310,7 @@
             if (!response.Success)
             {
                 _error = response.Error ?? "Generation failed.";
+                _result = _error;
                 Logs.Append($"{Title}: error {_error}");
                 StatusBanner.Set($"{Title}: {_error}", MessageIntent.Error);
                 return;
@@ -322,6 +336,7 @@
         catch (Exception ex)
         {
             _error = ex.Message;
+            _result = _error;
             Logs.Append($"{Title}: exception {ex.Message}");
             StatusBanner.Set($"{Title}: {ex.Message}", MessageIntent.Error);
         }

@@ -283,6 +283,29 @@ fluent-card.app-card-interactive:hover {
   margin-bottom: var(--app-space-sm);
 }
 
+.app-field-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--app-space-sm);
+  margin-bottom: var(--app-space-xs);
+}
+
+.app-field-label-row .app-field-label {
+  margin-bottom: 0;
+}
+
+.app-field-input-kind {
+  flex-shrink: 0;
+  font-size: var(--app-text-size-caption);
+  font-weight: var(--app-font-weight-regular);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--app-color-fg-muted);
+  opacity: var(--app-opacity-muted);
+}
+
 .app-field-label {
   margin-bottom: var(--app-space-xs);
   font-size: var(--app-text-size-body);
@@ -1874,7 +1897,7 @@ fluent-text-area.app-textarea-log::part(control) {
   font-size: 0.95rem; /* intentional: slightly larger than nav text for visual balance */
 }
 
-/* Generation workspace — wide + optional two columns on xl */
+/* Generation workspace — single column; preview textarea below Generate */
 .generation-workspace {
   width: 100%;
 }
@@ -1923,26 +1946,25 @@ fluent-text-area.app-textarea-log::part(control) {
   white-space: pre-wrap;
 }
 
-@media (min-width: 1200px) {
-  .generation-workspace__layout--split {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: var(--app-space-xl);
-  }
+.generation-workspace__result-inner {
+  min-height: 8rem;
+}
 
-  .generation-workspace__form {
-    flex: 1 1 55%;
-    min-width: min(100%, 28rem);
-  }
+.generation-workspace__result-textarea {
+  width: 100%;
+  min-height: 10rem;
+  resize: vertical;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: var(--app-text-size-body);
+  line-height: var(--app-line-height-body);
+}
 
-  .generation-workspace__result-pane {
-    flex: 1 1 40%;
-    position: sticky;
-    top: var(--app-space-md);
-    align-self: flex-start;
-    max-height: calc(100vh - 8rem);
-    overflow: auto;
-  }
+.generation-workspace__preview {
+  width: 100%;
+}
+
+.generation-workspace__preview .generation-workspace__result-title {
+  margin-top: 0;
 }
 
 .generation-workspace__cta {
@@ -1965,13 +1987,35 @@ fluent-text-area.app-textarea-log::part(control) {
   --app-smart-field-width-default: 100%;
 }
 
+/* Transparent outlined “card” — border-only shell for Advanced Options */
 .advanced-options-section {
   max-width: var(--app-content-max);
   margin: var(--app-space-md) 0 var(--app-space-sm) 0;
+  padding: 0;
+  box-sizing: border-box;
   border: 1px solid var(--app-color-border);
   border-radius: var(--app-radius-lg);
-  padding: 0;
-  background: var(--neutral-layer-3);
+  background: transparent;
+  overflow: hidden;
+}
+
+.advanced-options-section__body {
+  margin: 0;
+  padding: var(--app-space-sm) var(--app-space-lg) var(--app-space-lg);
+  max-width: none;
+  width: 100%;
+  box-sizing: border-box;
+  --app-smart-field-width-default: 100%;
+  background: transparent;
+}
+
+.advanced-options-section__body fluent-accordion {
+  background: transparent;
+  --neutral-layer-3: transparent;
+}
+
+.advanced-options-section[open] .advanced-options-section__summary {
+  border-bottom: 1px solid var(--app-color-border);
 }
 
 .advanced-options-section__summary {
@@ -1984,6 +2028,7 @@ fluent-text-area.app-textarea-log::part(control) {
   gap: var(--app-space-md);
   padding: var(--app-space-md) var(--app-space-lg);
   margin: 0;
+  background: transparent;
 }
 
 .advanced-options-section__title {
@@ -2036,7 +2081,7 @@ fluent-text-area.app-textarea-log::part(control) {
   max-width: 100%;
 }
 
-.generation-workspace__result fluent-label,
+.generation-workspace__result fluent-text-area,
 .generation-workspace .generation-workspace__result {
   font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
   font-size: var(--app-text-size-body);

@@ -9,7 +9,12 @@
                      CreateRequest="BuildRequest">
     <AdditionalFields>
         <GodotMcpPanelIntro Subtitle="Aligns prompts with camera.* tools for validation and scene-aware camera edits." />
-        <SmartField Label="Camera type" Placeholder="e.g. Camera3D, Camera2D" @bind-Value="_cameraType" />
+        <SmartField Label="Camera type"
+                    FieldType="@SmartFieldType.Select"
+                    InputKind="Select"
+                    Placeholder="—"
+                    SelectOptions="_cameraTypeOptions"
+                    @bind-Value="_cameraType" />
         <SmartField Label="Node path hint" Placeholder="e.g. Player/Camera3D" @bind-Value="_nodePath" />
         <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
         <GodotProjectValidationSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged" />
@@ -17,6 +22,15 @@
 </GenerationWorkspace>
 
 @code {
+    private static readonly string[] _cameraTypeOptions =
+    [
+        "Camera3D",
+        "Camera2D",
+        "SubViewport",
+        "CameraPath3D",
+        "XRCamera3D",
+    ];
+
     private string _cameraType = string.Empty;
     private string _nodePath = string.Empty;
     private string _scenePath = string.Empty;

@@ -7,13 +7,33 @@
                      PromptPlaceholder="Describe the image…"
                      CreateRequest="BuildRequest">
     <AdditionalFields>
-        <SmartField Label="Aspect ratio" Placeholder="e.g. 1:1, 16:9" @bind-Value="_aspectRatio" />
-        <SmartField Label="Quality" Placeholder="e.g. standard, high" @bind-Value="_quality" />
+        <SmartField Label="Aspect ratio"
+                    FieldType="@SmartFieldType.Select"
+                    InputKind="Select"
+                    Placeholder="—"
+                    SelectOptions="_aspectRatioOptions"
+                    @bind-Value="_aspectRatio" />
+        <SmartField Label="Quality"
+                    FieldType="@SmartFieldType.Select"
+                    InputKind="Select"
+                    Placeholder="—"
+                    SelectOptions="_qualityOptions"
+                    @bind-Value="_quality" />
         <SmartField Label="Size / aspect / style constraints" FieldType="SmartFieldType.Multiline" Rows="2" Placeholder="e.g. 1024×1024, square, pixel art" @bind-Value="_constraints" />
     </AdditionalFields>
 </GenerationWorkspace>
 
 @code {
+    private static readonly string[] _aspectRatioOptions =
+    [
+        "1:1", "4:3", "3:4", "16:9", "9:16", "21:9", "2:3", "3:2",
+    ];
+
+    private static readonly string[] _qualityOptions =
+    [
+        "Draft", "Standard", "High", "Ultra",
+    ];
+
     private string _aspectRatio = "1:1";
     private string _quality = "Standard";
     private string _constraints = string.Empty;

@@ -1,7 +1,7 @@
 using Microsoft.FluentUI.AspNetCore.Components;
 using FluentIcons = Microsoft.FluentUI.AspNetCore.Components.Icons;
 
-namespace GodotGenerator.Blazor.Components.Layout;
+namespace GodotGenerator.Blazor.Client.Components.Layout;
 
 public static class AppIconFactory
 {

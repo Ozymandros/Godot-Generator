@@ -1,7 +1,11 @@
 @* Typed field wrapper with shared form styling hooks. *@
 
 <div class="smart-field app-smart-field" style="@FieldWidthStyle">
-    <BaseField Label="@Label" Help="@Help" Required="@Required" ValidationMessage="@ValidationMessage">
+    <BaseField Label="@Label"
+               InputKind="@InputKind"
+               Help="@Help"
+               Required="@Required"
+               ValidationMessage="@ValidationMessage">
         @if (FieldType == SmartFieldType.Multiline)
         {
             <FluentTextArea Value="@Value" ValueChanged="ValueChanged" Rows="@(Rows ?? 5)" Placeholder="@Placeholder"
@@ -46,6 +50,9 @@
 
     /// <summary>Help text.</summary>
     [Parameter] public string? Help { get; set; }
+
+    /// <summary>Optional label suffix tag (e.g. <c>Select</c>); shown next to the field title.</summary>
+    [Parameter] public string? InputKind { get; set; }
 
     /// <summary>Whether the field is required.</summary>
     [Parameter] public bool Required { get; set; }

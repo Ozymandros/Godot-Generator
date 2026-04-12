@@ -3,9 +3,15 @@
 <div class="base-field app-field-shell">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block app-field-label">
-            @Label@if (Required) { <span style="color:var(--app-color-validation-error);"> *</span> }
-        </FluentLabel>
+        <div class="app-field-label-row">
+            <FluentLabel Typo="Typography.Body" Class="app-fluent-label-block app-field-label">
+                @Label@if (Required) { <span style="color:var(--app-color-validation-error);"> *</span> }
+            </FluentLabel>
+            @if (!string.IsNullOrEmpty(InputKind))
+            {
+                <span class="app-field-input-kind" title="Control type">@InputKind</span>
+            }
+        </div>
     }
     @ChildContent
     @if (!string.IsNullOrEmpty(Help))
@@ -20,6 +26,9 @@
 
 @code {
     [Parameter] public string? Label { get; set; }
+
+    /// <summary>Optional short tag shown next to the label (e.g. <c>Select</c>).</summary>
+    [Parameter] public string? InputKind { get; set; }
 
     [Parameter] public bool Required { get; set; }
 

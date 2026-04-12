@@ -9,7 +9,12 @@
                      CreateRequest="BuildRequest">
     <AdditionalFields>
         <GodotMcpPanelIntro Subtitle="Pairs with resource.* and material workflows when tools are enabled for this modality." />
-        <SmartField Label="Shader type" Placeholder="e.g. spatial, canvas_item, particles" @bind-Value="_shaderType" />
+        <SmartField Label="Shader type"
+                    FieldType="@SmartFieldType.Select"
+                    InputKind="Select"
+                    Placeholder="—"
+                    SelectOptions="_shaderTypeOptions"
+                    @bind-Value="_shaderType" />
         <SmartField Label="Material / node path" Placeholder="e.g. MeshInstance3D/material" @bind-Value="_materialPath" />
         <SmartField Label="Uniform hints" FieldType="SmartFieldType.Multiline" Placeholder="Describe uniforms, textures, flags…" @bind-Value="_uniformNotes" />
         <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
@@ -18,6 +23,15 @@
 </GenerationWorkspace>
 
 @code {
+    private static readonly string[] _shaderTypeOptions =
+    [
+        "spatial",
+        "canvas_item",
+        "particles",
+        "sky",
+        "fog",
+    ];
+
     private string _shaderType = string.Empty;
     private string _materialPath = string.Empty;
     private string _uniformNotes = string.Empty;

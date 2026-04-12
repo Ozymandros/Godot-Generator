@@ -9,8 +9,18 @@
                              PromptPlaceholder="Describe sprites…"
                              CreateRequest="BuildRequest">
             <AdditionalFields>
-                <SmartField Label="Resolution preset" Placeholder="e.g. 64x64, 128x128" @bind-Value="_resolution" />
-                <SmartField Label="Palette size" Placeholder="e.g. 32 colors" @bind-Value="_palette" />
+                <SmartField Label="Resolution preset"
+                            FieldType="@SmartFieldType.Select"
+                            InputKind="Select"
+                            Placeholder="—"
+                            SelectOptions="_resolutionOptions"
+                            @bind-Value="_resolution" />
+                <SmartField Label="Palette size"
+                            FieldType="@SmartFieldType.Select"
+                            InputKind="Select"
+                            Placeholder="—"
+                            SelectOptions="_paletteOptions"
+                            @bind-Value="_palette" />
                 <SmartField Label="Style notes" FieldType="SmartFieldType.Multiline" Rows="2" Placeholder="Outline, outline width, dithering…" @bind-Value="_styleNotes" />
             </AdditionalFields>
         </GenerationWorkspace>
@@ -22,6 +32,16 @@
 </FluentStack>
 
 @code {
+    private static readonly string[] _resolutionOptions =
+    [
+        "32x32", "64x64", "128x128", "256x256", "512x512",
+    ];
+
+    private static readonly string[] _paletteOptions =
+    [
+        "8 colors", "16 colors", "32 colors", "64 colors", "256 colors",
+    ];
+
     private string _resolution = "64x64";
     private string _palette = "32 colors";
     private string _styleNotes = string.Empty;

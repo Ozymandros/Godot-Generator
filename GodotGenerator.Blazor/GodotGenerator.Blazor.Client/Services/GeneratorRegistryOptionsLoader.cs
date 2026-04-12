@@ -2,6 +2,7 @@
 
 using System.Text.Json;
 using GodotGenerator.Application.Configuration;
+using GodotGenerator.Blazor.Client.Models;
 using GodotGenerator.Desktop.Contracts.Serialization;
 
 namespace GodotGenerator.Blazor.Client.Services;
@@ -20,10 +21,13 @@ internal static class GeneratorRegistryOptionsLoader
     internal static void Fill(
         Dictionary<string, object?> data,
         List<string> providerIds,
-        Dictionary<string, List<string>> modelsByProvider)
+        Dictionary<string, List<string>> modelsByProvider,
+        GenerationModality panelModality)
     {
         providerIds.Clear();
         modelsByProvider.Clear();
+
+        var allowedTags = GenerationModalityRegistryTags.GetAllowedRegistryTags(panelModality);
 
         if (!TryGetJsonElement(data.GetValueOrDefault("providers"), out var providersEl) ||
             providersEl.ValueKind != JsonValueKind.Array)
@@ -31,6 +35,7 @@ internal static class GeneratorRegistryOptionsLoader
             return;
         }
 
+        var allowedProviderIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in providersEl.EnumerateArray())
         {
             if (item.ValueKind != JsonValueKind.Object)
@@ -44,7 +49,14 @@ internal static class GeneratorRegistryOptionsLoader
                 continue;
             }
 
-            providerIds.Add(entry.Id.Trim());
+            if (!ProviderModalitiesIntersectAllowed(entry.Modalities, allowedTags))
+            {
+                continue;
+            }
+
+            var id = entry.Id.Trim();
+            providerIds.Add(id);
+            allowedProviderIds.Add(id);
         }
 
         providerIds.Sort(StringComparer.OrdinalIgnoreCase);
@@ -81,6 +93,17 @@ internal static class GeneratorRegistryOptionsLoader
                     entry.ProviderId = prop.Name;
                 }
 
+                var pid = entry.ProviderId.Trim();
+                if (string.IsNullOrEmpty(pid) || !allowedProviderIds.Contains(pid))
+                {
+                    continue;
+                }
+
+                if (!ModelModalityAllowed(entry.Modality, allowedTags))
+                {
+                    continue;
+                }
+
                 scratch.Add(entry);
             }
         }
@@ -109,6 +132,41 @@ internal static class GeneratorRegistryOptionsLoader
                 .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
+    }
+
+    private static bool ProviderModalitiesIntersectAllowed(IReadOnlyList<string>? modalities, HashSet<string> allowedTags)
+    {
+        if (modalities is null || modalities.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var m in modalities)
+        {
+            var t = m?.Trim();
+            if (string.IsNullOrEmpty(t))
+            {
+                continue;
+            }
+
+            if (allowedTags.Contains(t))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ModelModalityAllowed(string modality, HashSet<string> allowedTags)
+    {
+        var t = modality.Trim();
+        if (string.IsNullOrEmpty(t))
+        {
+            return false;
+        }
+
+        return allowedTags.Contains(t);
     }
 
     /// <summary>Parses the <c>preferences</c> object from a config envelope (same shape as Settings).</summary>

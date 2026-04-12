@@ -1,4 +1,5 @@
 @* Sidebar navigation — Fluent UI icons, accessible active-pill, Godot group toggles reliably (no broken details/summary). *@
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 @inject NavigationManager Nav
 @implements IDisposable
@@ -30,6 +31,7 @@
         @if (_godotExpanded)
         {
             <div id="nav-godot-items" class="app-nav-group__items">
+                <AppNavLink Href="/generate/godot-mcp" Match="NavLinkMatch.Prefix" Text="MCP hub" Icon="@AppIconFactory.SlideGrid" />
                 <AppNavLink Href="/generate/godot-ui" Match="NavLinkMatch.Prefix" Text="UI" Icon="@AppIconFactory.AppsList" />
                 <AppNavLink Href="/generate/godot-physics" Match="NavLinkMatch.Prefix" Text="Physics" Icon="@AppIconFactory.Molecule" />
                 <AppNavLink Href="/generate/godot-lighting" Match="NavLinkMatch.Prefix" Text="Lighting" Icon="@AppIconFactory.LightBulb" />
@@ -37,7 +39,6 @@
                 <AppNavLink Href="/generate/godot-shaders" Match="NavLinkMatch.Prefix" Text="Shaders" Icon="@AppIconFactory.PaintBrush" />
                 <AppNavLink Href="/generate/godot-signals" Match="NavLinkMatch.Prefix" Text="Signals" Icon="@AppIconFactory.ArrowSync" />
                 <AppNavLink Href="/generate/godot-nodes" Match="NavLinkMatch.Prefix" Text="Nodes" Icon="@AppIconFactory.TreeDeciduous" />
-                <AppNavLink Href="/generate/godot-mcp" Match="NavLinkMatch.Prefix" Text="MCP hub" Icon="@AppIconFactory.SlideGrid" />
             </div>
         }
     </div>

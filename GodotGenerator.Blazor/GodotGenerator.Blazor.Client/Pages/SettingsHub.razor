@@ -3,6 +3,7 @@
 @using System.Text.Json
 @using GodotGenerator.Application
 @using GodotGenerator.Application.Configuration
+@using GodotGenerator.Blazor.Client.Models
 @using GodotGenerator.Api.Dtos
 @using GodotGenerator.Desktop.Contracts.Serialization
 @inject GodotGeneratorClientFacade Api
@@ -63,6 +64,14 @@
             <SmartField Label="Workspace notes" FieldType="@SmartFieldType.Multiline"
                         Help="Optional notes for this workspace (local UI only for now)."
                         @bind-Value="_notes" />
+            <SmartField Label="Default programming language"
+                        FieldType="@SmartFieldType.Select"
+                        InputKind="Select"
+                        Placeholder="—"
+                        Help="Default for GDScript vs C# on Generate pages (Advanced Options → Preferred language). Stored as preferences."
+                        SelectOptions="_defaultScriptLanguageOptions"
+                        Value="@_defaultScriptLanguage"
+                        ValueChanged="OnDefaultScriptLanguageChanged" />
         </div>
     </FluentCard>
 
@@ -191,6 +200,9 @@
 
     private string _backendUrl = string.Empty;
     private string _outputBasePath = string.Empty;
+    private string _defaultScriptLanguage = string.Empty;
+
+    private static readonly string[] _defaultScriptLanguageOptions = ["GDScript", "C#"];
     private string _llmProvider = string.Empty;
     private string _imageProvider = string.Empty;
     private string _audioProvider = string.Empty;
@@ -256,6 +268,12 @@
         Nav.NavigateTo($"/settings?tab={index}", replace: true);
     }
 
+    private Task OnDefaultScriptLanguageChanged(string value)
+    {
+        _defaultScriptLanguage = value;
+        return Task.CompletedTask;
+    }
+
     private async Task LoadConfigAsync()
     {
         _busy = true;
@@ -284,6 +302,7 @@
         _backendUrl = GetDictString(prefs, PreferenceKeys.AppBackendUrl);
         _outputBasePath = GetDictString(prefs, PreferenceKeys.AppOutputBasePath);
         _notes = GetDictString(prefs, PreferenceKeys.AppWorkspaceNotes);
+        _defaultScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(GetDictString(prefs, PreferenceKeys.PreferredLanguage));
         _llmProvider = GetDictString(prefs, PreferenceKeys.PreferredLlmProvider);
         _imageProvider = GetDictString(prefs, PreferenceKeys.PreferredImageProvider);
         _audioProvider = GetDictString(prefs, PreferenceKeys.PreferredAudioProvider);
@@ -603,6 +622,7 @@
                 (PreferenceKeys.AppBackendUrl, NullIfEmpty(_backendUrl)),
                 (PreferenceKeys.AppOutputBasePath, NullIfEmpty(_outputBasePath)),
                 (PreferenceKeys.AppWorkspaceNotes, NullIfEmpty(_notes)),
+                (PreferenceKeys.PreferredLanguage, PreferredScriptLanguagePref.ToStoredValue(_defaultScriptLanguage)),
                 (PreferenceKeys.PreferredLlmProvider, NullIfEmpty(_llmProvider)),
                 (PreferenceKeys.PreferredLlmModel, NullIfEmpty(_llmModel)),
                 (PreferenceKeys.PreferredImageProvider, NullIfEmpty(_imageProvider)),
