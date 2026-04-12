@@ -13,6 +13,9 @@ public sealed class OrchestrationOptions
     /// </summary>
     public const string SectionName = "Orchestration";
 
+    /// <summary>Used when configuration binds an empty <see cref="GenericFailureMessage"/>.</summary>
+    public const string DefaultGenericFailureMessage = "Agent turn failed. Check logs for details.";
+
     /// <summary>
     /// Enables Semantic Kernel automatic tool invocation.
     /// </summary>
@@ -22,7 +25,7 @@ public sealed class OrchestrationOptions
     /// Generic user-safe message returned when orchestration fails.
     /// </summary>
     [Required]
-    public string GenericFailureMessage { get; set; } = "Agent turn failed. Check logs for details.";
+    public string GenericFailureMessage { get; set; } = DefaultGenericFailureMessage;
 
     /// <summary>
     /// Maximum duration for one orchestration turn. Zero or negative disables timeout.

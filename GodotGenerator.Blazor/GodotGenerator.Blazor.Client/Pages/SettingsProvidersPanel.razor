@@ -83,11 +83,32 @@
                         <FluentSwitch Value="@_selected!.GenericToolUse" ValueChanged="OnGenericToolUseChanged">Generic tool use</FluentSwitch>
                     </div>
 
-                    <SmartField Label="Modalities"
-                                Help="Comma-separated (e.g. llm, image)."
-                                Value="@_modalitiesString"
-                                ValueChanged="OnModalitiesChanged"
-                                Width="100%" />
+                    <div class="settings-providers__modalities">
+                        <span class="app-field-label">Modalities</span>
+                        <p class="settings-providers__modalities-hint">Capabilities for this engine. Add from the list; remove with ×.</p>
+                        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Wrap="true" Class="settings-providers__modality-chips">
+                            @foreach (var m in _selected!.Modalities.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                            {
+                                <span class="settings-providers__modality-chip">
+                                    <span class="settings-providers__modality-chip-text">@m</span>
+                                    <FluentButton Appearance="Appearance.Lightweight"
+                                                  Disabled="@Disabled"
+                                                  Title="Remove modality"
+                                                  class="settings-providers__modality-remove"
+                                                  OnClick="@(() => RemoveModality(m))">×</FluentButton>
+                                </span>
+                            }
+                        </FluentStack>
+                        <SmartField Label="Add modality"
+                                    FieldType="@SmartFieldType.Select"
+                                    Help="Pick a modality to add (e.g. llm, image)."
+                                    Placeholder="Choose modality…"
+                                    SelectOptions="RegistryModalityCatalog.SelectOptions"
+                                    Value="@_pendingModality"
+                                    ValueChanged="OnPendingModalityChanged"
+                                    Disabled="@Disabled"
+                                    Width="100%" />
+                    </div>
 
                     <div class="settings-providers__actions">
                         <FluentButton Appearance="Appearance.Accent" Disabled="@(Disabled || _busy)" OnClick="CommitAsync">Commit Changes</FluentButton>
@@ -102,7 +123,7 @@
 @code {
     private readonly List<ProviderRegistryEntry> _entries = [];
     private ProviderRegistryEntry? _selected;
-    private string _modalitiesString = string.Empty;
+    private string _pendingModality = string.Empty;
     private string _endpointBinding = string.Empty;
     private int _lastEpoch = int.MinValue;
     private string? _panelError;
@@ -156,26 +177,13 @@
     {
         if (_selected is null)
         {
-            _modalitiesString = string.Empty;
+            _pendingModality = string.Empty;
             _endpointBinding = string.Empty;
             return;
         }
 
-        _modalitiesString = string.Join(", ", _selected.Modalities);
+        _pendingModality = string.Empty;
         _endpointBinding = _selected.Endpoint ?? string.Empty;
-    }
-
-    private Task SyncModalitiesFromStringAsync()
-    {
-        if (_selected is null)
-        {
-            return Task.CompletedTask;
-        }
-
-        _selected.Modalities = _modalitiesString
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
-        return Task.CompletedTask;
     }
 
     private Task OnIdChanged(string value)
@@ -209,10 +217,36 @@
         return Task.CompletedTask;
     }
 
-    private async Task OnModalitiesChanged(string value)
+    private Task OnPendingModalityChanged(string value)
     {
-        _modalitiesString = value;
-        await SyncModalitiesFromStringAsync().ConfigureAwait(false);
+        _pendingModality = value;
+        if (_selected is null || string.IsNullOrWhiteSpace(value))
+        {
+            return Task.CompletedTask;
+        }
+
+        var v = value.Trim().ToLowerInvariant();
+        if (!_selected.Modalities.Exists(x => string.Equals(x, v, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selected.Modalities.Add(v);
+        }
+
+        _pendingModality = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private void RemoveModality(string modality)
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _selected.Modalities.RemoveAll(x => string.Equals(x, modality, StringComparison.OrdinalIgnoreCase));
+        if (_selected.Modalities.Count == 0)
+        {
+            _selected.Modalities.Add("llm");
+        }
     }
 
     private Task OnOpenAiCompatChanged(bool v)
@@ -327,7 +361,6 @@
         _busy = true;
         try
         {
-            await SyncModalitiesFromStringAsync().ConfigureAwait(true);
             if (_selected is not null)
             {
                 _selected.Endpoint = string.IsNullOrWhiteSpace(_endpointBinding) ? null : _endpointBinding.Trim();

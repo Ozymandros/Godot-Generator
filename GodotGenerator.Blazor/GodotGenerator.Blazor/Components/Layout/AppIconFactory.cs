@@ -27,4 +27,6 @@ public static class AppIconFactory
     public static Icon ArrowSync { get; } = new FluentIcons.Regular.Size20.ArrowSync();
     public static Icon TreeDeciduous { get; } = new FluentIcons.Regular.Size20.TreeDeciduous();
     public static Icon SlideGrid { get; } = new FluentIcons.Regular.Size20.SlideGrid();
+    public static Icon ChevronRight { get; } = new FluentIcons.Regular.Size20.ChevronRight();
+    public static Icon ChevronDown { get; } = new FluentIcons.Regular.Size20.ChevronDown();
 }

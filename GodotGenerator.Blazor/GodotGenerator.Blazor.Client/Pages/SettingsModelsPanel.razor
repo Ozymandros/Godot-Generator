@@ -138,10 +138,7 @@
     private static readonly int[] PageSizeOptions = [5, 10, 25, 50];
     private static readonly string[] PageSizeTextOptions = ["5", "10", "25", "50"];
 
-    private static readonly string[] ModalityOptions =
-    [
-        "llm", "image", "audio", "video", "sprites", "code", "text", "music",
-    ];
+    private static readonly string[] ModalityOptions = RegistryModalityCatalog.SelectOptions;
 
     private readonly List<ModelRegistryEntry> _models = [];
     private readonly List<string> _providerChoices = [];

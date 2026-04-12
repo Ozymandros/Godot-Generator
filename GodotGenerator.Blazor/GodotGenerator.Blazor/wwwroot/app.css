@@ -838,6 +838,70 @@ fluent-text-area.app-textarea-log::part(control) {
   border-top: 1px solid var(--app-shell-border);
 }
 
+/* Collapsible Godot subgroup (button + nested links; avoids broken native details/summary in flex nav) */
+.app-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-nav-group__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--app-space-sm);
+  width: 100%;
+  margin: 0;
+  padding: var(--app-space-nav-y) var(--app-space-md);
+  border: 1px solid transparent;
+  border-radius: var(--app-radius-md);
+  background: transparent;
+  color: var(--app-color-fg-muted);
+  font: inherit;
+  font-size: var(--app-text-size-title);
+  line-height: var(--app-line-height-body);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background var(--app-transition-fast),
+    border-color var(--app-transition-fast),
+    color var(--app-transition-fast);
+}
+
+.app-nav-group__trigger:hover {
+  background: var(--app-overlay-soft);
+  color: var(--app-color-fg);
+}
+
+.app-nav-group__trigger:focus-visible {
+  outline: var(--app-focus-outline);
+  outline-offset: var(--app-focus-outline-offset);
+  border-radius: var(--app-radius-md);
+}
+
+.app-nav-group__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.app-nav-group__label {
+  flex: 1;
+  min-width: 0;
+  font-weight: var(--app-font-weight-semibold);
+}
+
+.app-nav-group__items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: var(--app-space-md);
+  margin-left: calc(18px + var(--app-space-sm));
+  border-left: 1px solid var(--app-shell-border);
+}
+
 .app-nav__repo {
   width: 100%;
   justify-content: flex-start !important;
@@ -1209,6 +1273,46 @@ fluent-text-area.app-textarea-log::part(control) {
 .settings-providers__form .smart-field {
   width: 100%;
   max-width: 100%;
+}
+
+.settings-providers__modalities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--app-space-xs);
+  width: 100%;
+}
+
+.settings-providers__modalities-hint {
+  margin: 0;
+  font-size: var(--app-text-size-body-sm);
+  color: var(--app-color-fg-muted);
+  line-height: var(--app-line-height-body);
+}
+
+.settings-providers__modality-chips {
+  margin-bottom: var(--app-space-xs);
+}
+
+.settings-providers__modality-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: var(--app-radius-sm);
+  background: var(--app-overlay-soft);
+  border: 1px solid var(--app-shell-border);
+  font-size: var(--app-text-size-body-sm);
+}
+
+.settings-providers__modality-chip-text {
+  text-transform: lowercase;
+}
+
+.settings-providers__modality-remove {
+  min-width: 1.75rem !important;
+  padding: 0 4px !important;
+  font-size: 1.1rem !important;
+  line-height: 1 !important;
 }
 
 .settings-providers__switches {

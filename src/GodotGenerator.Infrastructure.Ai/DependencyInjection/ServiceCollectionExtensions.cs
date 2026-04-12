@@ -36,6 +36,13 @@ public static class ServiceCollectionExtensions
         services
             .AddOptions<OrchestrationOptions>()
             .Bind(configuration.GetSection(OrchestrationOptions.SectionName))
+            .PostConfigure(o =>
+            {
+                if (string.IsNullOrWhiteSpace(o.GenericFailureMessage))
+                {
+                    o.GenericFailureMessage = OrchestrationOptions.DefaultGenericFailureMessage;
+                }
+            })
             .ValidateDataAnnotations();
         services.AddGodotMcp(configuration);
 

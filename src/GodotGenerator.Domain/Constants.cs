@@ -32,6 +32,8 @@ public static class Constants
     public const string ProviderElevenLabs = "elevenlabs";
     /// <summary>PlayHT provider identifier.</summary>
     public const string ProviderPlayHt = "playht";
+    /// <summary>Alibaba Qwen (DashScope OpenAI-compatible) provider identifier.</summary>
+    public const string ProviderQwen = "qwen";
 
     // Models
     /// <summary>Default GPT-4o engine value.</summary>
@@ -48,6 +50,10 @@ public static class Constants
     public const string ModelDeepSeekCoder = "deepseek-coder";
     /// <summary>DeepSeek Chat engine value.</summary>
     public const string ModelDeepSeekChat = "deepseek-chat";
+    /// <summary>Qwen Plus chat model (DashScope compatible-mode).</summary>
+    public const string ModelQwenPlus = "qwen-plus";
+    /// <summary>Qwen2.5 Coder instruct model for code generation.</summary>
+    public const string ModelQwen25Coder = "qwen2.5-coder-32b-instruct";
 
     // Godot (Adapted from Unity reference)
     /// <summary>Windows export platform token.</summary>

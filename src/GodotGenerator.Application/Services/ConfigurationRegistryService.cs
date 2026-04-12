@@ -83,6 +83,14 @@ public static class ConfigurationRegistryService
                 new() { Id = Constants.ProviderHuggingFace, KeyStoreHandle = Constants.ProviderHuggingFace },
                 new() { Id = Constants.ProviderOllama, KeyStoreHandle = "ollama", Endpoint = "http://localhost:11434/v1", OpenAiCompatibility = true },
                 new() { Id = Constants.ProviderGroq, KeyStoreHandle = Constants.ProviderGroq, OpenAiCompatibility = true },
+                new()
+                {
+                    Id = Constants.ProviderQwen,
+                    KeyStoreHandle = Constants.ProviderQwen,
+                    Endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
                 new() { Id = Constants.ProviderStability, KeyStoreHandle = Constants.ProviderStability },
                 new() { Id = Constants.ProviderFlux, KeyStoreHandle = "flux" },
                 new() { Id = Constants.ProviderElevenLabs, KeyStoreHandle = Constants.ProviderElevenLabs },
@@ -107,6 +115,8 @@ public static class ConfigurationRegistryService
                 new() { ProviderId = Constants.ProviderGroq, FriendlyName = "Llama 3 70B", EngineValue = Constants.ModelLlama370B, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderDeepSeek, FriendlyName = "DeepSeek Coder", EngineValue = Constants.ModelDeepSeekCoder, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderDeepSeek, FriendlyName = "DeepSeek Chat", EngineValue = Constants.ModelDeepSeekChat, Modality = "llm" },
+                new() { ProviderId = Constants.ProviderQwen, FriendlyName = "Qwen Plus (chat)", EngineValue = Constants.ModelQwenPlus, Modality = "llm" },
+                new() { ProviderId = Constants.ProviderQwen, FriendlyName = "Qwen2.5 Coder", EngineValue = Constants.ModelQwen25Coder, Modality = "llm" },
                 new() { ProviderId = Constants.ProviderStability, FriendlyName = "SDXL 1.0", EngineValue = "stable-diffusion-xl-1024-v1-0", Modality = "image" },
                 new() { ProviderId = Constants.ProviderStability, FriendlyName = "SDXL Sprites", EngineValue = "stable-diffusion-xl-1024-v1-0", Modality = "sprites" },
                 new() { ProviderId = Constants.ProviderStability, FriendlyName = "SD 1.5", EngineValue = "stable-diffusion-v1-5", Modality = "image" },

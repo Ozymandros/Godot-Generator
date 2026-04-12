@@ -2,6 +2,7 @@
 using GodotGenerator.Application;
 using GodotGenerator.Application.Configuration;
 using GodotGenerator.Application.Services;
+using GodotGenerator.Domain;
 using Xunit;
 
 namespace GodotGenerator.Application.Tests;
@@ -30,6 +31,22 @@ public sealed class ConfigurationRegistryServiceTests
         Assert.Single(back.Providers);
         Assert.Equal("openai", back.Providers[0].Id);
         Assert.Null(ConfigurationRegistryService.ValidateProviderRegistry(back));
+    }
+
+    [Fact]
+    public void Default_provider_registry_includes_qwen_dashscope()
+    {
+        var doc = ConfigurationRegistryService.ParseProviderRegistry(null);
+        Assert.Contains(doc.Providers, p => p.Id == Constants.ProviderQwen && p.OpenAiCompatibility);
+        Assert.Contains(doc.Providers, p => p.Id == Constants.ProviderQwen && p.Endpoint?.Contains("dashscope", StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    [Fact]
+    public void Default_model_registry_includes_qwen_chat_and_coder()
+    {
+        var doc = ConfigurationRegistryService.ParseModelRegistry(null);
+        Assert.Contains(doc.Models, m => m.ProviderId == Constants.ProviderQwen && m.EngineValue == Constants.ModelQwenPlus);
+        Assert.Contains(doc.Models, m => m.ProviderId == Constants.ProviderQwen && m.EngineValue == Constants.ModelQwen25Coder);
     }
 
     [Fact]
