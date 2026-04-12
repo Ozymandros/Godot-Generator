@@ -45,6 +45,12 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
     public event Action<string>? FolderSelected;
 
     /// <summary>
+    /// Raised when the local .NET backend IPC pipe becomes ready (first start or after restart).
+    /// UI that depends on <c>Config.GetAll</c> can retry loading if the first attempt failed.
+    /// </summary>
+    public event Action? BackendReady;
+
+    /// <summary>
     /// Registers Electron push-event subscriptions. Must be called once from
     /// <c>OnAfterRenderAsync(firstRender: true)</c> in an interactive WASM
     /// component. Subsequent calls are no-ops.
@@ -82,8 +88,11 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
     /// (initial start or after a supervised restart).
     /// </summary>
     [JSInvokable]
-    public void OnBackendReady() =>
+    public void OnBackendReady()
+    {
+        BackendReady?.Invoke();
         _statusBanner.Set("Backend ready.", MessageIntent.Success);
+    }
 
     /// <summary>
     /// Invoked by <c>electronBridge.js</c> when the .NET backend process exits

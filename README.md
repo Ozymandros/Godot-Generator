@@ -1,7 +1,7 @@
 # Godot Generator
 
-![Coverage](https://github.com/Ozymandros/Godot-Generator-Avalonia/actions/workflows/coverage.yml/badge.svg)
-![Build](https://github.com/Ozymandros/Godot-Generator-Avalonia/actions/workflows/coverage.yml/badge.svg)
+![Coverage](https://github.com/Ozymandros/Godot-Generator/actions/workflows/coverage.yml/badge.svg)
+![Build](https://github.com/Ozymandros/Godot-Generator/actions/workflows/coverage.yml/badge.svg)
 
 Godot Generator connects **Microsoft Semantic Kernel** to **[Godot MCP Server](https://github.com/Ozymandros/Godot-MCP-Server)** via the **[GodotMcp.SemanticKernel.Plugin](https://github.com/Ozymandros/GodotMcpPlugin)** (`GodotMcp.SemanticKernel.Plugin` on NuGet). The supported desktop experience is the **Blazor + Electron** shell under [`GodotGenerator.Blazor/`](GodotGenerator.Blazor/); the legacy Avalonia project in this repo is deprecated.
 

@@ -238,7 +238,7 @@ async function buildAndSetMenuAsync() {
      * Opens the project GitHub page in the system browser.
      */
     'help.repository': commandAction(async () => {
-      await shell.openExternal('https://github.com/Ozymandros/Godot-Generator-Avalonia');
+      await shell.openExternal('https://github.com/Ozymandros/Godot-Generator');
     }),
 
     /**

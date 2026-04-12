@@ -15,7 +15,7 @@ Project structure
 - `GodotGenerator.Application` - DTOs and domain-agnostic interfaces used by the infrastructure layer.
 - `GodotGenerator.Infrastructure.Ai` - kernel adapters, `KernelFactory`, orchestration services, and DI extension methods.
 - `GodotGenerator.Infrastructure.Persistence` - persistence helpers for preferences and small storage.
-- `Godot-Generator-Avalonia` - primary desktop shell (MVVM) and in-process service client.
+- `Godot-Generator` - primary desktop shell (MVVM) and in-process service client.
 
 UI notes
 - The main window uses left navigation plus a settings shell and generation panels.

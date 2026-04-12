@@ -134,6 +134,239 @@ internal static class GeneratorRegistryOptionsLoader
         }
     }
 
+    /// <summary>
+    /// All provider ids present in the registry (Settings parity — not modality-filtered).
+    /// Used so saved default provider preferences can match even when modality tags exclude a row from <see cref="Fill"/>.
+    /// </summary>
+    internal static List<string> GetAllRegisteredProviderIds(Dictionary<string, object?> data)
+    {
+        var list = new List<string>();
+        if (!TryGetJsonElement(data.GetValueOrDefault("providers"), out var providersEl) ||
+            providersEl.ValueKind != JsonValueKind.Array)
+        {
+            return list;
+        }
+
+        foreach (var item in providersEl.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var entry = JsonSerializer.Deserialize<ProviderRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+            if (entry is null || string.IsNullOrWhiteSpace(entry.Id))
+            {
+                continue;
+            }
+
+            list.Add(entry.Id.Trim());
+        }
+
+        list.Sort(StringComparer.OrdinalIgnoreCase);
+        return list;
+    }
+
+    /// <summary>
+    /// Resolves <paramref name="candidate"/> to the registry id casing when it appears in <c>providers</c>.
+    /// </summary>
+    internal static bool TryGetCanonicalProviderId(
+        Dictionary<string, object?> data,
+        string candidate,
+        out string? canonicalId)
+    {
+        canonicalId = null;
+        if (string.IsNullOrWhiteSpace(candidate))
+        {
+            return false;
+        }
+
+        if (!TryGetJsonElement(data.GetValueOrDefault("providers"), out var providersEl) ||
+            providersEl.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        foreach (var item in providersEl.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var entry = JsonSerializer.Deserialize<ProviderRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+            if (entry is null || string.IsNullOrWhiteSpace(entry.Id))
+            {
+                continue;
+            }
+
+            var id = entry.Id.Trim();
+            if (string.Equals(id, candidate.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                canonicalId = id;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Appends modality-filtered model engine values for a single provider into <paramref name="modelsByProvider"/>.
+    /// </summary>
+    internal static void AppendFilteredModelsForProvider(
+        Dictionary<string, object?> data,
+        string canonicalProviderId,
+        HashSet<string> allowedTags,
+        Dictionary<string, List<string>> modelsByProvider)
+    {
+        if (!TryGetJsonElement(data.GetValueOrDefault("models"), out var modelsRoot) ||
+            modelsRoot.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (var prop in modelsRoot.EnumerateObject())
+        {
+            if (prop.Value.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var item in prop.Value.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var entry = JsonSerializer.Deserialize<ModelRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+                if (entry is null || string.IsNullOrWhiteSpace(entry.EngineValue))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(entry.ProviderId))
+                {
+                    entry.ProviderId = prop.Name;
+                }
+
+                var pid = entry.ProviderId.Trim();
+                if (!string.Equals(pid, canonicalProviderId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!ModelModalityAllowed(entry.Modality, allowedTags))
+                {
+                    continue;
+                }
+
+                if (!modelsByProvider.TryGetValue(canonicalProviderId, out var list))
+                {
+                    list = [];
+                    modelsByProvider[canonicalProviderId] = list;
+                }
+
+                list.Add(entry.EngineValue.Trim());
+            }
+        }
+
+        if (modelsByProvider.TryGetValue(canonicalProviderId, out var rows))
+        {
+            modelsByProvider[canonicalProviderId] = rows
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+    }
+
+    /// <summary>
+    /// If the saved default model exists in the full registry for this provider but was omitted by
+    /// modality filtering in <see cref="Fill"/>, add its <c>engineValue</c> so the dropdown matches
+    /// Configuration → General (which lists all models per provider).
+    /// </summary>
+    internal static void EnsureSavedModelEngineListedForProvider(
+        Dictionary<string, object?> data,
+        string canonicalProviderId,
+        string? preferredEngine,
+        Dictionary<string, List<string>> modelsByProvider)
+    {
+        if (string.IsNullOrWhiteSpace(preferredEngine) || string.IsNullOrWhiteSpace(canonicalProviderId))
+        {
+            return;
+        }
+
+        var want = preferredEngine.Trim();
+        if (modelsByProvider.TryGetValue(canonicalProviderId, out var existing))
+        {
+            foreach (var e in existing)
+            {
+                if (string.Equals(e, want, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+        }
+
+        if (!TryGetJsonElement(data.GetValueOrDefault("models"), out var modelsRoot) ||
+            modelsRoot.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (var prop in modelsRoot.EnumerateObject())
+        {
+            if (prop.Value.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var item in prop.Value.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var entry = JsonSerializer.Deserialize<ModelRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+                if (entry is null || string.IsNullOrWhiteSpace(entry.EngineValue))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(entry.ProviderId))
+                {
+                    entry.ProviderId = prop.Name;
+                }
+
+                var pid = entry.ProviderId.Trim();
+                if (!string.Equals(pid, canonicalProviderId, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!string.Equals(entry.EngineValue.Trim(), want, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (!modelsByProvider.TryGetValue(canonicalProviderId, out var list))
+                {
+                    list = [];
+                    modelsByProvider[canonicalProviderId] = list;
+                }
+
+                list.Add(entry.EngineValue.Trim());
+                modelsByProvider[canonicalProviderId] = list
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                return;
+            }
+        }
+    }
+
     private static bool ProviderModalitiesIntersectAllowed(IReadOnlyList<string>? modalities, HashSet<string> allowedTags)
     {
         if (modalities is null || modalities.Count == 0)

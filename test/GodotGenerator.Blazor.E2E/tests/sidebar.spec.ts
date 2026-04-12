@@ -46,7 +46,7 @@ test.describe("Blazor shell", () => {
 
     const repo = nav.getByRole("link", { name: /Repository/i });
     await expect(repo).toBeVisible();
-    await expect(repo).toHaveAttribute("href", "https://github.com/Ozymandros/Godot-Generator-Avalonia");
+    await expect(repo).toHaveAttribute("href", "https://github.com/Ozymandros/Godot-Generator");
   });
 
   test("sidebar links use expected hrefs", async ({ page }) => {

@@ -5,6 +5,8 @@
 @inject ProjectStateService ProjectState
 @inject LogBufferService Logs
 @inject StatusBannerService StatusBanner
+@inject ElectronBridgeService ElectronBridge
+@implements IDisposable
 
 <PageTitle>@Title</PageTitle>
 
@@ -30,13 +32,15 @@
             </FluentCard>
 
             <div class="generation-workspace__row-controls">
-                <SmartField Label="Provider"
+                <SmartField @key="@($"gw-prov-{_registryUiEpoch}")"
+                            Label="Provider"
                             FieldType="@SmartFieldType.Select"
                             Placeholder="—"
                             SelectOptions="_providerOptions"
                             Value="@_providerOverride"
                             ValueChanged="OnProviderOverrideChanged" />
-                <SmartField Label="Model"
+                <SmartField @key="@($"gw-mod-{_registryUiEpoch}")"
+                            Label="Model"
                             FieldType="@SmartFieldType.Select"
                             Placeholder="—"
                             SelectOptions="_modelOptions"
@@ -129,6 +133,12 @@
     private string _lastModel = "(not run yet)";
     private readonly GenerationAdvancedOptions _advanced = new();
 
+    /// <summary>Set after a successful config envelope load (providers/models + prefs applied).</summary>
+    private bool _registryReady;
+
+    /// <summary>Bumped after registry load so Fluent comboboxes remount with populated provider/model option lists.</summary>
+    private int _registryUiEpoch;
+
     private string GenerateButtonLabel => $"Generate — {Title}";
 
     private Task OnResultPreviewChanged(string _)
@@ -138,8 +148,39 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await ProjectState.LoadAsync().ConfigureAwait(false);
-        await LoadRegistryAsync().ConfigureAwait(false);
+        ElectronBridge.BackendReady += OnElectronBackendReady;
+        await ProjectState.LoadAsync();
+        await LoadRegistryAsync();
+    }
+
+    public void Dispose()
+    {
+        ElectronBridge.BackendReady -= OnElectronBackendReady;
+    }
+
+    private void OnElectronBackendReady()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (_registryReady)
+            {
+                return;
+            }
+
+            await LoadRegistryAsync();
+            StateHasChanged();
+        });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _registryReady)
+        {
+            return;
+        }
+
+        await LoadRegistryAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private Task OnAdvancedOptionsChanged()
@@ -163,7 +204,7 @@
 
     private async Task LoadRegistryAsync()
     {
-        var envelope = await Api.GetConfigEnvelopeAsync().ConfigureAwait(false);
+        var envelope = await Api.GetConfigEnvelopeAsync();
         if (!envelope.Success || envelope.Data is null)
         {
             return;
@@ -171,10 +212,61 @@
 
         GeneratorRegistryOptionsLoader.Fill(envelope.Data, _providerOptions, _modelsByProvider, Modality);
         var prefs = GeneratorRegistryOptionsLoader.ParsePreferences(envelope.Data);
-        ApplyDefaultsFromPreferences(prefs);
+        EnsurePreferredProviderAppearsInOptions(envelope.Data, prefs);
+        ApplyDefaultsFromPreferences(prefs, envelope.Data);
+        _registryUiEpoch++;
+        _registryReady = true;
     }
 
-    private void ApplyDefaultsFromPreferences(IReadOnlyDictionary<string, string?> prefs)
+    /// <summary>
+    /// Settings lists every provider; generate panels filter by modality tags. If the saved default
+    /// provider exists in the registry but was excluded from the filtered list, add it (and its
+    /// modality-matching models) so preferences can pre-select like Configuration → General.
+    /// </summary>
+    private void EnsurePreferredProviderAppearsInOptions(
+        Dictionary<string, object?> data,
+        IReadOnlyDictionary<string, string?> prefs)
+    {
+        var slug = ModalityRoutes.GetSlug(Modality);
+        var (providerKey, _) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
+        var preferred = GetPreferenceString(prefs, providerKey);
+        if (string.IsNullOrWhiteSpace(preferred))
+        {
+            return;
+        }
+
+        if (FindRegisteredCase(_providerOptions, preferred) is not null)
+        {
+            return;
+        }
+
+        if (!GeneratorRegistryOptionsLoader.TryGetCanonicalProviderId(data, preferred, out var canonical) ||
+            string.IsNullOrEmpty(canonical))
+        {
+            return;
+        }
+
+        var exists = false;
+        foreach (var p in _providerOptions)
+        {
+            if (string.Equals(p, canonical, StringComparison.OrdinalIgnoreCase))
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+        {
+            _providerOptions.Add(canonical);
+            _providerOptions.Sort(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var tags = GenerationModalityRegistryTags.GetAllowedRegistryTags(Modality);
+        GeneratorRegistryOptionsLoader.AppendFilteredModelsForProvider(data, canonical, tags, _modelsByProvider);
+    }
+
+    private void ApplyDefaultsFromPreferences(IReadOnlyDictionary<string, string?> prefs, Dictionary<string, object?> envelopeData)
     {
         var slug = ModalityRoutes.GetSlug(Modality);
         var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
@@ -192,6 +284,17 @@
             {
                 _providerOverride = registered;
             }
+        }
+
+        SyncModelOptionsForCurrentProvider();
+
+        if (!string.IsNullOrWhiteSpace(defaultModel) && !string.IsNullOrWhiteSpace(_providerOverride))
+        {
+            GeneratorRegistryOptionsLoader.EnsureSavedModelEngineListedForProvider(
+                envelopeData,
+                _providerOverride.Trim(),
+                defaultModel,
+                _modelsByProvider);
         }
 
         SyncModelOptionsForCurrentProvider();

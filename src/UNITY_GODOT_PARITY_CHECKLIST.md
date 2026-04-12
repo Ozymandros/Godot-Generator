@@ -18,7 +18,7 @@ Living tracker: Unity reference is [Ozymandros/Unity-Generator](https://github.c
 
 | Shell | Role | Status |
 |-------|------|--------|
-| `Godot-Generator-Avalonia` | Desktop: real persistence + AI + MCP | **primary** |
+| `Godot-Generator` | Desktop: real persistence + AI + MCP | **primary** |
 | `Godot-Generator-Blazor` | WASM prototype; browser stubs | deprecated |
 
 ## Detailed feature ledger (execution baseline)
