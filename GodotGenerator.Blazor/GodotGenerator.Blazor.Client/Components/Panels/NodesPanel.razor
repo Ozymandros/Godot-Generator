@@ -1,0 +1,90 @@
+@* Godot nodes modality — instantiate, add_child, reparent, set properties, queue_free. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotNodes"
+                     Title="Godot Nodes"
+                     Badge="MCP scene.*"
+                     Description="Instantiate, add, configure, reparent, and remove nodes via GDScript or C# with correct scene-tree ownership."
+                     PromptPlaceholder="Describe the node operation…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <GodotMcpPanelIntro Subtitle="scene.* tools expect a resolvable scene or packed scene when validation is enabled." />
+        <SmartField Label="Target node type"
+                    FieldType="@SmartFieldType.Select"
+                    InputKind="Select"
+                    Placeholder="—"
+                    SelectOptions="_nodeTypeOptions"
+                    @bind-Value="_nodeType" />
+        <SmartField Label="Parent path" Placeholder="e.g. World/Entities" @bind-Value="_parentPath" />
+        <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
+        <SmartField Label="Property / method notes" FieldType="SmartFieldType.Multiline" Placeholder="Properties to set, methods to call, ownership notes…" @bind-Value="_propertyNotes" />
+        <GodotProjectValidationSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private static readonly string[] _nodeTypeOptions =
+    [
+        "Node",
+        "Node2D",
+        "Node3D",
+        "Control",
+        "CanvasItem",
+        "CharacterBody2D",
+        "CharacterBody3D",
+        "RigidBody2D",
+        "RigidBody3D",
+        "StaticBody2D",
+        "StaticBody3D",
+        "Area2D",
+        "Area3D",
+        "Sprite2D",
+        "AnimatedSprite2D",
+        "MeshInstance3D",
+        "MultiMeshInstance3D",
+        "GPUParticles2D",
+        "GPUParticles3D",
+        "AnimationPlayer",
+        "AudioStreamPlayer2D",
+        "AudioStreamPlayer3D",
+        "CollisionShape2D",
+        "CollisionShape3D",
+    ];
+
+    private string _nodeType = string.Empty;
+    private string _parentPath = string.Empty;
+    private string _propertyNotes = string.Empty;
+    private string _scenePath = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_nodeType))
+            parts.Add($"Node type: {_nodeType.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_parentPath))
+            parts.Add($"Parent path: {_parentPath.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_scenePath))
+            parts.Add($"Scene path: {_scenePath.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_propertyNotes))
+            parts.Add($"Property / method notes: {_propertyNotes.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

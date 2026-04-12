@@ -1,0 +1,38 @@
+/*
+ * MainLayout.razor.css
+ * Scoped styles for the app shell layout component.
+ * All .app-shell* and .app-nav* rules live in wwwroot/app.css so they are
+ * available globally (FluentCard, dialogs, etc. rendered outside this scope).
+ * This file owns only what must be component-scoped.
+ */
+
+/* ── Blazor error banner — dark-theme override ─────────────────────────── */
+#blazor-error-ui {
+    background: var(--app-color-surface-elevated, #1e2530);
+    color: var(--app-color-fg, #e8eaed);
+    border-top: 1px solid var(--app-color-border, rgba(255, 255, 255, 0.08));
+    bottom: 0;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.4);
+    box-sizing: border-box;
+    display: none;
+    left: 0;
+    padding: var(--app-error-ui-padding-top) var(--app-error-ui-padding-right) var(--app-error-ui-padding-bottom) var(--app-error-ui-padding-left);
+    position: fixed;
+    width: 100%;
+    z-index: var(--app-z-error-ui);
+    font-size: var(--app-text-size-body);
+    line-height: var(--app-line-height-relaxed);
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: var(--app-error-ui-dismiss-right);
+    top: var(--app-error-ui-dismiss-top);
+    opacity: var(--app-opacity-faint);
+    transition: opacity var(--app-transition-fast);
+}
+
+#blazor-error-ui .dismiss:hover {
+    opacity: var(--app-opacity-near-full);
+}

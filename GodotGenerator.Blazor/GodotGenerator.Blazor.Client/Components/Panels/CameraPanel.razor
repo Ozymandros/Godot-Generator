@@ -1,0 +1,67 @@
+@* Godot camera modality — Camera3D / Camera2D, viewports, CameraPath3D. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotCamera"
+                     Title="Godot Camera"
+                     Badge="MCP camera.*"
+                     Description="Camera3D and Camera2D properties, FOV, projection, Viewport configuration and split-screen layouts."
+                     PromptPlaceholder="Describe the camera setup…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <GodotMcpPanelIntro Subtitle="Aligns prompts with camera.* tools for validation and scene-aware camera edits." />
+        <SmartField Label="Camera type"
+                    FieldType="@SmartFieldType.Select"
+                    InputKind="Select"
+                    Placeholder="—"
+                    SelectOptions="_cameraTypeOptions"
+                    @bind-Value="_cameraType" />
+        <SmartField Label="Node path hint" Placeholder="e.g. Player/Camera3D" @bind-Value="_nodePath" />
+        <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
+        <GodotProjectValidationSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private static readonly string[] _cameraTypeOptions =
+    [
+        "Camera3D",
+        "Camera2D",
+        "SubViewport",
+        "CameraPath3D",
+        "XRCamera3D",
+    ];
+
+    private string _cameraType = string.Empty;
+    private string _nodePath = string.Empty;
+    private string _scenePath = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_cameraType))
+            parts.Add($"Camera type: {_cameraType.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_nodePath))
+            parts.Add($"Node path: {_nodePath.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_scenePath))
+            parts.Add($"Scene path: {_scenePath.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

@@ -1,4 +1,9 @@
 #nullable enable
+using GodotGenerator.Application.Abstractions;
+using GodotGenerator.Application.Configuration;
+using GodotGenerator.Application.Services;
+using static GodotGenerator.Application.PreferenceKeys;
+
 namespace GodotGenerator.Application.UseCases;
 
 /// <summary>
@@ -6,27 +11,42 @@ namespace GodotGenerator.Application.UseCases;
 /// </summary>
 public sealed class GetAllConfigUseCase(
     GetApiKeysUseCase getApiKeys,
-    GetPreferenceUseCase getPreference)
+    GetPreferenceUseCase getPreference,
+    ILlmDiscoveryInfoProvider llmDiscovery)
 {
     /// <summary>
     /// Builds a configuration snapshot for API-style discovery calls.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Aggregated configuration snapshot.</returns>
     public async Task<AllConfigSnapshot> ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var keyNames = await getApiKeys.GetKeyNamesAsync(cancellationToken).ConfigureAwait(false);
 
         var preferenceKeys = new[]
         {
-            "preferred_llm_provider",
-            "preferred_image_provider",
-            "preferred_audio_provider",
-            "preferred_video_provider",
-            "preferred_llm_model",
-            "preferred_image_model",
-            "preferred_audio_model",
-            "preferred_locale",
+            PreferredLlmProvider,
+            PreferredImageProvider,
+            PreferredAudioProvider,
+            PreferredVideoProvider,
+            PreferredLlmModel,
+            PreferredImageModel,
+            PreferredAudioModel,
+            PreferredVideoModel,
+            PreferredLanguage,
+            ProvidersRegistryV1,
+            ModelsRegistryV1,
+            PromptsSystemV1,
+            AppBackendUrl,
+            AppOutputBasePath,
+            AppWorkspaceNotes,
+            PromptsTextLegacy,
+            PromptsCodeLegacy,
+            PromptsGodotUiLegacy,
+            PromptsGodotPhysicsLegacy,
+            PromptsGodotLighting,
+            PromptsGodotCamera,
+            PromptsGodotShaders,
+            PromptsGodotSignals,
+            PromptsGodotNodes,
         };
 
         var preferences = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
@@ -35,15 +55,39 @@ public sealed class GetAllConfigUseCase(
             preferences[key] = await getPreference.ExecuteAsync(key, cancellationToken).ConfigureAwait(false);
         }
 
-        return new AllConfigSnapshot(preferences, keyNames);
+        if (string.IsNullOrWhiteSpace(preferences.GetValueOrDefault(PreferredLanguage)))
+        {
+            var legacyLocale = await getPreference.ExecuteAsync(PreferredLocaleLegacy, cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(legacyLocale))
+            {
+                preferences[PreferredLanguage] = legacyLocale;
+            }
+        }
+
+        var providerDoc = ConfigurationRegistryService.ParseProviderRegistry(
+            preferences.GetValueOrDefault(ProvidersRegistryV1));
+        var modelDoc = ConfigurationRegistryService.ParseModelRegistry(
+            preferences.GetValueOrDefault(ModelsRegistryV1));
+        var promptsDoc = ConfigurationRegistryService.ParseSystemPrompts(
+            preferences.GetValueOrDefault(PromptsSystemV1));
+        ConfigurationRegistryService.MergeLegacyPrompts(preferences, promptsDoc);
+
+        var modelsByProvider = ConfigurationRegistryService.GroupModelsByProvider(modelDoc.Models);
+
+        var systemPrompts = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (k, v) in promptsDoc.Prompts)
+        {
+            systemPrompts[k] = v;
+        }
+
+        var (provider, modelId) = llmDiscovery.GetDefaultChatModel();
+        return new AllConfigSnapshot(
+            preferences,
+            keyNames,
+            provider,
+            modelId,
+            providerDoc.Providers.ToList().AsReadOnly(),
+            modelsByProvider,
+            systemPrompts);
     }
 }
-
-/// <summary>
-/// Aggregated backend configuration snapshot.
-/// </summary>
-/// <param name="Preferences">Configured preference values.</param>
-/// <param name="KeyNames">Configured API key service names.</param>
-public sealed record AllConfigSnapshot(
-    IReadOnlyDictionary<string, string?> Preferences,
-    IReadOnlyList<string> KeyNames);

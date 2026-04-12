@@ -1,0 +1,82 @@
+@* Collapsible advanced block (Unity Generator); merged into GenerateRequest via parent. *@
+
+<details class="advanced-options-section">
+    <summary class="advanced-options-section__summary">
+        <span class="advanced-options-section__title">Advanced Options</span>
+        <span class="advanced-options-section__chevron" aria-hidden="true"></span>
+    </summary>
+    <div class="advanced-options-section__body">
+        <FluentAccordion>
+            @if (ChildContent is not null)
+            {
+                @ChildContent
+            }
+
+            <SmartField Label="Preferred language"
+                        Help="Programming language for generated code when applicable: GDScript or C#. Defaults from Configuration → General → Default programming language; you can override per session here."
+                        FieldType="@SmartFieldType.Select"
+                        Placeholder="Default (no preference)"
+                        SelectOptions="ScriptLanguageOptions"
+                        Value="@Options.PreferredScriptLanguage"
+                        ValueChanged="OnScriptLanguageChanged"
+                        Width="100%" />
+
+            <SmartField Label="Temperature (creativity)"
+                        Help="0 = focused, 2 = more random. Passed to the model when supported." Placeholder="0.0 to 2.0"
+                        Value="@TemperatureText" ValueChanged="OnTemperatureChanged" Width="100%" />
+
+            <SmartField Label="API key (optional override)" FieldType="SmartFieldType.Password"
+                        Placeholder="Overrides stored keys for this request only"
+                        Help="Not persisted; use global keys in Settings when possible." Width="100%"
+                        Value="@Options.ApiKeyOverride" ValueChanged="OnApiKeyChanged" />
+
+            <SmartField Label="System prompt override" FieldType="SmartFieldType.Multiline" Rows="4"
+                Placeholder="Additional system instructions for this request…" Width="100%"
+                Value="@Options.SystemPromptOverride" ValueChanged="OnSystemPromptChanged" />
+        </FluentAccordion>
+    </div>
+</details>
+
+@code {
+    private static readonly string[] ScriptLanguageOptions = ["GDScript", "C#"];
+
+    [Parameter, EditorRequired]
+    public GenerationAdvancedOptions Options { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback OnChanged { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string TemperatureText => Options.Temperature.ToString("0.0",
+    System.Globalization.CultureInfo.InvariantCulture);
+
+    private async Task OnTemperatureChanged(string value)
+    {
+        if (double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture,
+        out var v))
+        {
+            Options.Temperature = Math.Clamp(v, 0d, 2d);
+            await OnChanged.InvokeAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task OnScriptLanguageChanged(string value)
+    {
+        Options.PreferredScriptLanguage = value;
+        await OnChanged.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnApiKeyChanged(string value)
+    {
+        Options.ApiKeyOverride = value;
+        await OnChanged.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnSystemPromptChanged(string value)
+    {
+        Options.SystemPromptOverride = value;
+        await OnChanged.InvokeAsync().ConfigureAwait(false);
+    }
+}

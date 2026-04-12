@@ -1,0 +1,44 @@
+@* Unity-Generator UnityPhysicsPanel parity → Godot Physics modality. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotPhysics"
+                     Title="Godot Physics"
+                     Description="Physics bodies, joints, materials, layers."
+                     PromptPlaceholder="Describe physics setup…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Collision / layer notes" FieldType="SmartFieldType.Multiline" Placeholder="Layers, masks, damping…" @bind-Value="_physicsNotes" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _physicsNotes = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var body = string.IsNullOrWhiteSpace(_physicsNotes)
+            ? prompt
+            : $"Physics context: {_physicsNotes.Trim()}{Environment.NewLine}{Environment.NewLine}{prompt}";
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+        {
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+        }
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

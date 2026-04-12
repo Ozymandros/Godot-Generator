@@ -1,0 +1,269 @@
+@inject GodotGeneratorClientFacade Api
+@inject IJSRuntime JS
+
+<div class="settings-prompts">
+    @if (!string.IsNullOrEmpty(_panelError))
+    {
+        <AppMessageBar Intent="MessageIntent.Error" Class="settings-prompts__msg">@_panelError</AppMessageBar>
+    }
+    @if (!string.IsNullOrEmpty(_panelInfo))
+    {
+        <AppMessageBar Intent="MessageIntent.Success" Class="settings-prompts__msg">@_panelInfo</AppMessageBar>
+    }
+
+    <div class="settings-prompts__head">
+        <div class="settings-prompts__title-row">
+            <FluentIcon Value="@(new Icons.Regular.Size20.DocumentText())" Width="22px" Color="Color.Neutral" />
+            <h2 class="settings-prompts__title">System Prompts</h2>
+        </div>
+        <FluentButton Appearance="Appearance.Neutral"
+                      Disabled="@Disabled"
+                      class="settings-prompts__reset"
+                      OnClick="ResetToDefaultsAsync">
+            RESET TO DEFAULTS
+        </FluentButton>
+    </div>
+
+    <div class="settings-prompts__grid">
+        @foreach (var key in EnumerateKeys())
+        {
+            <FluentCard Class="settings-prompts__card">
+                <div class="settings-prompts__card-head">
+                    <span class="settings-prompts__badge @BadgeClass(key)">@BadgeLabel(key)</span>
+                    <FluentButton Appearance="Appearance.Stealth"
+                                  Disabled="@Disabled"
+                                  Title="Copy to clipboard"
+                                  class="settings-prompts__copy"
+                                  OnClick="@(() => CopyAsync(key))">
+                        <FluentIcon Value="@(new Icons.Regular.Size20.Copy())" Width="18px" Color="Color.Neutral" />
+                    </FluentButton>
+                </div>
+                <SmartField FieldType="@SmartFieldType.Multiline"
+                            Rows="8"
+                            Value="@GetText(key)"
+                            ValueChanged="@(v => OnTextChanged(key, v))"
+                            InputClass="settings-prompts__textarea"
+                            Disabled="@Disabled" />
+            </FluentCard>
+        }
+    </div>
+
+    <div class="settings-prompts__commit">
+        <FluentButton Appearance="Appearance.Accent" Disabled="@(Disabled || _busy)" OnClick="CommitAsync">Save prompts</FluentButton>
+    </div>
+</div>
+
+@code {
+    private static readonly string[] PromptKeyOrder =
+    [
+        "text", "code", "image", "audio", "music", "video", "sprites",
+        "godot-ui", "godot-physics", "scenes", "godot-project", "animations",
+        "godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes",
+    ];
+
+    private readonly Dictionary<string, string> _working = new(StringComparer.OrdinalIgnoreCase);
+    private int _lastEpoch = int.MinValue;
+    private string? _panelError;
+    private string? _panelInfo;
+    private bool _busy;
+
+    [Parameter]
+    public int ConfigEpoch { get; set; }
+
+    [Parameter]
+    public IReadOnlyDictionary<string, string> SourcePrompts { get; set; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnPromptsSaved { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ConfigEpoch == _lastEpoch)
+        {
+            return;
+        }
+
+        _lastEpoch = ConfigEpoch;
+        _panelError = null;
+        _panelInfo = null;
+        _working.Clear();
+
+        foreach (var key in PromptKeyOrder)
+        {
+            if (SourcePrompts.TryGetValue(key, out var s))
+            {
+                _working[key] = s ?? string.Empty;
+            }
+            else if (SystemPromptDefaults.ByModality.TryGetValue(key, out var d))
+            {
+                _working[key] = d;
+            }
+            else
+            {
+                _working[key] = string.Empty;
+            }
+        }
+
+        foreach (var kv in SourcePrompts)
+        {
+            if (!_working.ContainsKey(kv.Key))
+            {
+                _working[kv.Key] = kv.Value ?? string.Empty;
+            }
+        }
+    }
+
+    private IEnumerable<string> EnumerateKeys()
+    {
+        foreach (var k in PromptKeyOrder)
+        {
+            if (_working.ContainsKey(k))
+            {
+                yield return k;
+            }
+        }
+
+        foreach (var k in _working.Keys.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+        {
+            if (!IsOrderedKey(k))
+            {
+                yield return k;
+            }
+        }
+    }
+
+    private static bool IsOrderedKey(string k)
+    {
+        foreach (var x in PromptKeyOrder)
+        {
+            if (x.Equals(k, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private string GetText(string key) => _working.TryGetValue(key, out var v) ? v : string.Empty;
+
+    private Task OnTextChanged(string key, string? value)
+    {
+        _working[key] = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task CopyAsync(string key)
+    {
+        var t = GetText(key);
+        try
+        {
+            await JS.InvokeVoidAsync("godotClipboard.copy", t).ConfigureAwait(false);
+            _panelInfo = "Copied to clipboard.";
+            _panelError = null;
+        }
+        catch
+        {
+            _panelError = "Clipboard is not available.";
+            _panelInfo = null;
+        }
+    }
+
+    private Task ResetToDefaultsAsync()
+    {
+        _panelError = null;
+        _panelInfo = null;
+        var defaults = SystemPromptDefaults.CreateDocument().Prompts;
+        foreach (var kv in defaults)
+        {
+            _working[kv.Key] = kv.Value;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task CommitAsync()
+    {
+        _panelError = null;
+        _panelInfo = null;
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var doc = new SystemPromptsDocument
+            {
+                Version = 1,
+                Prompts = new Dictionary<string, string>(_working, StringComparer.OrdinalIgnoreCase),
+            };
+            var json = ConfigurationRegistryService.Serialize(doc);
+            var res = await Api.SetPreferenceEnvelopeAsync(new SetPreferenceRequest(PreferenceKeys.PromptsSystemV1, json)).ConfigureAwait(false);
+            if (!res.Success)
+            {
+                _panelError = res.Error ?? "Failed to save system prompts.";
+                return;
+            }
+
+            _panelInfo = "System prompts saved.";
+            await OnPromptsSaved.InvokeAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string BadgeLabel(string key) =>
+        key.Trim().ToLowerInvariant() switch
+        {
+            "text" => "TEXT",
+            "code" => "CODE",
+            "image" => "IMAGE",
+            "audio" => "AUDIO",
+            "music" => "MUSIC",
+            "video" => "VIDEO",
+            "sprites" => "SPRITES",
+            "godot-ui" => "GODOT UI",
+            "godot-physics" => "PHYSICS",
+            "scenes" => "SCENES",
+            "godot-project" => "PROJECT",
+            "animations" => "ANIMATIONS",
+            "godot-lighting" => "LIGHTING",
+            "godot-camera" => "CAMERA",
+            "godot-shaders" => "SHADERS",
+            "godot-signals" => "SIGNALS",
+            "godot-nodes" => "NODES",
+            _ => key.ToUpperInvariant(),
+        };
+
+    private static string BadgeClass(string key) =>
+        key.Trim().ToLowerInvariant() switch
+        {
+            "text" => "settings-prompts__badge--text",
+            "code" => "settings-prompts__badge--code",
+            "image" => "settings-prompts__badge--image",
+            "audio" => "settings-prompts__badge--audio",
+            "music" => "settings-prompts__badge--music",
+            "video" => "settings-prompts__badge--video",
+            "sprites" => "settings-prompts__badge--sprites",
+            "godot-ui" => "settings-prompts__badge--ui",
+            "godot-physics" => "settings-prompts__badge--physics",
+            "scenes" => "settings-prompts__badge--scenes",
+            "godot-project" => "settings-prompts__badge--project",
+            "animations" => "settings-prompts__badge--animations",
+            "godot-lighting" => "settings-prompts__badge--other",
+            "godot-camera" => "settings-prompts__badge--other",
+            "godot-shaders" => "settings-prompts__badge--other",
+            "godot-signals" => "settings-prompts__badge--other",
+            "godot-nodes" => "settings-prompts__badge--other",
+            _ => "settings-prompts__badge--other",
+        };
+}
+

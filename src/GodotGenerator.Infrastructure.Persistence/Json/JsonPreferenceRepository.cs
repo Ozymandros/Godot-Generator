@@ -41,7 +41,8 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
         try
         {
             var doc = await LoadAsync(cancellationToken).ConfigureAwait(false);
-            return doc.Values.TryGetValue(key, out var v) ? v : null;
+            var found = doc.Values.TryGetValue(key, out var v);
+            return found ? v : null;
         }
         finally
         {
@@ -115,6 +116,7 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
         var temp = _filePath + ".tmp";
         try
         {
+            var json = JsonSerializer.Serialize(doc, JsonOptions);
             await using (var stream = File.Create(temp))
             {
                 await JsonSerializer.SerializeAsync(stream, doc, JsonOptions, cancellationToken).ConfigureAwait(false);
@@ -123,7 +125,23 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
 
             if (File.Exists(_filePath))
             {
-                File.Replace(temp, _filePath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+                try
+                {
+                    // File.Replace may fail on Windows when the destination is held by another
+                    // process without delete sharing. Use Move(overwrite) as the primary replacement path.
+                    File.Move(temp, _filePath, overwrite: true);
+                    return;
+                }
+                catch (IOException)
+                {
+                    // Last-resort fallback for restrictive file-share scenarios.
+                    await File.WriteAllTextAsync(_filePath, json, cancellationToken).ConfigureAwait(false);
+                    if (File.Exists(temp))
+                    {
+                        File.Delete(temp);
+                    }
+                    return;
+                }
             }
             else
             {

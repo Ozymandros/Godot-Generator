@@ -1,0 +1,53 @@
+@* Godot lighting modality — lights, WorldEnvironment, sky, exposure. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotLighting"
+                     Title="Godot Lighting"
+                     Badge="MCP light.*"
+                     Description="DirectionalLight3D, OmniLight3D, SpotLight3D, WorldEnvironment, sky and exposure settings."
+                     PromptPlaceholder="Describe the lighting setup…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <GodotMcpPanelIntro Subtitle="Uses Semantic Kernel tools in the light.* family when orchestration enables modality filtering." />
+        <SmartField Label="Light type hint" Placeholder="e.g. DirectionalLight3D, OmniLight3D" @bind-Value="_lightType" />
+        <SmartField Label="Environment / sky notes" FieldType="SmartFieldType.Multiline" Placeholder="Sky resource, ambient, exposure, tone-mapping…" @bind-Value="_envNotes" />
+        <SmartField Label="Scene path (optional)" Placeholder="e.g. res://scenes/main.tscn" @bind-Value="_scenePath" />
+        <GodotProjectValidationSwitch Value="_useProjectPath" ValueChanged="OnProjectPathChanged" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _lightType = string.Empty;
+    private string _envNotes = string.Empty;
+    private string _scenePath = string.Empty;
+    private bool _useProjectPath = true;
+
+    private Task OnProjectPathChanged(bool value)
+    {
+        _useProjectPath = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(_lightType))
+            parts.Add($"Light type: {_lightType.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_envNotes))
+            parts.Add($"Environment notes: {_envNotes.Trim()}");
+        if (!string.IsNullOrWhiteSpace(_scenePath))
+            parts.Add($"Scene path: {_scenePath.Trim()}");
+        parts.Add(prompt);
+
+        var body = string.Join(Environment.NewLine + Environment.NewLine, parts);
+
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (_useProjectPath && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

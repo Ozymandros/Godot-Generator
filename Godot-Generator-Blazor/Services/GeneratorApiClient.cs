@@ -1,7 +1,6 @@
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
 using Godot_Generator_Blazor.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Godot_Generator_Blazor.Services;
 

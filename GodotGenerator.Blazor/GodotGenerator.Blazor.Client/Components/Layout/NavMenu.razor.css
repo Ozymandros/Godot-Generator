@@ -1,0 +1,45 @@
+/*
+ * NavMenu.razor.css
+ * Scoped styles for the sidebar navigation component.
+ * All .app-nav* layout rules live in wwwroot/app.css.
+ * This file owns icon sizing and the active/hover micro-interactions
+ * that need ::deep to pierce the NavLink element.
+ */
+
+/* ── Icon alignment ─────────────────────────────────────────────────────── */
+/* Vertically centre icon + text inside each nav link */
+::deep .app-nav__link {
+    align-items: center;
+}
+
+/* Icon wrapper: fixed square, subtle opacity at rest */
+::deep .nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.125rem;
+    height: 1.125rem;
+    opacity: var(--app-opacity-soft);
+    transition: opacity var(--app-transition-fast);
+}
+
+::deep .app-nav__link:hover .nav-icon {
+    opacity: var(--app-opacity-strong);
+}
+
+::deep .app-nav__link.active .nav-icon {
+    opacity: var(--app-opacity-near-full);
+}
+
+/* ── Active pill ─────────────────────────────────────────────────────────── */
+/* Reinforces the inset left-bar defined in app.css with a subtle text lift */
+::deep .app-nav__link.active .app-nav__text {
+    color: var(--app-accent, #5b8fd4);
+}
+
+/* ── Footer repo link ───────────────────────────────────────────────────── */
+::deep .app-nav__repo {
+    align-items: center;
+    gap: var(--app-space-sm);
+}

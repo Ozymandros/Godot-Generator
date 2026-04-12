@@ -1,0 +1,93 @@
+@* Unity-Generator ManagementDashboard parity. *@
+@inject ProjectStateService ProjectState
+@inject LogBufferService Logs
+@implements IDisposable
+
+<FluentLabel Typo="Typography.H4" Class="app-fluent-heading-margin">Management dashboard</FluentLabel>
+<FluentLabel Typo="Typography.Body" Class="app-management-lead">Session overview: active project from the header and buffered generation log lines.</FluentLabel>
+
+<FluentGrid Spacing="12" Class="management-dashboard__grid">
+    <FluentCard Class="app-card-padding">
+        <FluentLabel Typo="Typography.H6">Active project</FluentLabel>
+        @if (string.IsNullOrWhiteSpace(_projectName) && string.IsNullOrWhiteSpace(_projectPath))
+        {
+            <FluentLabel Typo="Typography.Body">None yet. Set name and path in the header, then Save project.</FluentLabel>
+        }
+        else
+        {
+            <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">@(_projectName.Length > 0 ? _projectName : "(unnamed)")</FluentLabel>
+            @if (!string.IsNullOrWhiteSpace(_projectPath))
+            {
+                <FluentLabel Typo="Typography.Body" Class="app-path-break app-opacity-90">@_projectPath</FluentLabel>
+            }
+        }
+    </FluentCard>
+    <FluentCard Class="app-card-padding">
+        <FluentLabel Typo="Typography.H6">Session log</FluentLabel>
+        <FluentLabel Typo="Typography.Body">@_logLineCount buffered line(s) from generation runs this session.</FluentLabel>
+        <FluentAnchor Href="/logs">Open logs</FluentAnchor>
+    </FluentCard>
+    <FluentCard Class="app-card-padding">
+        <FluentLabel Typo="Typography.H6">Godot Project</FluentLabel>
+        <FluentLabel Typo="Typography.Body">Scaffold or open project workflows.</FluentLabel>
+        <FluentAnchor Href="/generate/godot-project">Open</FluentAnchor>
+    </FluentCard>
+    <FluentCard Class="app-card-padding">
+        <FluentLabel Typo="Typography.H6">Scene &amp; MCP tools</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="app-margin-bottom-sm">Jump to godot-mcp-oriented generation panels.</FluentLabel>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <FluentAnchor Href="/generate/godot-lighting">Lighting</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-camera">Camera</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-shaders">Shaders</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-signals">Signals</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-nodes">Nodes</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-ui">Godot UI</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-physics">Godot Physics</FluentAnchor>
+            <FluentAnchor Href="/generate/godot-mcp" Appearance="Appearance.Accent">All Godot MCP tools (hub)</FluentAnchor>
+        </FluentStack>
+    </FluentCard>
+    <FluentCard Class="app-card-padding">
+        <FluentLabel Typo="Typography.H6">Settings</FluentLabel>
+        <FluentLabel Typo="Typography.Body">Keys, models, prompts, and config snapshot.</FluentLabel>
+        <FluentAnchor Href="/settings/general">Open</FluentAnchor>
+    </FluentCard>
+</FluentGrid>
+
+@code {
+    private string _projectName = string.Empty;
+    private string _projectPath = string.Empty;
+    private int _logLineCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ProjectState.LoadAsync().ConfigureAwait(false);
+        SyncFromServices();
+        ProjectState.Changed += OnProjectStateChanged;
+        Logs.Changed += OnLogsChanged;
+    }
+
+    private void OnProjectStateChanged()
+    {
+        SyncFromServices();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLogsChanged()
+    {
+        SyncFromServices();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncFromServices()
+    {
+        _projectName = ProjectState.ActiveProjectName;
+        _projectPath = ProjectState.ActiveProjectPath;
+        _logLineCount = Logs.GetSnapshot().Count;
+    }
+
+    public void Dispose()
+    {
+        ProjectState.Changed -= OnProjectStateChanged;
+        Logs.Changed -= OnLogsChanged;
+    }
+}

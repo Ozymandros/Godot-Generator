@@ -1,0 +1,43 @@
+services:
+  playwright-electron-smoke:
+    build:
+      context: .
+      dockerfile: docker/playwright-electron/Dockerfile
+    init: true
+    shm_size: 1gb
+    working_dir: /work
+    volumes:
+      - ./:/work
+      - electron_node_modules:/work/electron/node_modules
+    environment:
+      - RUN_PLAYWRIGHT_ELECTRON_STARTUP_TEST=1
+      - ELECTRON_START_SCRIPT=dev:ci
+      - "ELECTRON_READY_MARKER=Now listening on:"
+      - ALLOW_RESOURCE_CONSOLE_ERRORS=1
+      - CI=1
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+      - DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+      - NUGET_FALLBACK_PACKAGES=
+    command: >
+      /bin/bash -lc "rm -rf /tmp/workspace &&
+      mkdir -p /tmp/workspace &&
+      cp -a /work/src /tmp/workspace/ &&
+      cp -a /work/test /tmp/workspace/ &&
+      cp -a /work/GodotGenerator.Blazor /tmp/workspace/ &&
+      cp -a /work/electron /tmp/workspace/ &&
+      cp -a /work/Directory.Build.props /tmp/workspace/ &&
+      cp -a /work/Godot-Generator.slnx /tmp/workspace/ &&
+      cd /tmp/workspace/electron &&
+      (pnpm install --frozen-lockfile || pnpm install --frozen-lockfile) &&
+      cd /tmp/workspace &&
+      python3 -c \"from pathlib import Path; Path('/tmp/NuGet.Config').write_text('''<?xml version=\\\"1.0\\\" encoding=\\\"utf-8\\\"?>\\n<configuration>\\n  <packageSources>\\n    <clear />\\n    <add key=\\\"nuget.org\\\" value=\\\"https://api.nuget.org/v3/index.json\\\" />\\n  </packageSources>\\n</configuration>\\n''', encoding='utf-8')\" &&
+      dotnet restore test/GodotGenerator.Blazor.Tests/GodotGenerator.Blazor.Tests.csproj --configfile /tmp/NuGet.Config
+      -p:RestoreFallbackFolders=
+      -p:DisableImplicitNuGetFallbackFolder=true &&
+      xvfb-run -a dotnet test test/GodotGenerator.Blazor.Tests/GodotGenerator.Blazor.Tests.csproj --no-restore
+      --filter FullyQualifiedName~GodotGenerator.Blazor.Tests.StartupTests.ElectronDesktopStartsBackendAndServesUi
+      -p:RestoreFallbackFolders=
+      -p:DisableImplicitNuGetFallbackFolder=true"
+
+volumes:
+  electron_node_modules:

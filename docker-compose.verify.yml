@@ -1,0 +1,38 @@
+# Local/manual: one container runs tools/verify.ps1 end-to-end (dotnet format/build/test/coverage + Playwright).
+# Image: docker/playwright-electron/Dockerfile (same base as .devcontainer: .NET 10 SDK, Node 22, PowerShell, Playwright OS deps).
+# Repo is bind-mounted at /workspace; verify.ps1 pre-builds the Blazor host then sets E2E_WEBSERVER_PREBUILT for Playwright
+# (same pattern as CI). No host networking required—Kestrel and Chromium run in this container.
+#
+# From repo root:
+#   docker compose -f docker-compose.verify.yml run --build --rm verify
+#   ./tools/verify-docker.ps1
+
+services:
+  verify:
+    build:
+      context: .
+      dockerfile: docker/playwright-electron/Dockerfile
+    working_dir: /workspace
+    # Playwright/Chromium needs adequate /dev/shm in Docker (avoids random crashes).
+    shm_size: "1gb"
+    volumes:
+      - .:/workspace
+    environment:
+      CI: "true"
+      DOTNET_CONFIGURATION: "Release"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+      NUGET_FALLBACK_PACKAGES: ""
+    command:
+      - pwsh
+      - -NoProfile
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - tools/verify.ps1
+      - -Step
+      - All
+      - -Configuration
+      - Release
+      - -CoverageThreshold
+      - "80"

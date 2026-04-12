@@ -1,0 +1,676 @@
+@page "/settings"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using System.Text.Json
+@using GodotGenerator.Application
+@using GodotGenerator.Application.Configuration
+@using GodotGenerator.Blazor.Client.Models
+@using GodotGenerator.Api.Dtos
+@using GodotGenerator.Desktop.Contracts.Serialization
+@inject GodotGeneratorClientFacade Api
+@inject NavigationManager Nav
+
+<PageTitle>Configuration</PageTitle>
+
+<div class="settings-hub__head app-content-wide">
+    <h1 class="settings-hub__title">Configuration</h1>
+    <p class="settings-hub__subtitle">
+        Manage your intelligence engines, models, and system prompts.
+    </p>
+
+    <div class="settings-tab-strip" role="tablist" aria-label="Configuration sections">
+        <button type="button" role="tab" id="settings-tab-0" class="settings-tab @TabClass(0)" aria-selected="@AriaBool(_tab == 0)" aria-controls="settings-panel-0" @onclick="@(() => SelectTab(0))">
+            <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Settings())" Width="18px" Color="Color.Neutral" /></span>
+            <span>General</span>
+        </button>
+        <button type="button" role="tab" id="settings-tab-1" class="settings-tab @TabClass(1)" aria-selected="@AriaBool(_tab == 1)" aria-controls="settings-panel-1" @onclick="@(() => SelectTab(1))">
+            <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Bot())" Width="18px" Color="Color.Neutral" /></span>
+            <span>Providers</span>
+        </button>
+        <button type="button" role="tab" id="settings-tab-2" class="settings-tab @TabClass(2)" aria-selected="@AriaBool(_tab == 2)" aria-controls="settings-panel-2" @onclick="@(() => SelectTab(2))">
+            <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Cube())" Width="18px" Color="Color.Neutral" /></span>
+            <span>Models</span>
+        </button>
+        <button type="button" role="tab" id="settings-tab-3" class="settings-tab @TabClass(3)" aria-selected="@AriaBool(_tab == 3)" aria-controls="settings-panel-3" @onclick="@(() => SelectTab(3))">
+            <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.DocumentText())" Width="18px" Color="Color.Neutral" /></span>
+            <span>Prompts</span>
+        </button>
+        <button type="button" role="tab" id="settings-tab-4" class="settings-tab @TabClass(4)" aria-selected="@AriaBool(_tab == 4)" aria-controls="settings-panel-4" @onclick="@(() => SelectTab(4))">
+            <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Key())" Width="18px" Color="Color.Neutral" /></span>
+            <span>Secrets</span>
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(_bannerError))
+{
+    <AppMessageBar Intent="MessageIntent.Error" Class="settings-hub__banner app-content-wide">@_bannerError</AppMessageBar>
+}
+@if (!string.IsNullOrEmpty(_bannerInfo))
+{
+    <AppMessageBar Intent="MessageIntent.Success" Class="settings-hub__banner app-content-wide">@_bannerInfo</AppMessageBar>
+}
+
+<div role="tabpanel" id="settings-panel-0" aria-labelledby="settings-tab-0" class="settings-tab-panel app-content-wide" hidden="@(_tab != 0)">
+    <FluentCard Class="settings-card-host">
+        <div class="settings-card__inner">
+            <p class="settings-card__kicker">NETWORK &amp; API</p>
+            <div class="settings-card__title"><span aria-hidden="true">⚙</span> General preferences</div>
+            <SmartField Label="Backend URL"
+                        Help="The address of your Godot Generator backend service (when using remote transport)."
+                        @bind-Value="_backendUrl" />
+            <SmartField Label="Base path (output)"
+                        Help="Relative path for generated projects (e.g. ./output). Stored in preferences."
+                        @bind-Value="_outputBasePath" />
+            <SmartField Label="Workspace notes" FieldType="@SmartFieldType.Multiline"
+                        Help="Optional notes for this workspace (local UI only for now)."
+                        @bind-Value="_notes" />
+            <SmartField Label="Default programming language"
+                        FieldType="@SmartFieldType.Select"
+                        InputKind="Select"
+                        Placeholder="—"
+                        Help="Default for GDScript vs C# on Generate pages (Advanced Options → Preferred language). Stored as preferences."
+                        SelectOptions="_defaultScriptLanguageOptions"
+                        Value="@_defaultScriptLanguage"
+                        ValueChanged="OnDefaultScriptLanguageChanged" />
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="settings-card-host">
+        <div class="settings-card__inner">
+            <p class="settings-card__kicker">PREFERRED INTELLIGENCE</p>
+            <div class="settings-grid-2">
+                <div>
+                    <SmartField Label="Default text/logic provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_llmProvider"
+                                ValueChanged="OnLlmProviderChanged" />
+                </div>
+                <div>
+                    <SmartField Label="Default image generation provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_imageProvider"
+                                ValueChanged="OnImageProviderChanged" />
+                </div>
+                <div>
+                    <SmartField Label="@($"Model (for {(_llmProvider.Length > 0 ? _llmProvider : "LLM")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_llmModelOptions"
+                                Value="@_llmModel"
+                                ValueChanged="OnLlmModelChanged" />
+                </div>
+                <div>
+                    <SmartField Label="@($"Model (for {(_imageProvider.Length > 0 ? _imageProvider : "image")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_imageModelOptions"
+                                Value="@_imageModel"
+                                ValueChanged="OnImageModelChanged" />
+                </div>
+                <div>
+                    <SmartField Label="Default audio (speech/TTS) provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_audioProvider"
+                                ValueChanged="OnAudioProviderChanged" />
+                </div>
+                <div>
+                    <SmartField Label="Default video / music provider"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_providerOptions"
+                                Value="@_videoProvider"
+                                ValueChanged="OnVideoProviderChanged" />
+                </div>
+                <div>
+                    <SmartField Label="@($"Model (for {(_audioProvider.Length > 0 ? _audioProvider : "audio")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_audioModelOptions"
+                                Value="@_audioModel"
+                                ValueChanged="OnAudioModelChanged" />
+                </div>
+                <div>
+                    <SmartField Label="@($"Model (for {(_videoProvider.Length > 0 ? _videoProvider : "video")})")"
+                                FieldType="@SmartFieldType.Select"
+                                Placeholder="—"
+                                SelectOptions="_videoModelOptions"
+                                Value="@_videoModel"
+                                ValueChanged="OnVideoModelChanged" />
+                </div>
+            </div>
+        </div>
+    </FluentCard>
+
+    <div class="settings-actions">
+        <FluentButton Appearance="Appearance.Accent" OnClick="SaveGeneralAsync" Disabled="@_busy">Save preferences</FluentButton>
+        <FluentButton Appearance="Appearance.Neutral" OnClick="LoadConfigAsync" Disabled="@_busy">Refresh from server</FluentButton>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_rawConfigJson))
+    {
+        <details class="settings-raw-json">
+            <summary>Technical: raw server snapshot (JSON)</summary>
+            <pre>@_rawConfigJson</pre>
+        </details>
+    }
+</div>
+
+<div role="tabpanel" id="settings-panel-1" aria-labelledby="settings-tab-1" class="settings-tab-panel app-content-wide" hidden="@(_tab != 1)">
+    <SettingsProvidersPanel ConfigEpoch="_configEpoch"
+                            SourceProviders="_providerRegistryEntries"
+                            Disabled="_busy"
+                            OnRegistrySaved="OnProvidersRegistrySavedAsync" />
+</div>
+
+<div role="tabpanel" id="settings-panel-2" aria-labelledby="settings-tab-2" class="settings-tab-panel app-content-wide" hidden="@(_tab != 2)">
+    <SettingsModelsPanel ConfigEpoch="_configEpoch"
+                         SourceModels="_modelRegistryEntries"
+                         ProviderIds="_providerOptions"
+                         Disabled="_busy"
+                         OnRegistrySaved="OnModelsRegistrySavedAsync" />
+</div>
+
+<div role="tabpanel" id="settings-panel-3" aria-labelledby="settings-tab-3" class="settings-tab-panel app-content-wide" hidden="@(_tab != 3)">
+    <SettingsPromptsPanel ConfigEpoch="_configEpoch"
+                          SourcePrompts="_systemPrompts"
+                          Disabled="_busy"
+                          OnPromptsSaved="OnPromptsSavedAsync" />
+</div>
+
+<div role="tabpanel" id="settings-panel-4" aria-labelledby="settings-tab-4" class="settings-tab-panel app-content-wide" hidden="@(_tab != 4)">
+    <SettingsSecretsPanel ConfigEpoch="_configEpoch"
+                          SourceKeyNames="_keyNames"
+                          Disabled="_busy"
+                          OnSecretsSaved="OnSecretsSavedAsync" />
+</div>
+
+@code {
+    private int _tab;
+    private string _notes = string.Empty;
+    private string _rawConfigJson = string.Empty;
+    private bool _busy;
+    private string? _bannerError;
+    private string? _bannerInfo;
+
+    private string _backendUrl = string.Empty;
+    private string _outputBasePath = string.Empty;
+    private string _defaultScriptLanguage = string.Empty;
+
+    private static readonly string[] _defaultScriptLanguageOptions = ["GDScript", "C#"];
+    private string _llmProvider = string.Empty;
+    private string _imageProvider = string.Empty;
+    private string _audioProvider = string.Empty;
+    private string _videoProvider = string.Empty;
+    private string _llmModel = string.Empty;
+    private string _imageModel = string.Empty;
+    private string _audioModel = string.Empty;
+    private string _videoModel = string.Empty;
+
+    private readonly List<string> _providerOptions = [];
+    private readonly List<ProviderRegistryEntry> _providerRegistryEntries = [];
+    private readonly List<ModelRegistryEntry> _modelRegistryEntries = [];
+    private readonly Dictionary<string, string> _systemPrompts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _keyNames = [];
+    private int _configEpoch;
+    private readonly Dictionary<string, List<string>> _modelsByProvider = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _llmModelOptions = [];
+    private readonly List<string> _imageModelOptions = [];
+    private readonly List<string> _audioModelOptions = [];
+    private readonly List<string> _videoModelOptions = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (TryParseTab(new Uri(Nav.Uri).Query, out var t))
+        {
+            _tab = t;
+        }
+
+        await LoadConfigAsync().ConfigureAwait(false);
+    }
+
+    private static string AriaBool(bool v) => v ? "true" : "false";
+
+    private string TabClass(int index) => _tab == index ? "settings-tab--active" : string.Empty;
+
+    private static bool TryParseTab(string query, out int tab)
+    {
+        tab = 0;
+        if (string.IsNullOrEmpty(query) || query[0] != '?')
+        {
+            return false;
+        }
+
+        foreach (var part in query.TrimStart('?').Split('&'))
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && kv[0].Equals("tab", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(kv[1], out var i) && i is >= 0 and <= 4)
+            {
+                tab = i;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void SelectTab(int index)
+    {
+        _bannerError = null;
+        _bannerInfo = null;
+        _tab = index;
+        Nav.NavigateTo($"/settings?tab={index}", replace: true);
+    }
+
+    private Task OnDefaultScriptLanguageChanged(string value)
+    {
+        _defaultScriptLanguage = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadConfigAsync()
+    {
+        _busy = true;
+        _bannerError = null;
+        try
+        {
+            var envelope = await Api.GetConfigEnvelopeAsync().ConfigureAwait(false);
+            if (!envelope.Success || envelope.Data is null)
+            {
+                _bannerError = envelope.Error ?? "Failed to load configuration.";
+                return;
+            }
+
+            ApplyConfigPayload(envelope.Data);
+            _rawConfigJson = JsonSerializer.Serialize(envelope.Data, new JsonSerializerOptions { WriteIndented = true });
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ApplyConfigPayload(Dictionary<string, object?> data)
+    {
+        var prefs = ParsePreferences(data.GetValueOrDefault("preferences"));
+        _backendUrl = GetDictString(prefs, PreferenceKeys.AppBackendUrl);
+        _outputBasePath = GetDictString(prefs, PreferenceKeys.AppOutputBasePath);
+        _notes = GetDictString(prefs, PreferenceKeys.AppWorkspaceNotes);
+        _defaultScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(GetDictString(prefs, PreferenceKeys.PreferredLanguage));
+        _llmProvider = GetDictString(prefs, PreferenceKeys.PreferredLlmProvider);
+        _imageProvider = GetDictString(prefs, PreferenceKeys.PreferredImageProvider);
+        _audioProvider = GetDictString(prefs, PreferenceKeys.PreferredAudioProvider);
+        _videoProvider = GetDictString(prefs, PreferenceKeys.PreferredVideoProvider);
+        _llmModel = GetDictString(prefs, PreferenceKeys.PreferredLlmModel);
+        _imageModel = GetDictString(prefs, PreferenceKeys.PreferredImageModel);
+        _audioModel = GetDictString(prefs, PreferenceKeys.PreferredAudioModel);
+        _videoModel = GetDictString(prefs, PreferenceKeys.PreferredVideoModel);
+
+        LoadProviders(data);
+        LoadModelsMap(data);
+        LoadPrompts(data);
+        LoadKeyNames(data);
+        SyncLlmModels();
+        SyncImageModels();
+        SyncAudioModels();
+        SyncVideoModels();
+        _configEpoch++;
+    }
+
+    private static readonly JsonSerializerOptions ProviderJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    private void LoadProviders(Dictionary<string, object?> data)
+    {
+        _providerOptions.Clear();
+        _providerRegistryEntries.Clear();
+        if (!TryGetJsonElement(data.GetValueOrDefault("providers"), out var arr) || arr.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var entry = JsonSerializer.Deserialize<ProviderRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+            if (entry is null || string.IsNullOrWhiteSpace(entry.Id))
+            {
+                continue;
+            }
+
+            _providerRegistryEntries.Add(entry);
+            _providerOptions.Add(entry.Id.Trim());
+        }
+
+        _providerOptions.Sort(StringComparer.OrdinalIgnoreCase);
+        _providerRegistryEntries.Sort((a, b) => string.Compare(a.Id, b.Id, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task OnProvidersRegistrySavedAsync()
+    {
+        await ReloadConfigAfterSaveAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnModelsRegistrySavedAsync()
+    {
+        await ReloadConfigAfterSaveAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnPromptsSavedAsync()
+    {
+        await ReloadConfigAfterSaveAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnSecretsSavedAsync()
+    {
+        await ReloadConfigAfterSaveAsync().ConfigureAwait(false);
+    }
+
+    private void LoadPrompts(Dictionary<string, object?> data)
+    {
+        _systemPrompts.Clear();
+        if (!TryGetJsonElement(data.GetValueOrDefault("prompts"), out var root) || root.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (var p in root.EnumerateObject())
+        {
+            if (p.Value.ValueKind == JsonValueKind.String)
+            {
+                _systemPrompts[p.Name] = p.Value.GetString() ?? string.Empty;
+            }
+        }
+    }
+
+    private void LoadKeyNames(Dictionary<string, object?> data)
+    {
+        _keyNames.Clear();
+        if (!TryGetJsonElement(data.GetValueOrDefault("keys"), out var arr) || arr.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (var el in arr.EnumerateArray())
+        {
+            if (el.ValueKind != JsonValueKind.String)
+            {
+                continue;
+            }
+
+            var s = el.GetString();
+            if (!string.IsNullOrWhiteSpace(s))
+            {
+                _keyNames.Add(s.Trim());
+            }
+        }
+
+        _keyNames.Sort(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private void LoadModelsMap(Dictionary<string, object?> data)
+    {
+        _modelRegistryEntries.Clear();
+        _modelsByProvider.Clear();
+        if (!TryGetJsonElement(data.GetValueOrDefault("models"), out var root) || root.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        foreach (var prop in root.EnumerateObject())
+        {
+            if (prop.Value.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var item in prop.Value.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var entry = JsonSerializer.Deserialize<ModelRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+                if (entry is null || string.IsNullOrWhiteSpace(entry.EngineValue))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(entry.ProviderId))
+                {
+                    entry.ProviderId = prop.Name;
+                }
+
+                _modelRegistryEntries.Add(entry);
+            }
+        }
+
+        foreach (var m in _modelRegistryEntries)
+        {
+            var pid = m.ProviderId.Trim();
+            if (string.IsNullOrEmpty(pid))
+            {
+                continue;
+            }
+
+            if (!_modelsByProvider.TryGetValue(pid, out var list))
+            {
+                list = [];
+                _modelsByProvider[pid] = list;
+            }
+
+            list.Add(m.EngineValue.Trim());
+        }
+
+        foreach (var key in _modelsByProvider.Keys.ToList())
+        {
+            _modelsByProvider[key] = _modelsByProvider[key]
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+    }
+
+    private static Dictionary<string, string?> ParsePreferences(object? raw)
+    {
+        var d = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        if (!TryGetJsonElement(raw, out var je) || je.ValueKind != JsonValueKind.Object)
+        {
+            return d;
+        }
+
+        foreach (var p in je.EnumerateObject())
+        {
+            d[p.Name] = p.Value.ValueKind switch
+            {
+                JsonValueKind.Null => null,
+                JsonValueKind.String => p.Value.GetString(),
+                _ => p.Value.ToString(),
+            };
+        }
+
+        return d;
+    }
+
+    private static bool TryGetJsonElement(object? raw, out JsonElement element)
+    {
+        if (raw is JsonElement je)
+        {
+            element = je;
+            return true;
+        }
+
+        if (raw is null)
+        {
+            element = default;
+            return false;
+        }
+
+        try
+        {
+            element = JsonSerializer.SerializeToElement(raw, ContractJsonOptions.Default);
+            return true;
+        }
+        catch
+        {
+            element = default;
+            return false;
+        }
+    }
+
+    private static string GetDictString(Dictionary<string, string?> prefs, string key) =>
+        prefs.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : string.Empty;
+
+    private void SyncLlmModels() => RefillModelOptions(_llmProvider, _llmModelOptions, ref _llmModel);
+
+    private void SyncImageModels() => RefillModelOptions(_imageProvider, _imageModelOptions, ref _imageModel);
+
+    private void SyncAudioModels() => RefillModelOptions(_audioProvider, _audioModelOptions, ref _audioModel);
+
+    private void SyncVideoModels() => RefillModelOptions(_videoProvider, _videoModelOptions, ref _videoModel);
+
+    private Task OnLlmProviderChanged(string value)
+    {
+        _llmProvider = value;
+        SyncLlmModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnImageProviderChanged(string value)
+    {
+        _imageProvider = value;
+        SyncImageModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnAudioProviderChanged(string value)
+    {
+        _audioProvider = value;
+        SyncAudioModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnVideoProviderChanged(string value)
+    {
+        _videoProvider = value;
+        SyncVideoModels();
+        return Task.CompletedTask;
+    }
+
+    private Task OnLlmModelChanged(string value)
+    {
+        _llmModel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnImageModelChanged(string value)
+    {
+        _imageModel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnAudioModelChanged(string value)
+    {
+        _audioModel = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnVideoModelChanged(string value)
+    {
+        _videoModel = value;
+        return Task.CompletedTask;
+    }
+
+    private void RefillModelOptions(string providerId, List<string> target, ref string selected)
+    {
+        target.Clear();
+        if (string.IsNullOrWhiteSpace(providerId) || !_modelsByProvider.TryGetValue(providerId.Trim(), out var rows))
+        {
+            selected = string.Empty;
+            return;
+        }
+
+        target.AddRange(rows);
+        if (!string.IsNullOrEmpty(selected) && !target.Contains(selected, StringComparer.OrdinalIgnoreCase))
+        {
+            selected = string.Empty;
+        }
+    }
+
+    private async Task SaveGeneralAsync()
+    {
+        _busy = true;
+        _bannerError = null;
+        _bannerInfo = null;
+        try
+        {
+            var pairs = new (string Key, string? Value)[]
+            {
+                (PreferenceKeys.AppBackendUrl, NullIfEmpty(_backendUrl)),
+                (PreferenceKeys.AppOutputBasePath, NullIfEmpty(_outputBasePath)),
+                (PreferenceKeys.AppWorkspaceNotes, NullIfEmpty(_notes)),
+                (PreferenceKeys.PreferredLanguage, PreferredScriptLanguagePref.ToStoredValue(_defaultScriptLanguage)),
+                (PreferenceKeys.PreferredLlmProvider, NullIfEmpty(_llmProvider)),
+                (PreferenceKeys.PreferredLlmModel, NullIfEmpty(_llmModel)),
+                (PreferenceKeys.PreferredImageProvider, NullIfEmpty(_imageProvider)),
+                (PreferenceKeys.PreferredImageModel, NullIfEmpty(_imageModel)),
+                (PreferenceKeys.PreferredAudioProvider, NullIfEmpty(_audioProvider)),
+                (PreferenceKeys.PreferredAudioModel, NullIfEmpty(_audioModel)),
+                (PreferenceKeys.PreferredVideoProvider, NullIfEmpty(_videoProvider)),
+                (PreferenceKeys.PreferredVideoModel, NullIfEmpty(_videoModel)),
+            };
+
+            foreach (var (key, value) in pairs)
+            {
+                var res = await Api.SetPreferenceEnvelopeAsync(new SetPreferenceRequest(key, value)).ConfigureAwait(false);
+                if (!res.Success)
+                {
+                    _bannerError = res.Error ?? $"Save failed for {key}.";
+                    return;
+                }
+            }
+
+            _bannerInfo = "Preferences saved.";
+            await ReloadConfigAfterSaveAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string? NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
+
+    private async Task ReloadConfigAfterSaveAsync()
+    {
+        try
+        {
+            var envelope = await Api.GetConfigEnvelopeAsync().ConfigureAwait(false);
+            if (!envelope.Success || envelope.Data is null)
+            {
+                return;
+            }
+
+            ApplyConfigPayload(envelope.Data);
+            _rawConfigJson = JsonSerializer.Serialize(envelope.Data, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            /* ignore secondary refresh errors */
+        }
+    }
+}
+

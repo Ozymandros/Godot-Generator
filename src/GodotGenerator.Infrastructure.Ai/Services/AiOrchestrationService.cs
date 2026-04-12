@@ -1,6 +1,7 @@
 #nullable enable
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
 using Microsoft.Extensions.Logging;
@@ -16,13 +17,21 @@ namespace GodotGenerator.Infrastructure.Ai.Services;
 /// </summary>
 public sealed class AiOrchestrationService(
     IKernelFactory kernelFactory,
+    IProviderCapabilityRouter providerCapabilityRouter,
     IOptions<OrchestrationOptions> orchestrationOptions,
+    IGodotProjectPathValidator godotProjectPathValidator,
     ILogger<AiOrchestrationService> logger) : IAiOrchestrationService
 {
     /// <inheritdoc />
     public async Task<AgentTurnResult> RunTurnAsync(AgentTurnRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var validation = await TryValidateGodotProjectPathAsync(request, cancellationToken).ConfigureAwait(false);
+        if (validation is not null)
+        {
+            return validation;
+        }
+
         CancellationToken effectiveCancellationToken = cancellationToken;
         CancellationTokenSource? timeoutCts = null;
         try
@@ -33,9 +42,17 @@ public sealed class AiOrchestrationService(
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(orchestrationOptions.Value.TurnTimeoutSeconds));
                 effectiveCancellationToken = timeoutCts.Token;
             }
+            if (!providerCapabilityRouter.Supports(request.Provider, request.Modality, out var reason))
+            {
+                return new AgentTurnResult(false, reason ?? "Unsupported provider/modality combination.");
+            }
 
             var kernel = await kernelFactory
-                .GetOrCreateKernelAsync(request.PreferredModelId, effectiveCancellationToken)
+                .GetOrCreateKernelAsync(
+                    request.Provider,
+                    request.PreferredModelId,
+                    request.Modality,
+                    effectiveCancellationToken)
                 .ConfigureAwait(false);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
 
@@ -53,6 +70,11 @@ public sealed class AiOrchestrationService(
                     ? ToolCallBehavior.AutoInvokeKernelFunctions
                     : ToolCallBehavior.EnableKernelFunctions,
             };
+
+            if (TryGetTemperature(request.Options, out var temperature))
+            {
+                settings.Temperature = temperature;
+            }
 
             var contents = await chat
                 .GetChatMessageContentsAsync(history, settings, kernel, cancellationToken: effectiveCancellationToken)
@@ -72,6 +94,12 @@ public sealed class AiOrchestrationService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Agent turn failed");
+            if (ex is InvalidOperationException ioe &&
+                ioe.Message.Contains("API key for provider", StringComparison.OrdinalIgnoreCase))
+            {
+                return new AgentTurnResult(false, ioe.Message);
+            }
+
             var safeMessage = string.IsNullOrWhiteSpace(orchestrationOptions.Value.GenericFailureMessage)
                 ? "Agent turn failed. Check logs for details."
                 : orchestrationOptions.Value.GenericFailureMessage;
@@ -81,6 +109,77 @@ public sealed class AiOrchestrationService(
         {
             timeoutCts?.Dispose();
         }
+    }
+
+    private const string TemperatureOptionKey = "temperature";
+
+    private static bool TryGetTemperature(IReadOnlyDictionary<string, object?>? options, out double temperature)
+    {
+        temperature = 0;
+        if (options is null || !options.TryGetValue(TemperatureOptionKey, out var raw) || raw is null)
+        {
+            return false;
+        }
+
+        switch (raw)
+        {
+            case double d:
+                temperature = d;
+                return true;
+            case float f:
+                temperature = f;
+                return true;
+            case int i:
+                temperature = i;
+                return true;
+            case long l:
+                temperature = l;
+                return true;
+            case string s when double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed):
+                temperature = parsed;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// When <see cref="ModalityTurnComposer.GodotProjectPathOptionKey"/> is set, validates the path via the Godot plugin before the LLM runs.
+    /// </summary>
+    private async Task<AgentTurnResult?> TryValidateGodotProjectPathAsync(
+        AgentTurnRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (request.Options is null ||
+            !request.Options.TryGetValue(ModalityTurnComposer.GodotProjectPathOptionKey, out var raw) ||
+            raw is null)
+        {
+            return null;
+        }
+
+        var path = raw switch
+        {
+            string s => s.Trim(),
+            _ => raw.ToString()?.Trim(),
+        };
+
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var valid = await godotProjectPathValidator
+            .IsValidGodotProjectRootAsync(path, cancellationToken)
+            .ConfigureAwait(false);
+        if (valid)
+        {
+            return null;
+        }
+
+        return new AgentTurnResult(
+            false,
+            "The provided Godot project path is not valid (expected project.godot at the root).",
+            path);
     }
 
     /// <summary>

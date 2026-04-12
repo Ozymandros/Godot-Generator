@@ -1,0 +1,25 @@
+<FluentAnchor class="app-nav__repo"
+              Appearance="@Appearance"
+              Href="@Href"
+              Target="_blank"
+              Rel="noopener noreferrer">
+    <span class="nav-icon" aria-hidden="true"><FluentIcon Value="@Icon" Width="@IconWidth" /></span>
+    <span class="app-nav__text">@Text</span>
+</FluentAnchor>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Href { get; set; }
+
+    [Parameter, EditorRequired]
+    public required string Text { get; set; }
+
+    [Parameter, EditorRequired]
+    public required Icon Icon { get; set; }
+
+    [Parameter]
+    public string IconWidth { get; set; } = "16px";
+
+    [Parameter]
+    public Appearance Appearance { get; set; } = Appearance.Neutral;
+}

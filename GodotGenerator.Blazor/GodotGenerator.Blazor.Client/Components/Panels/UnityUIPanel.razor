@@ -1,0 +1,90 @@
+@* Godot UI modality panel — uses GenerationWorkspace for Provider/Model selects and shared generation UX. *@
+@using System.Text
+@using GodotGenerator.Api.Dtos
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.GodotUi"
+                     Title="Godot UI"
+                     Description="Control trees, themes, and containers. Optional fields add context for the model; use the active project path when you want MCP tools to run against a real project.godot root."
+                     PromptPlaceholder="Describe the UI to generate or adjust…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Preferred language" Placeholder="e.g. English" @bind-Value="_preferredLanguage" />
+        <SmartField Label="UI parent path" Placeholder="e.g. /root/Main/UI or CanvasLayer path" @bind-Value="_uiParentPath" />
+        <SmartField Label="Theme / layout notes" FieldType="SmartFieldType.Multiline" Placeholder="Anchors, min size, Theme resource, etc." @bind-Value="_layoutNotes" />
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentSwitch Value="_useActiveProjectForValidation" ValueChanged="OnValidationSwitchChanged">Use active project path for MCP validation</FluentSwitch>
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _preferredLanguage = string.Empty;
+    private string _uiParentPath = string.Empty;
+    private string _layoutNotes = string.Empty;
+    private bool _useActiveProjectForValidation = true;
+
+    private Task OnValidationSwitchChanged(bool value)
+    {
+        _useActiveProjectForValidation = value;
+        return Task.CompletedTask;
+    }
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var composedPrompt = ComposePromptWithUiContext(prompt);
+        var options = BuildOptions();
+
+        return new GenerateRequest(
+            Prompt: composedPrompt,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim(),
+            Options: options);
+    }
+
+    private string ComposePromptWithUiContext(string userPrompt)
+    {
+        var sb = new StringBuilder();
+        var hasContext = false;
+
+        void AppendLineIf(string label, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            sb.Append(label);
+            sb.Append(' ');
+            sb.AppendLine(value.Trim());
+            hasContext = true;
+        }
+
+        AppendLineIf("Target UI parent path:", _uiParentPath);
+        AppendLineIf("Theme / layout notes:", _layoutNotes);
+
+        if (hasContext)
+        {
+            sb.AppendLine();
+        }
+
+        sb.Append(userPrompt.Trim());
+        return sb.ToString();
+    }
+
+    private Dictionary<string, object?>? BuildOptions()
+    {
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        if (!string.IsNullOrWhiteSpace(_preferredLanguage))
+        {
+            options[GenerationOptionKeys.PreferredLanguage] = _preferredLanguage.Trim();
+        }
+
+        if (_useActiveProjectForValidation && !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+        {
+            options[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+        }
+
+        return options.Count > 0 ? options : null;
+    }
+}

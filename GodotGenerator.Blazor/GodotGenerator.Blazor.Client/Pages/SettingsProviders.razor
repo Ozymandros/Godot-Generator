@@ -1,0 +1,10 @@
+@page "/settings/providers"
+@inject NavigationManager Nav
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/settings?tab=1", replace: true);
+    }
+}

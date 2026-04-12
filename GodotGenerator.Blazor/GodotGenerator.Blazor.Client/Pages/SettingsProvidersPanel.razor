@@ -1,0 +1,425 @@
+@inject GodotGeneratorClientFacade Api
+@inject IJSRuntime JS
+
+<div class="settings-providers">
+    @if (!string.IsNullOrEmpty(_panelError))
+    {
+        <AppMessageBar Intent="MessageIntent.Error" Class="settings-providers__msg">@_panelError</AppMessageBar>
+    }
+    @if (!string.IsNullOrEmpty(_panelInfo))
+    {
+        <AppMessageBar Intent="MessageIntent.Success" Class="settings-providers__msg">@_panelInfo</AppMessageBar>
+    }
+
+    <div class="settings-providers__layout">
+        <div class="settings-providers__list-col">
+            <div class="settings-providers__list-head">
+                <span class="settings-providers__kicker">ENGINES</span>
+                <FluentButton Appearance="Appearance.Neutral"
+                              Disabled="@Disabled"
+                              Title="Add engine"
+                              OnClick="AddProviderAsync"
+                              class="settings-providers__add">
+                    <FluentIcon Value="@(new Icons.Regular.Size20.Add())" Width="18px" Color="Color.Neutral" />
+                </FluentButton>
+            </div>
+            <div class="settings-providers__list" role="listbox" aria-label="Provider engines">
+                @foreach (var entry in _entries)
+                {
+                    <button type="button"
+                            role="option"
+                            aria-selected="@AriaBool(ReferenceEquals(entry, _selected))"
+                            class="@EntryClass(entry)"
+                            @onclick="@(() => Select(entry))">
+                        <span class="settings-providers__id">@entry.Id</span>
+                        @if (entry.OpenAiCompatibility)
+                        {
+                            <span class="settings-providers__compat" title="OpenAI-compatible API">
+                                <FluentIcon Value="@(new Icons.Regular.Size20.ArrowSwap())" Width="16px" Color="Color.Neutral" />
+                            </span>
+                        }
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="settings-providers__detail">
+            @if (_selected is null)
+            {
+                <div class="settings-providers__empty">
+                    <FluentLabel Typo="Typography.Body" Class="settings-providers__empty-text">
+                        Select a provider engine to configure, or register a new one.
+                    </FluentLabel>
+                    <FluentButton Appearance="Appearance.Accent" Disabled="@Disabled" OnClick="AddProviderAsync">
+                        Register New Engine
+                    </FluentButton>
+                </div>
+            }
+            else
+            {
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="16" Class="settings-providers__form">
+                    <SmartField Label="Engine id"
+                                Help="Lowercase identifier used across the app (must be unique)."
+                                Value="@_selected!.Id"
+                                ValueChanged="OnIdChanged"
+                                Width="100%" />
+                    <SmartField Label="Key store handle"
+                                Help="Handle for stored API credentials."
+                                Value="@_selected!.KeyStoreHandle"
+                                ValueChanged="OnKeyStoreChanged"
+                                Width="100%" />
+                    <SmartField Label="Endpoint (optional)"
+                                Help="Base URL for this engine when applicable."
+                                Value="@_endpointBinding"
+                                ValueChanged="OnEndpointChanged"
+                                Width="100%" />
+
+                    <div class="settings-providers__switches">
+                        <FluentSwitch Value="@_selected!.OpenAiCompatibility" ValueChanged="OnOpenAiCompatChanged">OpenAI-compatible</FluentSwitch>
+                        <FluentSwitch Value="@_selected!.AuthenticationRequired" ValueChanged="OnAuthRequiredChanged">Authentication required</FluentSwitch>
+                        <FluentSwitch Value="@_selected!.Vision" ValueChanged="OnVisionChanged">Vision</FluentSwitch>
+                        <FluentSwitch Value="@_selected!.Streaming" ValueChanged="OnStreamingChanged">Streaming</FluentSwitch>
+                        <FluentSwitch Value="@_selected!.FunctionCalling" ValueChanged="OnFunctionCallingChanged">Function calling</FluentSwitch>
+                        <FluentSwitch Value="@_selected!.GenericToolUse" ValueChanged="OnGenericToolUseChanged">Generic tool use</FluentSwitch>
+                    </div>
+
+                    <div class="settings-providers__modalities">
+                        <span class="app-field-label">Modalities</span>
+                        <p class="settings-providers__modalities-hint">Tags which panels use to offer this engine (e.g. llm, image). A provider appears on a Generate panel when at least one tag matches that panel. Add from the list; remove with ×. If none remain, llm is restored.</p>
+                        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Wrap="true" Class="settings-providers__modality-chips">
+                            @foreach (var m in _selected!.Modalities.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                            {
+                                <span class="settings-providers__modality-chip">
+                                    <span class="settings-providers__modality-chip-text">@m</span>
+                                    <FluentButton Appearance="Appearance.Lightweight"
+                                                  Disabled="@Disabled"
+                                                  Title="Remove modality"
+                                                  class="settings-providers__modality-remove"
+                                                  OnClick="@(() => RemoveModality(m))">×</FluentButton>
+                                </span>
+                            }
+                        </FluentStack>
+                        <SmartField Label="Add modality"
+                                    FieldType="@SmartFieldType.Select"
+                                    Help="Pick a modality to add (e.g. llm, image)."
+                                    Placeholder="Choose modality…"
+                                    SelectOptions="RegistryModalityCatalog.SelectOptions"
+                                    Value="@_pendingModality"
+                                    ValueChanged="OnPendingModalityChanged"
+                                    Disabled="@Disabled"
+                                    Width="100%" />
+                    </div>
+
+                    <div class="settings-providers__actions">
+                        <FluentButton Appearance="Appearance.Accent" Disabled="@(Disabled || _busy)" OnClick="CommitAsync">Commit Changes</FluentButton>
+                        <FluentButton Appearance="Appearance.Neutral" Disabled="@(Disabled || _busy)" OnClick="DeregisterAsync">Deregister</FluentButton>
+                    </div>
+                </FluentStack>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly List<ProviderRegistryEntry> _entries = [];
+    private ProviderRegistryEntry? _selected;
+    private string _pendingModality = string.Empty;
+    private string _endpointBinding = string.Empty;
+    private int _lastEpoch = int.MinValue;
+    private string? _panelError;
+    private string? _panelInfo;
+    private bool _busy;
+
+    [Parameter]
+    public int ConfigEpoch { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ProviderRegistryEntry> SourceProviders { get; set; } = Array.Empty<ProviderRegistryEntry>();
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnRegistrySaved { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ConfigEpoch == _lastEpoch)
+        {
+            return;
+        }
+
+        _lastEpoch = ConfigEpoch;
+        _panelError = null;
+        _panelInfo = null;
+        _entries.Clear();
+        foreach (var p in SourceProviders)
+        {
+            _entries.Add(CloneEntry(p));
+        }
+
+        _selected = _entries.FirstOrDefault();
+        SyncEditorFromSelection();
+    }
+
+    private static string AriaBool(bool v) => v ? "true" : "false";
+
+    private string EntryClass(ProviderRegistryEntry e) =>
+        ReferenceEquals(e, _selected) ? "settings-providers__list-item settings-providers__list-item--active" : "settings-providers__list-item";
+
+    private void Select(ProviderRegistryEntry entry)
+    {
+        _selected = entry;
+        SyncEditorFromSelection();
+    }
+
+    private void SyncEditorFromSelection()
+    {
+        if (_selected is null)
+        {
+            _pendingModality = string.Empty;
+            _endpointBinding = string.Empty;
+            return;
+        }
+
+        _pendingModality = string.Empty;
+        _endpointBinding = _selected.Endpoint ?? string.Empty;
+    }
+
+    private Task OnIdChanged(string value)
+    {
+        if (_selected is not null)
+        {
+            _selected.Id = value;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnKeyStoreChanged(string value)
+    {
+        if (_selected is not null)
+        {
+            _selected.KeyStoreHandle = value;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnEndpointChanged(string value)
+    {
+        _endpointBinding = value;
+        if (_selected is not null)
+        {
+            _selected.Endpoint = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnPendingModalityChanged(string value)
+    {
+        _pendingModality = value;
+        if (_selected is null || string.IsNullOrWhiteSpace(value))
+        {
+            return Task.CompletedTask;
+        }
+
+        var v = value.Trim().ToLowerInvariant();
+        if (!_selected.Modalities.Exists(x => string.Equals(x, v, StringComparison.OrdinalIgnoreCase)))
+        {
+            _selected.Modalities.Add(v);
+        }
+
+        _pendingModality = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private void RemoveModality(string modality)
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _selected.Modalities.RemoveAll(x => string.Equals(x, modality, StringComparison.OrdinalIgnoreCase));
+        if (_selected.Modalities.Count == 0)
+        {
+            _selected.Modalities.Add("llm");
+        }
+    }
+
+    private Task OnOpenAiCompatChanged(bool v)
+    {
+        if (_selected is not null)
+        {
+            _selected.OpenAiCompatibility = v;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnAuthRequiredChanged(bool v)
+    {
+        if (_selected is not null)
+        {
+            _selected.AuthenticationRequired = v;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnVisionChanged(bool v)
+    {
+        if (_selected is not null)
+        {
+            _selected.Vision = v;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnStreamingChanged(bool v)
+    {
+        if (_selected is not null)
+        {
+            _selected.Streaming = v;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnFunctionCallingChanged(bool v)
+    {
+        if (_selected is not null)
+        {
+            _selected.FunctionCalling = v;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnGenericToolUseChanged(bool v)
+    {
+        if (_selected is not null)
+        {
+            _selected.GenericToolUse = v;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task AddProviderAsync()
+    {
+        _panelError = null;
+        _panelInfo = null;
+        var entry = new ProviderRegistryEntry
+        {
+            Id = "new-provider",
+            KeyStoreHandle = "new-provider",
+            Modalities = ["llm"],
+            AuthenticationRequired = true,
+            Streaming = true,
+            FunctionCalling = true,
+            GenericToolUse = true,
+        };
+        _entries.Add(entry);
+        _selected = entry;
+        SyncEditorFromSelection();
+        return Task.CompletedTask;
+    }
+
+    private async Task DeregisterAsync()
+    {
+        if (_selected is null)
+        {
+            return;
+        }
+
+        _panelError = null;
+        _panelInfo = null;
+        var id = _selected.Id;
+        if (!await JS.InvokeAsync<bool>("confirm", $"Remove provider engine '{id}'?").ConfigureAwait(false))
+        {
+            return;
+        }
+
+        _entries.Remove(_selected);
+        _selected = _entries.FirstOrDefault();
+        SyncEditorFromSelection();
+    }
+
+    private async Task CommitAsync()
+    {
+        _panelError = null;
+        _panelInfo = null;
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            if (_selected is not null)
+            {
+                _selected.Endpoint = string.IsNullOrWhiteSpace(_endpointBinding) ? null : _endpointBinding.Trim();
+            }
+
+            var doc = new ProviderRegistryDocument { Version = 1, Providers = _entries.ToList() };
+            var err = ConfigurationRegistryService.ValidateProviderRegistry(doc);
+            if (err is not null)
+            {
+                _panelError = err;
+                return;
+            }
+
+            var json = ConfigurationRegistryService.Serialize(doc);
+            var res = await Api.SetPreferenceEnvelopeAsync(new SetPreferenceRequest(PreferenceKeys.ProvidersRegistryV1, json));
+            if (!res.Success)
+            {
+                _panelError = res.Error ?? "Failed to save provider registry.";
+                return;
+            }
+
+            // Read back the persisted value immediately so the UI can confirm
+            // whether persistence actually succeeded.
+            var verify = await Api.GetPreferenceAsync(PreferenceKeys.ProvidersRegistryV1);
+            if (!verify.Success)
+            {
+                _panelError = verify.Error ?? "Provider registry saved, but verification failed.";
+                return;
+            }
+
+            var stored = verify.Data?.GetValueOrDefault("value");
+            if (string.IsNullOrWhiteSpace(stored))
+            {
+                _panelError = "Provider registry save verification failed: stored value is empty.";
+                return;
+            }
+
+            _panelInfo = "Provider registry saved.";
+            await OnRegistrySaved.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static ProviderRegistryEntry CloneEntry(ProviderRegistryEntry p) =>
+        new()
+        {
+            Id = p.Id,
+            KeyStoreHandle = p.KeyStoreHandle,
+            Endpoint = p.Endpoint,
+            OpenAiCompatibility = p.OpenAiCompatibility,
+            AuthenticationRequired = p.AuthenticationRequired,
+            Vision = p.Vision,
+            Streaming = p.Streaming,
+            FunctionCalling = p.FunctionCalling,
+            GenericToolUse = p.GenericToolUse,
+            Modalities = [.. p.Modalities],
+        };
+}
+

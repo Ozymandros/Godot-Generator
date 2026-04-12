@@ -1,0 +1,57 @@
+﻿@inherits LayoutComponentBase
+@using GodotGenerator.Blazor.Components.Layout
+@using GodotGenerator.Blazor.Client.Components.Layout
+
+@* Headless WASM component — initialises Electron push-event subscriptions
+   (backendReady, backendCrashed, backendFailed, folderSelected) on first render.
+   Placed before the visible shell so the bridge is ready before any child
+   component that depends on ElectronBridgeService runs. *@
+<ElectronBootstrapClient @rendermode="InteractiveWebAssembly" />
+
+<a href="#main-content" class="app-skip-link">Skip to main content</a>
+
+@* AccentColor is defined in AppTheme.cs — update it there to keep --app-color-accent in app.css in sync. *@
+<FluentDesignTheme Mode="DesignThemeModes.Dark" CustomColor="@AppTheme.AccentColor">
+    <FluentLayout Class="app-shell" Style="min-height:100vh;">
+        <FluentStack Orientation="Orientation.Horizontal" Style="flex:1; align-items: stretch;">
+            <div id="app-shell-nav" class="app-shell__sidebar">
+                <FluentStack Orientation="Orientation.Vertical" Class="app-shell__sidebar-inner">
+                    <ProjectHeaderClient Compact="true" @rendermode="InteractiveWebAssembly" />
+                    <div class="app-shell__nav-scroll">
+                        <NavMenu />
+                    </div>
+                </FluentStack>
+            </div>
+            <div class="app-shell__backdrop" data-app-shell-backdrop aria-hidden="true"></div>
+            <FluentStack Orientation="Orientation.Vertical" Style="flex: 1; min-width: 0;">
+                <FluentHeader Class="app-shell__titlebar app-shell__titlebar-row">
+                    <ShellNavToggle @rendermode="InteractiveWebAssembly" />
+                    <span class="app-shell__titlebar-text">Godot Generator</span>
+                </FluentHeader>
+                <FluentStack Orientation="Orientation.Vertical" Class="app-shell__main" Style="flex: 1; min-width: 0;">
+                    <main id="main-content" class="app-shell__main-inner" tabindex="-1">
+                        @Body
+                    </main>
+                </FluentStack>
+                <FluentFooter Class="app-shell__statusbar">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="24" VerticalAlignment="VerticalAlignment.Center" Style="width:100%; justify-content: space-between;">
+                        <StatusBannerClient @rendermode="InteractiveWebAssembly" />
+                        <ThemeToggleClient @rendermode="InteractiveWebAssembly" />
+                    </FluentStack>
+                </FluentFooter>
+            </FluentStack>
+        </FluentStack>
+    </FluentLayout>
+</FluentDesignTheme>
+
+<FluentDialogProvider />
+<FluentToastProvider />
+<FluentMessageBarProvider />
+<FluentTooltipProvider />
+<FluentMenuProvider />
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

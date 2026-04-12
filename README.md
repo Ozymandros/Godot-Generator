@@ -1,26 +1,37 @@
-# Godot Generator (Avalonia)
+# Godot Generator
 
-![Coverage](https://github.com/Ozymandros/Godot-Generator-Avalonia/actions/workflows/coverage.yml/badge.svg)
-![Build](https://github.com/Ozymandros/Godot-Generator-Avalonia/actions/workflows/coverage.yml/badge.svg)
+![Coverage](https://github.com/Ozymandros/Godot-Generator/actions/workflows/coverage.yml/badge.svg)
+![Build](https://github.com/Ozymandros/Godot-Generator/actions/workflows/coverage.yml/badge.svg)
 
-Godot Generator (Avalonia) is a set of backend libraries and integration code that connect Microsoft Semantic Kernel with a Godot MCP plugin. The codebase provides adapters, orchestration services and testable infrastructure to enable AI-driven generation of Godot-ready code and assets.
+Godot Generator connects **Microsoft Semantic Kernel** to **[Godot MCP Server](https://github.com/Ozymandros/Godot-MCP-Server)** via the **[GodotMcp.SemanticKernel.Plugin](https://github.com/Ozymandros/GodotMcpPlugin)** (`GodotMcp.SemanticKernel.Plugin` on NuGet). The supported desktop experience is the **Blazor + Electron** shell under [`GodotGenerator.Blazor/`](GodotGenerator.Blazor/); the legacy Avalonia project in this repo is deprecated.
 
 Goals of this repository
-- Provide small, well-tested adapters and services that integrate Semantic Kernel and the `GodotMcp.SemanticKernel.Plugin` MCP server
-- Keep Kernel creation and provider wiring isolated and mockable for unit tests
+- Provide small, well-tested adapters and services that integrate Semantic Kernel and the Godot MCP global tool (`godot-mcp` on PATH or `GODOT_MCP_PATH`)
+- Keep kernel creation and provider wiring isolated and mockable for unit tests
 - Enforce a minimum global test coverage to maintain reliability
+- Align generation modalities with Godot MCP tool families (lighting, camera, scene graph, resources, UI, physics, etc.)
+
+**MCP prerequisites (local automation)**  
+Install the [.NET global tool](https://github.com/Ozymandros/Godot-MCP-Server) `godot-mcp` and set **`GODOT_PATH`** (or ensure `godot` is on PATH) so the server can resolve the Godot 4.x binary.
 
 Key information
 - Target framework: .NET 10
 - Languages: C# (primary)
 - Test framework: xUnit + Moq
 - Coverage: coverlet.msbuild + reportgenerator (global gate 80%)
+- **Primary UI:** Blazor WebAssembly + ASP.NET Core host; **Electron** optional (`electron/`)
 
 Where to start
-- Architecture overview: `docs/ARCHITECTURE.md`
-- Development guide: `docs/DEVELOPMENT.md`
-- Testing guide: `docs/TESTING.md`
-- CI & coverage: `docs/CI.md`
+- Blazor app: [`GodotGenerator.Blazor/README.md`](GodotGenerator.Blazor/README.md)
+- Architecture overview: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Development guide: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- Testing guide: [`docs/TESTING.md`](docs/TESTING.md)
+- CI & coverage: [`docs/CI.md`](docs/CI.md)
+
+Supported generation areas
+- Text, code, image, audio, video, sprites
+- Godot UI, Godot physics, scenes, Godot project, animations
+- **Godot MCP–oriented:** lighting, camera, shaders, signals, nodes (narrowed MCP tool surface per modality when `Orchestration:EnableModalityToolFiltering` is true)
 
 Quickstart (local development)
 1. Prerequisites
@@ -40,6 +51,7 @@ Coverage enforcement
 
 Repository layout (high level)
 - `src/` - library projects (infrastructure, adapters, application DTOs)
+- `GodotGenerator.Blazor/` - Blazor server + WASM client, BFF, Electron-oriented IPC
 - `test/` - unit tests and test utilities
 - `tools/` - helper scripts (coverage check, tooling)
 - `.github/workflows/` - CI pipelines (coverage enforcement)
@@ -54,6 +66,7 @@ Common commands and tips
 Contributing
 - Keep PRs small and explain the reason for changes
 - Add unit tests for new functionality and run the coverage check locally before opening a PR
+- When adding a new generation modality or panel override, update the UI, API routing, defaults, tests, and docs together
 
 Troubleshooting
 - If a project fails to load: open the .csproj and check for invalid XML or stray console output (MSBuild errors sometimes embed text into .csproj). See `src/GodotGenerator.Infrastructure.Ai/GodotGenerator.Infrastructure.Ai.csproj` for a corrected example.
@@ -61,4 +74,3 @@ Troubleshooting
 
 License
 - See repository top-level LICENSE (if present)
-

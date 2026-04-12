@@ -1,0 +1,15 @@
+@* Unity-Generator CodePanel parity (language hint → preferred_language option). *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.Code"
+                     Title="Code"
+                     Description="Generate GDScript or C# snippets. Use Advanced Options → Preferred language to choose GDScript or C# for this request."
+                     PromptPlaceholder="Describe the code behavior…"
+                     CreateRequest="BuildRequest" />
+
+@code {
+    private GenerateRequest BuildRequest(string prompt) =>
+        new GenerateRequest(
+            Prompt: prompt,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+}

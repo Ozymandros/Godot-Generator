@@ -1,0 +1,27 @@
+@* Avalonia / GenerationModality.Animations parity (Unity-Generator has no separate folder). *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.Animations"
+                     Title="Animations"
+                     Description="Keyframes, AnimationPlayer, state machines."
+                     PromptPlaceholder="Describe keyframes or behaviors…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="AnimationPlayer / root path" Placeholder="e.g. Player/AnimationPlayer" @bind-Value="_animRoot" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _animRoot = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var body = string.IsNullOrWhiteSpace(_animRoot)
+            ? prompt
+            : $"Animation context (node path): {_animRoot.Trim()}{Environment.NewLine}{Environment.NewLine}{prompt}";
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+    }
+}

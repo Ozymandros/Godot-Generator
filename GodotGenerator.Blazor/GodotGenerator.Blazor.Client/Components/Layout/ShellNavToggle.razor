@@ -1,0 +1,24 @@
+@inject IJSRuntime Js
+
+<button type="button"
+        class="app-shell__nav-toggle"
+        data-app-shell-nav-toggle
+        aria-expanded="false"
+        aria-controls="app-shell-nav"
+        aria-label="Open navigation menu"
+        @onclick="ToggleAsync">
+    <span class="app-shell__nav-toggle-icon" aria-hidden="true">☰</span>
+</button>
+
+@code {
+    private async Task ToggleAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("godotShell.toggleNav").ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or JSDisconnectedException)
+        {
+        }
+    }
+}

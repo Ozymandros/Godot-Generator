@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>GodotGenerator.Blazor.Tests</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\GodotGenerator.Blazor\GodotGenerator.Blazor\GodotGenerator.Blazor.csproj" />
+    <ProjectReference Include="..\..\GodotGenerator.Blazor\GodotGenerator.Blazor.Client\GodotGenerator.Blazor.Client.csproj" />
+    <ProjectReference Include="..\..\src\GodotGenerator.Api\GodotGenerator.Api.csproj" />
+    <ProjectReference Include="..\..\src\GodotGenerator.Application\GodotGenerator.Application.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="bunit" Version="2.7.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.58.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

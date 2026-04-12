@@ -1,0 +1,98 @@
+@* Sidebar navigation — Fluent UI icons, accessible active-pill, Godot group toggles reliably (no broken details/summary). *@
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@inject NavigationManager Nav
+@implements IDisposable
+
+<nav class="app-nav" aria-label="Main navigation">
+
+    @* ── Generate ──────────────────────────────────────────────────────── *@
+    <AppNavLink Href="/settings" Match="NavLinkMatch.Prefix" Text="Configuration" Icon="@AppIconFactory.Settings" />
+    <AppNavLink Href="/generate/scenes" Match="NavLinkMatch.Prefix" Text="Scenes" Icon="@AppIconFactory.Layer" />
+    <AppNavLink Href="/generate/code" Match="NavLinkMatch.Prefix" Text="Code" Icon="@AppIconFactory.Code" />
+    <AppNavLink Href="/generate/text" Match="NavLinkMatch.Prefix" Text="Text" Icon="@AppIconFactory.Text" />
+    <AppNavLink Href="/generate/image" Match="NavLinkMatch.Prefix" Text="Image" Icon="@AppIconFactory.Image" />
+    <AppNavLink Href="/generate/sprites" Match="NavLinkMatch.Prefix" Text="Sprites" Icon="@AppIconFactory.Grid" />
+    <AppNavLink Href="/generate/animations" Match="NavLinkMatch.Prefix" Text="Animations" Icon="@AppIconFactory.Play" />
+    <AppNavLink Href="/generate/audio" Match="NavLinkMatch.Prefix" Text="Audio" Icon="@AppIconFactory.Speaker2" />
+    <AppNavLink Href="/generate/video" Match="NavLinkMatch.Prefix" Text="Video" Icon="@AppIconFactory.Video" />
+
+    <div class="app-nav-group">
+        <button type="button"
+                class="app-nav-group__trigger"
+                aria-expanded="@_godotExpanded"
+                aria-controls="nav-godot-items"
+                @onclick="ToggleGodot">
+            <span class="app-nav-group__chevron" aria-hidden="true">
+                <FluentIcon Value="@(_godotExpanded ? AppIconFactory.ChevronDown : AppIconFactory.ChevronRight)" Width="14px" />
+            </span>
+            <span class="app-nav-group__label">Godot</span>
+        </button>
+        @if (_godotExpanded)
+        {
+            <div id="nav-godot-items" class="app-nav-group__items">
+                <AppNavLink Href="/generate/godot-mcp" Match="NavLinkMatch.Prefix" Text="MCP hub" Icon="@AppIconFactory.SlideGrid" />
+                <AppNavLink Href="/generate/godot-ui" Match="NavLinkMatch.Prefix" Text="UI" Icon="@AppIconFactory.AppsList" />
+                <AppNavLink Href="/generate/godot-physics" Match="NavLinkMatch.Prefix" Text="Physics" Icon="@AppIconFactory.Molecule" />
+                <AppNavLink Href="/generate/godot-lighting" Match="NavLinkMatch.Prefix" Text="Lighting" Icon="@AppIconFactory.LightBulb" />
+                <AppNavLink Href="/generate/godot-camera" Match="NavLinkMatch.Prefix" Text="Camera" Icon="@AppIconFactory.Camera" />
+                <AppNavLink Href="/generate/godot-shaders" Match="NavLinkMatch.Prefix" Text="Shaders" Icon="@AppIconFactory.PaintBrush" />
+                <AppNavLink Href="/generate/godot-signals" Match="NavLinkMatch.Prefix" Text="Signals" Icon="@AppIconFactory.ArrowSync" />
+                <AppNavLink Href="/generate/godot-nodes" Match="NavLinkMatch.Prefix" Text="Nodes" Icon="@AppIconFactory.TreeDeciduous" />
+            </div>
+        }
+    </div>
+
+    <AppNavLink Href="/generate/godot-project" Match="NavLinkMatch.Prefix" Text="Project" Icon="@AppIconFactory.FolderOpen" />
+
+    <div class="app-nav__divider" role="separator" aria-hidden="true"></div>
+
+    @* ── Utility ───────────────────────────────────────────────────────── *@
+    <AppNavLink Href="/" Match="NavLinkMatch.All" Text="Home" Icon="@AppIconFactory.Home" />
+    <AppNavLink Href="/dashboard" Match="NavLinkMatch.Prefix" Text="Dashboard" Icon="@AppIconFactory.DataArea" />
+    <AppNavLink Href="/logs" Match="NavLinkMatch.Prefix" Text="Logs" Icon="@AppIconFactory.DocumentBulletList" />
+
+</nav>
+
+<div class="app-nav__footer">
+    <AppNavExternalLink Href="https://github.com/Ozymandros/Godot-Generator" Text="Repository" Icon="@AppIconFactory.BranchFork" />
+</div>
+
+@code {
+    private bool _godotExpanded;
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        SyncGodotFromUri(Nav.Uri);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        SyncGodotFromUri(e.Location);
+        StateHasChanged();
+    }
+
+    private void SyncGodotFromUri(string? uri)
+    {
+        if (string.IsNullOrEmpty(uri))
+        {
+            return;
+        }
+
+        if (uri.Contains("/generate/godot", StringComparison.OrdinalIgnoreCase))
+        {
+            _godotExpanded = true;
+        }
+    }
+
+    private void ToggleGodot()
+    {
+        _godotExpanded = !_godotExpanded;
+    }
+}

@@ -1,0 +1,60 @@
+@* Unity-Generator AudioPanel: speech vs music mode toggles. *@
+
+<GenerationWorkspace Modality="GenerationModality.Audio"
+                     Title="Audio & Music Generation"
+                     Description="@ModeDescription"
+                     PromptPlaceholder="@ModePromptPlaceholder"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">Generation type</FluentLabel>
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Class="app-stack-wrap">
+            <FluentButton Appearance="@ModeAppearance("speech")" OnClick="@(() => SetMode("speech"))">Speech (TTS)</FluentButton>
+            <FluentButton Appearance="@ModeAppearance("music")" OnClick="@(() => SetMode("music"))">Atmospheric music</FluentButton>
+        </FluentStack>
+        @if (_mode == "music")
+        {
+            <SmartField Label="Mood / instrumentation hints" FieldType="SmartFieldType.Multiline" Rows="2" Placeholder="Ambient, tempo, instruments…" @bind-Value="_musicHints" />
+        }
+        else
+        {
+            <SmartField Label="Voice / locale hints" Placeholder="Optional voice or locale" @bind-Value="_voiceHints" />
+        }
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _mode = "speech";
+    private string _voiceHints = string.Empty;
+    private string _musicHints = string.Empty;
+
+    private string ModeDescription => _mode == "music"
+        ? "Describe the atmosphere or music you want generated."
+        : "Enter text to synthesize as speech.";
+
+    private string ModePromptPlaceholder => _mode == "music"
+        ? "Describe the music…"
+        : "Text to speak…";
+
+    private void SetMode(string mode)
+    {
+        _mode = mode;
+    }
+
+    private Appearance ModeAppearance(string mode) =>
+        _mode == mode ? Appearance.Accent : Appearance.Neutral;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["audio_generation_mode"] = _mode,
+        };
+
+        var prefix = _mode == "music"
+            ? (string.IsNullOrWhiteSpace(_musicHints) ? string.Empty : $"Music hints: {_musicHints.Trim()}{Environment.NewLine}{Environment.NewLine}")
+            : (string.IsNullOrWhiteSpace(_voiceHints) ? string.Empty : $"Voice hints: {_voiceHints.Trim()}{Environment.NewLine}{Environment.NewLine}");
+
+        var body = string.IsNullOrEmpty(prefix) ? prompt : $"{prefix}{prompt}";
+        return new GenerateRequest(Prompt: body, Options: options);
+    }
+}

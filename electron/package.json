@@ -1,0 +1,25 @@
+{
+  "name": "godot-generator-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell for GodotGenerator.Blazor (dev: load Kestrel URL).",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dev:5044": "cross-env GODOT_BLAZOR_URL=http://127.0.0.1:5044 electron .",
+    "dev:ci": "cross-env GODOT_BLAZOR_URL=http://127.0.0.1:5044 electron --no-sandbox ."
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron"
+    ]
+  },
+  "dependencies": {
+    "electron-message-bridge": "^0.1.1"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^41.1.1"
+  }
+}

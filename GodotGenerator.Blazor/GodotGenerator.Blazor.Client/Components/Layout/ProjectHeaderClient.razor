@@ -1,0 +1,148 @@
+@inject ProjectStateService ProjectState
+@inject ElectronBridgeService Bridge
+@inject IJSRuntime JS
+@implements IDisposable
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="8" Class="app-shell-project-stack">
+    @if (Compact)
+    {
+        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8">
+            <FluentLabel Typo="Typography.Body" Class="app-project-header-label">Project</FluentLabel>
+            <span class="app-shell__online-dot" aria-hidden="true"></span>
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-90">Online</FluentLabel>
+        </FluentStack>
+        <SmartField Label="Project name" Placeholder="MyGame" Value="@_name" ValueChanged="OnNameChanged" />
+        <SmartField Label="Project path" Placeholder="C:\\Games\\MyGame" Value="@_path" ValueChanged="OnPathChanged" />
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Class="app-stack-wrap">
+            <FluentButton Appearance="Appearance.Neutral" OnClick="BrowseFolderAsync" Disabled="_pickingFolder">Browse…</FluentButton>
+            <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync">Save</FluentButton>
+        </FluentStack>
+    }
+    else
+    {
+    <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12" Class="app-stack-wrap">
+        <SmartField Label="Project name" Placeholder="MyGame" Value="@_name" ValueChanged="OnNameChanged" />
+        <SmartField Label="Project path" Placeholder="C:\\Games\\MyGame" Value="@_path" ValueChanged="OnPathChanged" />
+        <FluentButton Appearance="Appearance.Neutral" OnClick="BrowseFolderAsync" Disabled="_pickingFolder">Browse…</FluentButton>
+        <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync">Save project</FluentButton>
+    </FluentStack>
+    }
+    @if (_browseHint is not null)
+    {
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="4" Class="app-content-wide">
+            <AppMessageBar Intent="MessageIntent.Info">@_browseHint</AppMessageBar>
+            <FluentButton Appearance="Appearance.Lightweight" OnClick="DismissBrowseHintAsync">Dismiss</FluentButton>
+        </FluentStack>
+    }
+</FluentStack>
+
+@code {
+    [Parameter] public bool Compact { get; set; }
+
+    private string _name = string.Empty;
+    private string _path = string.Empty;
+    private bool _pickingFolder;
+    private string? _browseHint;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ProjectState.LoadAsync().ConfigureAwait(false);
+        SyncFromState();
+        ProjectState.Changed += OnProjectChanged;
+        Bridge.FolderSelected += OnFolderSelectedFromMenu;
+    }
+
+    private void OnProjectChanged()
+    {
+        SyncFromState();
+        InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Handles a folder path pushed from the Electron File menu
+    /// ("Open Project Folder…"). Persists the path immediately so the user
+    /// does not have to press Save after a menu-driven folder selection.
+    /// </summary>
+    private async void OnFolderSelectedFromMenu(string path)
+    {
+        try
+        {
+            await ProjectState.SetActiveProjectPathAsync(path).ConfigureAwait(false);
+            // SetActiveProjectPathAsync fires ProjectState.Changed, which calls
+            // OnProjectChanged → SyncFromState → StateHasChanged automatically.
+        }
+        catch
+        {
+            // Ignore JS interop errors during menu-driven folder selection.
+        }
+    }
+
+    private void SyncFromState()
+    {
+        _name = ProjectState.ActiveProjectName;
+        _path = ProjectState.ActiveProjectPath;
+    }
+
+    private Task OnNameChanged(string value)
+    {
+        _name = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnPathChanged(string value)
+    {
+        _path = value;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveAsync()
+    {
+        await ProjectState.SetActiveProjectAsync(_name, _path).ConfigureAwait(false);
+    }
+
+    private async Task BrowseFolderAsync()
+    {
+        if (_pickingFolder)
+        {
+            return;
+        }
+
+        _browseHint = null;
+        _pickingFolder = true;
+        try
+        {
+            var path = await JS.InvokeAsync<string?>("godotElectronInterop.pickFolder").ConfigureAwait(false);
+            if (!string.IsNullOrEmpty(path))
+            {
+                _path = path;
+                return;
+            }
+
+            var inElectron = await JS.InvokeAsync<bool>("godotElectronInterop.isElectron").ConfigureAwait(false);
+            _browseHint = inElectron
+                ? null
+                : "Folder picker is only available in the desktop (Electron) app. Enter the path manually.";
+        }
+        catch (Exception ex) when (ex is JSException || ex is InvalidOperationException || ex is JSDisconnectedException)
+        {
+            _browseHint = "Folder picker is only available in the desktop (Electron) app. Enter the path manually.";
+        }
+        finally
+        {
+            _pickingFolder = false;
+        }
+    }
+
+    private Task DismissBrowseHintAsync()
+    {
+        _browseHint = null;
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        ProjectState.Changed -= OnProjectChanged;
+        Bridge.FolderSelected -= OnFolderSelectedFromMenu;
+    }
+}
+

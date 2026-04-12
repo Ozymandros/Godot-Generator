@@ -1,0 +1,10 @@
+@page "/settings/general"
+@inject NavigationManager Nav
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@code {
+    protected override void OnInitialized()
+    {
+        Nav.NavigateTo("/settings?tab=0", replace: true);
+    }
+}

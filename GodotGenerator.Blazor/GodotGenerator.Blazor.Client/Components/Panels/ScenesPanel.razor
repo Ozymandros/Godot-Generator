@@ -1,0 +1,27 @@
+@* Unity-Generator ScenesPanel parity. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.Scenes"
+                     Title="Scene Creator"
+                     Description="Describe your scene and let the AI build it in Godot."
+                     PromptPlaceholder="Describe the scene…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <SmartField Label="Main scene path (optional)" Placeholder="res://scenes/main.tscn" @bind-Value="_scenePath" />
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _scenePath = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var body = string.IsNullOrWhiteSpace(_scenePath)
+            ? prompt
+            : $"Scene file hint: {_scenePath.Trim()}{Environment.NewLine}{Environment.NewLine}{prompt}";
+
+        return new GenerateRequest(
+            Prompt: body,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+    }
+}

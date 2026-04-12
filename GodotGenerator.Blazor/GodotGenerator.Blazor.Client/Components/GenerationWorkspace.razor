@@ -1,0 +1,452 @@
+@using GodotGenerator.Api.Dtos
+@using GodotGenerator.Application
+@using GodotGenerator.Application.Orchestration
+@inject GodotGeneratorClientFacade Api
+@inject ProjectStateService ProjectState
+@inject LogBufferService Logs
+@inject StatusBannerService StatusBanner
+@inject ElectronBridgeService ElectronBridge
+@implements IDisposable
+
+<PageTitle>@Title</PageTitle>
+
+<div class="generation-workspace">
+    <div class="generation-workspace__intro app-content-wide">
+        @if (!string.IsNullOrEmpty(Badge))
+        {
+            <FluentBadge Appearance="Appearance.Accent" Class="app-badge-margin-bottom">@Badge</FluentBadge>
+        }
+        <FluentLabel Typo="Typography.H4" Class="app-fluent-label-margin-title">@Title</FluentLabel>
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-intro-desc">@Description</FluentLabel>
+    </div>
+
+    <div class="generation-workspace__layout">
+        <div class="generation-workspace__form app-content-wide">
+            <FluentCard Class="settings-card-host">
+                <div class="settings-card__inner">
+                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">Effective runtime</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">Provider: @_lastProvider</FluentLabel>
+                    <FluentLabel Typo="Typography.Body">Model: @_lastModel</FluentLabel>
+                    <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft app-margin-top-xs">Overrides below apply to the next request.</FluentLabel>
+                </div>
+            </FluentCard>
+
+            <div class="generation-workspace__row-controls">
+                <SmartField @key="@($"gw-prov-{_registryUiEpoch}")"
+                            Label="Provider"
+                            FieldType="@SmartFieldType.Select"
+                            Placeholder="—"
+                            SelectOptions="_providerOptions"
+                            Value="@_providerOverride"
+                            ValueChanged="OnProviderOverrideChanged" />
+                <SmartField @key="@($"gw-mod-{_registryUiEpoch}")"
+                            Label="Model"
+                            FieldType="@SmartFieldType.Select"
+                            Placeholder="—"
+                            SelectOptions="_modelOptions"
+                            Value="@_modelOverride"
+                            ValueChanged="OnModelOverrideChanged" />
+                <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end" OnClick="@(() => _showModelModal = true)">+</FluentButton>
+            </div>
+
+            @if (AdditionalFields is not null)
+            {
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Class="generation-workspace__additional-stack">
+                    @AdditionalFields
+                </FluentStack>
+            }
+
+            <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt" />
+
+            <AdvancedOptionsSection Options="_advanced" OnChanged="OnAdvancedOptionsChanged">
+                @AdvancedChildContent
+            </AdvancedOptionsSection>
+
+            <FluentButton Appearance="Appearance.Accent"
+                          Class="generation-workspace__cta"
+                          OnClick="RunAsync"
+                          Disabled="@_busy">
+                @GenerateButtonLabel
+            </FluentButton>
+            @if (_busy)
+            {
+                <FluentProgressRing Class="app-progress-ring-margin" />
+            }
+
+            <section class="generation-workspace__preview app-content-wide" aria-label="Generation result preview">
+                <p class="generation-workspace__result-title">Preview</p>
+                <FluentCard Class="settings-card-host generation-workspace__result">
+                    <div class="settings-card__inner generation-workspace__result-inner">
+                        <FluentTextArea Value="@_result"
+                                        ValueChanged="OnResultPreviewChanged"
+                                        ReadOnly="true"
+                                        Rows="@ResultPreviewRows"
+                                        Placeholder="Generation output will appear here after you run Generate."
+                                        Class="generation-workspace__result-textarea app-input-like app-input-like--textarea" />
+                    </div>
+                </FluentCard>
+            </section>
+
+            <ModelManagerModal Visible="_showModelModal" Title="Models" OnClose="@(() => _showModelModal = false)">
+                <FluentLabel Typo="Typography.Body">Configure default models under Settings → Models; use Provider/Model fields above for per-request overrides.</FluentLabel>
+            </ModelManagerModal>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <AppMessageBar Intent="MessageIntent.Error">@_error</AppMessageBar>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GenerationModality Modality { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Generate";
+
+    [Parameter] public string Description { get; set; } = string.Empty;
+
+    [Parameter] public string? Badge { get; set; }
+
+    [Parameter] public string PromptPlaceholder { get; set; } = "Describe what you want…";
+
+    [Parameter] public RenderFragment? AdditionalFields { get; set; }
+
+    [Parameter] public RenderFragment? AdvancedChildContent { get; set; }
+
+    [Parameter] public Func<string, GenerateRequest>? CreateRequest { get; set; }
+
+    /// <summary>Visible rows for the readonly result preview textarea.</summary>
+    [Parameter] public int ResultPreviewRows { get; set; } = 14;
+
+    private string _prompt = string.Empty;
+    private string _providerOverride = string.Empty;
+    private string _modelOverride = string.Empty;
+    private readonly List<string> _providerOptions = [];
+    private readonly List<string> _modelOptions = [];
+    private readonly Dictionary<string, List<string>> _modelsByProvider = new(StringComparer.OrdinalIgnoreCase);
+    private string _result = string.Empty;
+    private string? _error;
+    private bool _busy;
+    private bool _showModelModal;
+    private string _lastProvider = "(not run yet)";
+    private string _lastModel = "(not run yet)";
+    private readonly GenerationAdvancedOptions _advanced = new();
+
+    /// <summary>Set after a successful config envelope load (providers/models + prefs applied).</summary>
+    private bool _registryReady;
+
+    /// <summary>Bumped after registry load so Fluent comboboxes remount with populated provider/model option lists.</summary>
+    private int _registryUiEpoch;
+
+    private string GenerateButtonLabel => $"Generate — {Title}";
+
+    private Task OnResultPreviewChanged(string _)
+    {
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ElectronBridge.BackendReady += OnElectronBackendReady;
+        await ProjectState.LoadAsync();
+        await LoadRegistryAsync();
+    }
+
+    public void Dispose()
+    {
+        ElectronBridge.BackendReady -= OnElectronBackendReady;
+    }
+
+    private void OnElectronBackendReady()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (_registryReady)
+            {
+                return;
+            }
+
+            await LoadRegistryAsync();
+            StateHasChanged();
+        });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _registryReady)
+        {
+            return;
+        }
+
+        await LoadRegistryAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private Task OnAdvancedOptionsChanged()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnProviderOverrideChanged(string value)
+    {
+        _providerOverride = value.Trim();
+        SyncModelOptionsForCurrentProvider();
+        return Task.CompletedTask;
+    }
+
+    private Task OnModelOverrideChanged(string value)
+    {
+        _modelOverride = value.Trim();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadRegistryAsync()
+    {
+        var envelope = await Api.GetConfigEnvelopeAsync();
+        if (!envelope.Success || envelope.Data is null)
+        {
+            return;
+        }
+
+        GeneratorRegistryOptionsLoader.Fill(envelope.Data, _providerOptions, _modelsByProvider, Modality);
+        var prefs = GeneratorRegistryOptionsLoader.ParsePreferences(envelope.Data);
+        EnsurePreferredProviderAppearsInOptions(envelope.Data, prefs);
+        ApplyDefaultsFromPreferences(prefs, envelope.Data);
+        _registryUiEpoch++;
+        _registryReady = true;
+    }
+
+    /// <summary>
+    /// Settings lists every provider; generate panels filter by modality tags. If the saved default
+    /// provider exists in the registry but was excluded from the filtered list, add it (and its
+    /// modality-matching models) so preferences can pre-select like Configuration → General.
+    /// </summary>
+    private void EnsurePreferredProviderAppearsInOptions(
+        Dictionary<string, object?> data,
+        IReadOnlyDictionary<string, string?> prefs)
+    {
+        var slug = ModalityRoutes.GetSlug(Modality);
+        var (providerKey, _) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
+        var preferred = GetPreferenceString(prefs, providerKey);
+        if (string.IsNullOrWhiteSpace(preferred))
+        {
+            return;
+        }
+
+        if (FindRegisteredCase(_providerOptions, preferred) is not null)
+        {
+            return;
+        }
+
+        if (!GeneratorRegistryOptionsLoader.TryGetCanonicalProviderId(data, preferred, out var canonical) ||
+            string.IsNullOrEmpty(canonical))
+        {
+            return;
+        }
+
+        var exists = false;
+        foreach (var p in _providerOptions)
+        {
+            if (string.Equals(p, canonical, StringComparison.OrdinalIgnoreCase))
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (!exists)
+        {
+            _providerOptions.Add(canonical);
+            _providerOptions.Sort(StringComparer.OrdinalIgnoreCase);
+        }
+
+        var tags = GenerationModalityRegistryTags.GetAllowedRegistryTags(Modality);
+        GeneratorRegistryOptionsLoader.AppendFilteredModelsForProvider(data, canonical, tags, _modelsByProvider);
+    }
+
+    private void ApplyDefaultsFromPreferences(IReadOnlyDictionary<string, string?> prefs, Dictionary<string, object?> envelopeData)
+    {
+        var slug = ModalityRoutes.GetSlug(Modality);
+        var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
+
+        var defaultProvider = GetPreferenceString(prefs, providerKey);
+        var defaultModel = GetPreferenceString(prefs, modelKey);
+
+        _providerOverride = string.Empty;
+        _modelOverride = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(defaultProvider))
+        {
+            var registered = FindRegisteredCase(_providerOptions, defaultProvider);
+            if (registered is not null)
+            {
+                _providerOverride = registered;
+            }
+        }
+
+        SyncModelOptionsForCurrentProvider();
+
+        if (!string.IsNullOrWhiteSpace(defaultModel) && !string.IsNullOrWhiteSpace(_providerOverride))
+        {
+            GeneratorRegistryOptionsLoader.EnsureSavedModelEngineListedForProvider(
+                envelopeData,
+                _providerOverride.Trim(),
+                defaultModel,
+                _modelsByProvider);
+        }
+
+        SyncModelOptionsForCurrentProvider();
+
+        if (!string.IsNullOrWhiteSpace(defaultModel))
+        {
+            var registeredModel = FindRegisteredCase(_modelOptions, defaultModel);
+            if (registeredModel is not null)
+            {
+                _modelOverride = registeredModel;
+            }
+        }
+
+        _advanced.PreferredScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(
+            GetPreferenceString(prefs, PreferenceKeys.PreferredLanguage));
+    }
+
+    private static string GetPreferenceString(IReadOnlyDictionary<string, string?> prefs, string key) =>
+        prefs.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : string.Empty;
+
+    private static string? FindRegisteredCase(IReadOnlyList<string> registered, string candidate)
+    {
+        foreach (var x in registered)
+        {
+            if (string.Equals(x, candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return x;
+            }
+        }
+
+        return null;
+    }
+
+    private void SyncModelOptionsForCurrentProvider()
+    {
+        _modelOptions.Clear();
+        if (string.IsNullOrWhiteSpace(_providerOverride) ||
+            !_modelsByProvider.TryGetValue(_providerOverride.Trim(), out var rows))
+        {
+            _modelOverride = string.Empty;
+            return;
+        }
+
+        _modelOptions.AddRange(rows);
+        if (!string.IsNullOrEmpty(_modelOverride) &&
+            !_modelOptions.Contains(_modelOverride, StringComparer.OrdinalIgnoreCase))
+        {
+            _modelOverride = string.Empty;
+        }
+    }
+
+    private GenerateRequest ApplyAdvancedAndOverrides(GenerateRequest r)
+    {
+        var opts = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (r.Options is not null)
+        {
+            foreach (var kv in r.Options)
+            {
+                opts[kv.Key] = kv.Value;
+            }
+        }
+
+        opts[GenerationOptionKeys.Temperature] = _advanced.Temperature;
+        if (!string.IsNullOrWhiteSpace(_advanced.PreferredScriptLanguage))
+        {
+            opts[GenerationOptionKeys.PreferredScriptLanguage] = _advanced.PreferredScriptLanguage.Trim();
+        }
+
+        var apiKey = string.IsNullOrWhiteSpace(_advanced.ApiKeyOverride) ? r.ApiKey : _advanced.ApiKeyOverride.Trim();
+        var sys = r.SystemPrompt;
+        if (!string.IsNullOrWhiteSpace(_advanced.SystemPromptOverride))
+        {
+            sys = string.IsNullOrWhiteSpace(sys)
+                ? _advanced.SystemPromptOverride.Trim()
+                : $"{sys}{Environment.NewLine}{Environment.NewLine}{_advanced.SystemPromptOverride.Trim()}";
+        }
+
+        var provider = string.IsNullOrWhiteSpace(_providerOverride) ? r.Provider : _providerOverride.Trim();
+        var model = string.IsNullOrWhiteSpace(_modelOverride) ? r.PreferredModelId : _modelOverride.Trim();
+
+        return r with
+        {
+            Options = opts,
+            ApiKey = string.IsNullOrWhiteSpace(apiKey) ? null : apiKey,
+            SystemPrompt = string.IsNullOrWhiteSpace(sys) ? null : sys,
+            Provider = string.IsNullOrWhiteSpace(provider) ? null : provider,
+            PreferredModelId = string.IsNullOrWhiteSpace(model) ? null : model,
+        };
+    }
+
+    private async Task RunAsync()
+    {
+        _error = null;
+        _result = string.Empty;
+        if (string.IsNullOrWhiteSpace(_prompt))
+        {
+            _error = "Prompt cannot be empty.";
+            _result = _error;
+            StatusBanner.Set($"{Title}: prompt empty.", MessageIntent.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var trimmed = _prompt.Trim();
+            var request = CreateRequest is not null
+                ? CreateRequest.Invoke(trimmed)
+                : new GenerateRequest(
+                    Prompt: trimmed,
+                    ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+
+            request = ApplyAdvancedAndOverrides(request);
+
+            var response = await Api.GenerateAsync(Modality, request).ConfigureAwait(false);
+            if (!response.Success)
+            {
+                _error = response.Error ?? "Generation failed.";
+                _result = _error;
+                Logs.Append($"{Title}: error {_error}");
+                StatusBanner.Set($"{Title}: {_error}", MessageIntent.Error);
+                return;
+            }
+
+            _result = GenerationResponseFormatter.ExtractMessage(response.Data);
+            if (response.Data is not null)
+            {
+                if (response.Data.TryGetValue("provider", out var p) && p?.ToString() is { } ps)
+                {
+                    _lastProvider = ps;
+                }
+
+                if (response.Data.TryGetValue("modelId", out var m) && m?.ToString() is { } ms)
+                {
+                    _lastModel = ms;
+                }
+            }
+
+            Logs.Append($"{Title}: completed.");
+            StatusBanner.Set($"{Title}: completed.", MessageIntent.Success);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _result = _error;
+            Logs.Append($"{Title}: exception {ex.Message}");
+            StatusBanner.Set($"{Title}: {ex.Message}", MessageIntent.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
+

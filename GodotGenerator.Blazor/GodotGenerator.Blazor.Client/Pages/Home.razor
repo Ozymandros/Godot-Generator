@@ -1,0 +1,189 @@
+@page "/"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+<PageTitle>Godot Generator</PageTitle>
+
+<div class="home-hero">
+    <span class="home-hero__icon" aria-hidden="true">
+        <FluentIcon Value="@(new Icons.Regular.Size48.Games())" Width="44px" Color="Color.Accent" />
+    </span>
+    <h1 class="home-hero__title">Godot Generator</h1>
+    <p class="home-hero__subtitle">
+        AI-powered asset &amp; code generation for Godot projects — scenes, scripts, UI, physics, audio, and more.
+    </p>
+</div>
+
+<div class="home-grid">
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.FolderOpen())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Project</h2>
+                <p class="home-card__desc">Scaffold a full project structure from a single prompt.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-project" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Layer())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Scenes</h2>
+                <p class="home-card__desc">Generate Godot scene files ready to drop into your project.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/scenes" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Code())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Code</h2>
+                <p class="home-card__desc">Generate GDScript or C# scripts for any game-logic task.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/code" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Settings())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Configuration</h2>
+                <p class="home-card__desc">Manage providers, models, system prompts, and API secrets.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/settings" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+</div>
+
+<h2 class="home-section-heading app-content-wide">Scene &amp; engine tools</h2>
+<p class="home-section-lead app-content-wide">Local <strong>godot-mcp</strong> tool families — lights, cameras, resources, signals, scene graph; plus UI and physics flows.</p>
+<div class="home-grid app-content-wide">
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.LightbulbFilament())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Lighting</h2>
+                <p class="home-card__desc">MCP <code>light.*</code> — list, create, and tune lights and environment.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-lighting" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Camera())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Camera</h2>
+                <p class="home-card__desc">MCP <code>camera.*</code> — Camera2D/Camera3D and viewport setup.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-camera" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.PaintBrush())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Shaders</h2>
+                <p class="home-card__desc">Shaders, materials, and resource paths aligned with MCP tooling.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-shaders" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.ArrowSync())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Signals</h2>
+                <p class="home-card__desc">Connect signals, handlers, and emitter/receiver context.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-signals" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.TreeDeciduous())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Nodes</h2>
+                <p class="home-card__desc">MCP <code>scene.*</code> — hierarchy, properties, reparenting.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-nodes" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.AppsList())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot UI</h2>
+                <p class="home-card__desc">Control trees, themes, and UI-focused generation.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-ui" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+
+    <FluentCard Class="home-card app-card-interactive">
+        <div class="home-card__body">
+            <span class="home-card__icon" aria-hidden="true">
+                <FluentIcon Value="@(new Icons.Regular.Size24.Molecule())" Width="22px" Color="Color.Accent" />
+            </span>
+            <div class="home-card__content">
+                <h2 class="home-card__title">Godot Physics</h2>
+                <p class="home-card__desc">Bodies, shapes, layers, and physics-oriented prompts.</p>
+            </div>
+        </div>
+        <div class="home-card__footer">
+            <FluentAnchor Href="/generate/godot-physics" Appearance="Appearance.Accent">Open</FluentAnchor>
+        </div>
+    </FluentCard>
+</div>
+
+<p class="home-mcp-hub-link app-content-wide">
+    <FluentAnchor Href="/generate/godot-mcp" Appearance="Appearance.Accent">Browse all Godot MCP tools</FluentAnchor>
+</p>
