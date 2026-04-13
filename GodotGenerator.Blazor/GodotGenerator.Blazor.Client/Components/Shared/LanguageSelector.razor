@@ -1,0 +1,45 @@
+@* Language selector component for UI culture selection *@
+@using GodotGenerator.Blazor.Client.Services
+@inject LocalizationService Localization
+
+<div class="language-selector">
+    <FluentLabel>@Localize("SelectLanguage")</FluentLabel>
+    <FluentSelect @bind-SelectedOption="_selectedCulture" 
+                  OnSelectedOptionChanged="OnCultureChanged"
+                  Placeholder="@Localize("SelectLanguage")"
+                  Class="language-selector__dropdown">
+        @foreach (var culture in _cultures)
+        {
+            <FluentOption Value="@culture.Code">@culture.DisplayName - @culture.NativeName</FluentOption>
+        }
+    </FluentSelect>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnCultureSelected { get; set; }
+    
+    private string _selectedCulture = "en";
+    private IReadOnlyList<UiCulture> _cultures = new List<UiCulture>();
+
+    protected override void OnInitialized()
+    {
+        _cultures = Localization.GetSupportedCultures();
+        _selectedCulture = Localization.GetCurrentCultureCode();
+    }
+
+    private async Task OnCultureChanged(string value)
+    {
+        _selectedCulture = value;
+        Localization.SetCulture(value);
+        
+        if (OnCultureSelected.HasDelegate)
+        {
+            await OnCultureSelected.InvokeAsync(value);
+        }
+    }
+
+    private string Localize(string key)
+    {
+        return LocalizationResources.GetText(key, _selectedCulture);
+    }
+}
