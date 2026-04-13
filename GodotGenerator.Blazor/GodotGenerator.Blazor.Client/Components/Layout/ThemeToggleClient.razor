@@ -1,23 +1,64 @@
 @inject IJSRuntime Js
+@implements IAsyncDisposable
 
 <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="8" role="group" aria-labelledby="theme-toggle-label">
     <FluentLabel Typo="Typography.Body" id="theme-toggle-label">Theme</FluentLabel>
-    <FluentSwitch Value="_dark" ValueChanged="OnDarkChangedAsync" aria-labelledby="theme-toggle-label">Dark</FluentSwitch>
+    <FluentSelect TValue="string" 
+                  Value="@_currentPreference" 
+                  ValueChanged="@OnPreferenceChangedAsync"
+                  aria-labelledby="theme-toggle-label"
+                  aria-describedby="theme-toggle-description">
+        <FluentOption value="system">System</FluentOption>
+        <FluentOption value="light">Light</FluentOption>
+        <FluentOption value="dark">Dark</FluentOption>
+    </FluentSelect>
 </FluentStack>
+<FluentLabel Typo="Typography.Caption" id="theme-toggle-description" Class="visually-hidden">Select your preferred color theme</FluentLabel>
 
 @code {
-    private bool _dark;
+    private string _currentPreference = "system";
+    private bool _initialized;
 
-    private async Task OnDarkChangedAsync(bool value)
+    protected override async Task OnInitializedAsync()
     {
-        _dark = value;
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+            try
+            {
+                var preference = await Js.InvokeAsync<string>("godotTheme.getPreference").ConfigureAwait(false);
+                _currentPreference = preference ?? "system";
+                StateHasChanged();
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or JSDisconnectedException)
+            {
+                // Prerender / circuit not attached yet; use default
+                _currentPreference = "system";
+            }
+        }
+    }
+
+    private async Task OnPreferenceChangedAsync(string value)
+    {
+        _currentPreference = value;
         try
         {
-            await Js.InvokeVoidAsync("godotTheme.setDark", _dark).ConfigureAwait(false);
+            await Js.InvokeVoidAsync("godotTheme.setPreference", _currentPreference).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is InvalidOperationException or JSDisconnectedException)
         {
             // Prerender / circuit not attached yet; theme applies on next interactive render.
         }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Cleanup if needed
+        await ValueTask.CompletedTask;
     }
 }

@@ -1,17 +1,44 @@
-out/
-debug-*.log
-**/node_modules/
-test-results/
-coverage-report/
-coverage-report-core/
-coverage-report-core2/
-playwright-report/
-playwright/.cache/
-.vs/
-**/bin/
-**/obj/
-*.user
+```
+# Build artifacts
+obj/
+bin/
+dist/
+build/
+*.dll
+*.exe
+*.pdb
+*.so
+*.dylib
+*.nupkg
 
-.fake
-TestResults
-test/GodotGenerator.Infrastructure.Ai.Tests/TestResults/
+# Dependencies
+node_modules/
+packages/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+htmlcov/
+*.coverage
+
+# Temporary files
+*.tmp
+*.temp
+```
