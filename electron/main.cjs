@@ -4,6 +4,8 @@ const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
 const { defineIpcApi, defineIpcEvents }            = require('electron-message-bridge');
 const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
   require('electron-message-bridge/menus');
+const { registerSpeechWhisperMain } =
+  require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
 const fs   = require('fs');
 const path = require('path');
 const backendLifecycle = require('./backendLifecycle.cjs');
@@ -11,6 +13,16 @@ const pipeBroker       = require('./pipeBroker.cjs');
 
 /** Must match backendLifecycle default (override with GODOT_BLAZOR_URL). */
 const defaultDevUrl = 'http://127.0.0.1:5044';
+
+// ── Speech-to-text (Whisper.cpp via node-record-lpcm16) ───────────────────────
+// Configure paths for Whisper CLI and model; adjust to your local setup.
+// The plugin handles IPC registration under `stt:*` channels by default.
+const stt = registerSpeechWhisperMain({
+  // Path to whisper.cpp CLI binary (e.g., `whisper-cli`, `main`, or `whisper.exe`)
+  whisperBin: process.env.WHISPER_BIN || path.join(__dirname, '..', 'bin', 'whisper-cli'),
+  // Path to GGML Whisper model file (e.g., ggml-base.bin, ggml-small.bin)
+  modelPath:  process.env.WHISPER_MODEL || path.join(__dirname, '..', 'models', 'ggml-base.bin'),
+});
 
 function getBlazorOrigin() {
   try {
@@ -399,6 +411,7 @@ app.whenReady().then(async () => {
 app.on('before-quit', async (event) => {
   event.preventDefault();
   ipcApi.dispose();
+  stt.dispose(); // Clean up STT (stop recorder, Whisper subprocess, temp files)
   await backendLifecycle.stop();
   app.exit(0);
 });

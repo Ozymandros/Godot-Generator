@@ -16,6 +16,7 @@
     ]
   },
   "dependencies": {
+    "@ozymandros/electron-message-bridge-plugin-speech-whisper": "^0.2.0",
     "electron-message-bridge": "^0.1.1"
   },
   "devDependencies": {

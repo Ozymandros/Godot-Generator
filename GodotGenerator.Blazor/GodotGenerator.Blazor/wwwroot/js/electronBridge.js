@@ -10,6 +10,14 @@
  *   window.godotElectronEvents  — push-event subscriptions (backendReady, etc.)
  *   window.godotElectronMeta    — read-only static constants (platform)
  *
+ * Additionally, speech-to-text is exposed as `window.speech` via the
+ * @ozymandros/electron-message-bridge-plugin-speech-whisper plugin:
+ *
+ *   window.speech.start()       — Start microphone capture
+ *   window.speech.stop()        — Stop capture and run Whisper STT
+ *   window.speech.status()      — Get STT capability status
+ *   window.speech.onTranscript(cb) — Subscribe to transcript results (returns unsubscribe fn)
+ *
  * Event subscription functions return an unsubscribe callback.
  * `subscribeLifecycleEvents` and `subscribeFolderSelected` store those
  * callbacks internally; call `disposeSubscriptions()` to remove them all.
@@ -190,5 +198,55 @@ window.godotElectronInterop = {
   disposeSubscriptions: function () {
     _allUnsubs.forEach((unsub) => unsub());
     _allUnsubs.length = 0;
+  },
+
+  // ── Speech-to-text helpers (Whisper.cpp via electron-message-bridge-plugin-speech-whisper) ──
+
+  /**
+   * Returns true when speech-to-text is available in the Electron shell.
+   * @returns {boolean}
+   */
+  hasSpeech: function () {
+    return typeof window.speech !== 'undefined' && window.speech !== null;
+  },
+
+  /**
+   * Gets the STT status (capabilities, current state, errors).
+   * @returns {Promise<{canRecord: boolean, hasModel: boolean, hasBinary: boolean, state: string, error?: string}>}
+   */
+  getSpeechStatus: async function () {
+    if (!this.hasSpeech()) return { canRecord: false, hasModel: false, hasBinary: false, state: 'UNSUPPORTED' };
+    return await window.speech.status();
+  },
+
+  /**
+   * Starts microphone capture for speech-to-text.
+   * Call `stopSpeech()` on the same window to finalize and receive transcript.
+   * @returns {Promise<void>}
+   */
+  startSpeech: async function () {
+    if (!this.hasSpeech()) throw new Error('Speech-to-text not available.');
+    return await window.speech.start();
+  },
+
+  /**
+   * Stops microphone capture, runs Whisper STT, and emits transcript via `onTranscript`.
+   * Must be called from the same BrowserWindow that called `startSpeech()`.
+   * @returns {Promise<void>}
+   */
+  stopSpeech: async function () {
+    if (!this.hasSpeech()) throw new Error('Speech-to-text not available.');
+    return await window.speech.stop();
+  },
+
+  /**
+   * Subscribes to speech transcript results. Callback receives plain text string.
+   * Returns an unsubscribe function to clean up the listener.
+   * @param {(text: string) => void} callback
+   * @returns {() => void} unsubscribe
+   */
+  onSpeechTranscript: function (callback) {
+    if (!this.hasSpeech()) return () => {};
+    return window.speech.onTranscript(callback);
   },
 };

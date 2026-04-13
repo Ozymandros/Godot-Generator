@@ -1,17 +1,16 @@
-out/
-debug-*.log
-**/node_modules/
-test-results/
-coverage-report/
-coverage-report-core/
-coverage-report-core2/
-playwright-report/
-playwright/.cache/
-.vs/
-**/bin/
-**/obj/
-*.user
-
-.fake
-TestResults
-test/GodotGenerator.Infrastructure.Ai.Tests/TestResults/
+```
+# Dependencies
+node_modules/
+# Environment
+.env
+.env.local
+.env.
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+# Logs
+*.log
+```
