@@ -239,6 +239,69 @@
   }
 }
 
+/* ── System color scheme preference fallback ───────────────────────────────
+   When no explicit theme is set (data-theme attribute absent), respect the
+   user's OS-level preference. This provides a graceful fallback for users
+   who have JavaScript disabled or before theme.js initializes. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    /* Surface palette */
+    --app-color-bg: #f5f7fa;
+    --app-color-surface: #ffffff;
+    --app-color-surface-elevated: #eef1f6;
+    --app-color-border: rgba(0, 0, 0, 0.1);
+    --app-color-border-hover: rgba(0, 0, 0, 0.2);
+
+    /* Foreground */
+    --app-color-fg: #1a1d23;
+    --app-color-fg-muted: rgba(26, 29, 35, 0.6);
+
+    /* Backdrop */
+    --app-backdrop-scrim: rgba(0, 0, 0, 0.35);
+
+    /* Overlay alphas — flip to dark-on-light */
+    --app-overlay-weak: rgba(0, 0, 0, 0.03);
+    --app-overlay-soft: rgba(0, 0, 0, 0.05);
+    --app-overlay-subtle: rgba(0, 0, 0, 0.07);
+
+    /* Card shadows — lighter for light surfaces */
+    --app-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    --app-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.09);
+
+    /* Drawer shadow */
+    --app-shadow-drawer: 8px 0 24px rgba(0, 0, 0, 0.15);
+
+    /* Modal shadow */
+    --app-shadow-modal: 0 3px 6px 2px rgba(0, 0, 0, 0.15);
+
+    /* Shell aliases */
+    --app-shell-bg: var(--app-color-bg);
+    --app-shell-sidebar: var(--app-color-surface);
+    --app-shell-border: var(--app-color-border);
+
+    /* Field chrome */
+    --app-field-bg: rgba(0, 0, 0, 0.03);
+    --app-field-border: rgba(0, 0, 0, 0.15);
+    --app-field-border-hover: rgba(0, 0, 0, 0.28);
+    --app-field-shadow-focus: 0 0 0 2px rgba(91, 143, 212, 0.3);
+
+    /* Fluent neutral bridge — light shell */
+    --neutral-layer-1: #ffffff;
+    --neutral-layer-2: var(--app-color-surface);
+    --neutral-layer-3: #eef1f6;
+    --neutral-stroke-divider: rgba(0, 0, 0, 0.1);
+    --neutral-foreground-rest: var(--app-color-fg);
+
+    /* Badge neutral tokens */
+    --app-badge-neutral-bg: rgba(0, 0, 0, 0.06);
+    --app-badge-neutral-color: var(--app-color-fg-muted);
+    --app-badge-neutral-border: rgba(0, 0, 0, 0.12);
+
+    /* Bootstrap snippet */
+    --bs-secondary-color: var(--app-color-fg-muted);
+  }
+}
+
 html,
 body {
   font-family: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -788,6 +851,25 @@ fluent-text-area.app-textarea-log::part(control) {
   background: var(--app-color-surface) !important;
   font-size: var(--app-text-size-statusbar);
   min-height: 2rem !important;
+}
+
+/* Status bar theme selector - ensure proper sizing and responsiveness */
+.app-shell__statusbar fluent-select {
+  min-width: 7rem;
+  max-width: 9rem;
+  font-size: var(--app-text-size-statusbar);
+}
+
+/* Responsive: compact theme selector on small screens */
+@media (max-width: 480px) {
+  .app-shell__statusbar fluent-select {
+    min-width: 6rem;
+    max-width: 7.5rem;
+  }
+  
+  .app-shell__statusbar #theme-toggle-label {
+    display: none;
+  }
 }
 
 /* Content width — use instead of inline max-width in Razor */
@@ -1761,6 +1843,21 @@ fluent-text-area.app-textarea-log::part(control) {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ── Accessibility utility: visually hidden but screen-reader accessible ─────
+   Use .visually-hidden for labels/descriptions that provide context to
+   assistive technologies without cluttering the visual UI. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .settings-secrets__table thead th {
