@@ -1,17 +1,60 @@
+```
+# Build artifacts
+bin/
+obj/
 out/
-debug-*.log
-**/node_modules/
-test-results/
-coverage-report/
-coverage-report-core/
-coverage-report-core2/
-playwright-report/
-playwright/.cache/
-.vs/
-**/bin/
-**/obj/
-*.user
 
-.fake
-TestResults
-test/GodotGenerator.Infrastructure.Ai.Tests/TestResults/
+# Dependencies
+node_modules/
+packages/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+htmlcov/
+*.coverage
+
+# Compiled files
+*.dll
+*.exe
+*.so
+*.a
+*.class
+*.o
+*.obj
+*.out
+
+# Cache directories
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.npm/
+.yarn/
+
+# Distribution / packaging
+dist/
+build/
+*.tar.gz
+*.zip
+
+# Temporary files
+*.tmp
+*~
+```

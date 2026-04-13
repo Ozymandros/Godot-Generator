@@ -6,37 +6,44 @@
 @using GodotGenerator.Blazor.Client.Models
 @using GodotGenerator.Api.Dtos
 @using GodotGenerator.Desktop.Contracts.Serialization
+@using GodotGenerator.Blazor.Client.Services
 @inject GodotGeneratorClientFacade Api
 @inject NavigationManager Nav
+@inject LocalizationService Localization
 
-<PageTitle>Configuration</PageTitle>
+<PageTitle>@Localize("Configuration")</PageTitle>
 
 <div class="settings-hub__head app-content-wide">
-    <h1 class="settings-hub__title">Configuration</h1>
+    <h1 class="settings-hub__title">@Localize("Configuration")</h1>
     <p class="settings-hub__subtitle">
-        Manage your intelligence engines, models, and system prompts.
+        @Localize("ManageYourIntelligenceEngines")
     </p>
+
+    <!-- Language Selector -->
+    <div class="settings-language-selector">
+        <LanguageSelector OnCultureSelected="OnCultureSelected" />
+    </div>
 
     <div class="settings-tab-strip" role="tablist" aria-label="Configuration sections">
         <button type="button" role="tab" id="settings-tab-0" class="settings-tab @TabClass(0)" aria-selected="@AriaBool(_tab == 0)" aria-controls="settings-panel-0" @onclick="@(() => SelectTab(0))">
             <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Settings())" Width="18px" Color="Color.Neutral" /></span>
-            <span>General</span>
+            <span>@Localize("General")</span>
         </button>
         <button type="button" role="tab" id="settings-tab-1" class="settings-tab @TabClass(1)" aria-selected="@AriaBool(_tab == 1)" aria-controls="settings-panel-1" @onclick="@(() => SelectTab(1))">
             <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Bot())" Width="18px" Color="Color.Neutral" /></span>
-            <span>Providers</span>
+            <span>@Localize("Providers")</span>
         </button>
         <button type="button" role="tab" id="settings-tab-2" class="settings-tab @TabClass(2)" aria-selected="@AriaBool(_tab == 2)" aria-controls="settings-panel-2" @onclick="@(() => SelectTab(2))">
             <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Cube())" Width="18px" Color="Color.Neutral" /></span>
-            <span>Models</span>
+            <span>@Localize("Models")</span>
         </button>
         <button type="button" role="tab" id="settings-tab-3" class="settings-tab @TabClass(3)" aria-selected="@AriaBool(_tab == 3)" aria-controls="settings-panel-3" @onclick="@(() => SelectTab(3))">
             <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.DocumentText())" Width="18px" Color="Color.Neutral" /></span>
-            <span>Prompts</span>
+            <span>@Localize("Prompts")</span>
         </button>
         <button type="button" role="tab" id="settings-tab-4" class="settings-tab @TabClass(4)" aria-selected="@AriaBool(_tab == 4)" aria-controls="settings-panel-4" @onclick="@(() => SelectTab(4))">
             <span class="settings-tab__icon" aria-hidden="true"><FluentIcon Value="@(new Icons.Regular.Size20.Key())" Width="18px" Color="Color.Neutral" /></span>
-            <span>Secrets</span>
+            <span>@Localize("Secrets")</span>
         </button>
     </div>
 </div>
@@ -197,6 +204,7 @@
     private bool _busy;
     private string? _bannerError;
     private string? _bannerInfo;
+    private string _currentCulture = "en";
 
     private string _backendUrl = string.Empty;
     private string _outputBasePath = string.Empty;
@@ -226,6 +234,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _currentCulture = Localization.GetCurrentCultureCode();
+        Localization.OnCultureChanged += OnCultureChanged;
+        
         if (TryParseTab(new Uri(Nav.Uri).Query, out var t))
         {
             _tab = t;
@@ -266,6 +277,23 @@
         _bannerInfo = null;
         _tab = index;
         Nav.NavigateTo($"/settings?tab={index}", replace: true);
+    }
+
+    private async Task OnCultureSelected(string cultureCode)
+    {
+        _currentCulture = cultureCode;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnCultureChanged(object? sender, UiCulture culture)
+    {
+        _currentCulture = culture.Code;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string Localize(string key)
+    {
+        return LocalizationResources.GetText(key, _currentCulture);
     }
 
     private Task OnDefaultScriptLanguageChanged(string value)
@@ -671,6 +699,11 @@
         {
             /* ignore secondary refresh errors */
         }
+    }
+
+    public void Dispose()
+    {
+        Localization.OnCultureChanged -= OnCultureChanged;
     }
 }
 

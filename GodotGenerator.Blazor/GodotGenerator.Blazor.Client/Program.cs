@@ -16,4 +16,7 @@ builder.Services.AddScoped<ElectronBridgeService>();
 builder.Services.AddSingleton<LogBufferService>();
 builder.Services.AddSingleton<StatusBannerService>();
 
+// Localization services
+builder.Services.AddSingleton<LocalizationService>();
+
 await builder.Build().RunAsync();
