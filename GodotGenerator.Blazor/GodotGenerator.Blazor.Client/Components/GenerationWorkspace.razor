@@ -56,7 +56,13 @@
                 </FluentStack>
             }
 
-            <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt" />
+            <PromptInputSection Title="Prompt"
+                                Placeholder="@PromptPlaceholder"
+                                @bind-Prompt="_prompt"
+                                Modality="@ModalityKey"
+                                ProviderOverride="@_providerOverride"
+                                ModelOverride="@_modelOverride"
+                                SystemPromptOverride="@_advanced.SystemPromptOverride" />
 
             <AdvancedOptionsSection Options="_advanced" OnChanged="OnAdvancedOptionsChanged">
                 @AdvancedChildContent
@@ -101,6 +107,9 @@
 
 @code {
     [Parameter, EditorRequired] public GenerationModality Modality { get; set; }
+
+    /// <summary>Modality slug passed to <see cref="PromptInputSection"/> for prompt-assist context.</summary>
+    private string ModalityKey => ModalityRoutes.GetSlug(Modality);
 
     [Parameter] public string Title { get; set; } = "Generate";
 

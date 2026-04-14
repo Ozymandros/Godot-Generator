@@ -13,4 +13,10 @@ node_modules/
 *.tmp
 # Logs
 *.log
+bin/
+obj/
+out/
+coverage/
+TestResults
+models/
 ```

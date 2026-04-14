@@ -2423,3 +2423,92 @@ h1:focus {
   /* Bootstrap snippet */
   --bs-secondary-color: var(--app-color-fg-muted);
 }
+
+/* ── Prompt input textarea + overlay action buttons ─────────────────────── */
+
+/*
+ * Wrapper that contains the SmartField textarea and the top-right button group.
+ * position:relative is required so the button group can be positioned absolutely.
+ */
+.prompt-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/*
+ * The two-button cluster (wand + mic) sits in the top-right corner of the
+ * textarea, overlaid via absolute positioning.  A small offset keeps the
+ * buttons inside the textarea border.
+ */
+.prompt-input-wrap__actions {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  /* Fade in slightly to avoid visual clutter when the user is just reading */
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+/* Show buttons when the wrapper is hovered or when focus is inside it */
+.prompt-input-wrap:hover .prompt-input-wrap__actions,
+.prompt-input-wrap:focus-within .prompt-input-wrap__actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/*
+ * Individual action button:
+ * • Transparent background and no border (Stealth Appearance handles the Fluent
+ *   layer; we reinforce with \!important to survive Fluent CSS specificity).
+ * • Uses the foreground muted colour so it adapts to light/dark automatically.
+ * • Compact 28×28 px touch target satisfies WCAG 2.5.5 (minimum 24×24 px).
+ */
+.prompt-action-btn {
+  width: 28px \!important;
+  height: 28px \!important;
+  min-width: 28px \!important;
+  padding: 0 \!important;
+  border: none \!important;
+  border-radius: var(--app-field-radius, 4px) \!important;
+  background: transparent \!important;
+  color: var(--app-color-fg-muted) \!important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.prompt-action-btn:hover:not(:disabled) {
+  color: var(--app-color-accent) \!important;
+  background: var(--app-color-accent-subtle) \!important;
+}
+
+.prompt-action-btn:focus-visible {
+  outline: 2px solid var(--app-focus-outline-color, var(--app-color-accent));
+  outline-offset: 1px;
+}
+
+.prompt-action-btn:disabled {
+  opacity: 0.4 \!important;
+  cursor: not-allowed;
+}
+
+/*
+ * Active/recording state for the mic button — accent colour pulse to signal
+ * ongoing capture without relying on colour alone (icon changes to MicPulse).
+ */
+.prompt-action-btn--active {
+  color: var(--app-color-accent) \!important;
+  animation: prompt-mic-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes prompt-mic-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}

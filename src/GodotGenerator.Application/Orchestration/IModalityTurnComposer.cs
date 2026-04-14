@@ -25,4 +25,12 @@ public interface IModalityTurnComposer
         string? projectName,
         string? preferredModelId,
         IReadOnlyDictionary<string, object?>? options);
+
+    /// <summary>
+    /// Returns the built-in system instruction string for a modality key.
+    /// Used by prompt-assist to build context-aware improve/sample meta-prompts.
+    /// </summary>
+    /// <param name="modalityKey">Modality identifier (e.g. <c>godot-physics</c>).</param>
+    /// <returns>A human-readable instruction that describes the modality's AI role.</returns>
+    string GetSystemInstruction(string modalityKey);
 }

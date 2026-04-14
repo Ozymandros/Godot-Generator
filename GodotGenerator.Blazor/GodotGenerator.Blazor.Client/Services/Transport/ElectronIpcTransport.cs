@@ -87,6 +87,15 @@ public sealed class ElectronIpcTransport : IGodotGeneratorClientTransport
                 kvp => kvp.Key, kvp => kvp.Value, StringComparer.OrdinalIgnoreCase)),
             cancellationToken);
 
+    /// <inheritdoc/>
+    public Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistEnhanceRequest request,
+        CancellationToken cancellationToken = default) =>
+        InvokeAsync<Dictionary<string, object?>>(
+            PromptAssistCommandNames.Enhance,
+            request,
+            cancellationToken);
+
     // ── Core invoke ───────────────────────────────────────────────────────────
 
     /// <summary>

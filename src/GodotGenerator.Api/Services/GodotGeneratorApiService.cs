@@ -23,6 +23,7 @@ public sealed class GodotGeneratorApiService(
     GetApiKeysUseCase getApiKeys,
     SaveApiKeysUseCase saveApiKeys,
     GetAllConfigUseCase getAllConfig,
+    EnhancePromptUseCase enhancePrompt,
     IModalityTurnComposer modalityTurnComposer,
     IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
@@ -90,6 +91,44 @@ public sealed class GodotGeneratorApiService(
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         GenerateByModalityAsync("godot-nodes", request, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        try
+        {
+            var result = await enhancePrompt
+                .ExecuteAsync(request, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return ApiResponse<Dictionary<string, object?>>.Fail(
+                    result.Error ?? "Prompt assist failed.");
+            }
+
+            return ApiResponse<Dictionary<string, object?>>.Ok(
+                new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["result"] = result.Result,
+                    ["mode"] = result.Mode,
+                    ["modality"] = request.Modality,
+                });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "EnhancePromptAsync failed for modality {Modality}", request.Modality);
+            return ApiResponse<Dictionary<string, object?>>.Fail(ex.Message);
+        }
+    }
 
     /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)

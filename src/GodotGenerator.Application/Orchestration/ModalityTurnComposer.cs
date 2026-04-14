@@ -99,6 +99,10 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
         };
     }
 
+    /// <inheritdoc />
+    public string GetSystemInstruction(string modalityKey) =>
+        GetModalitySystemInstruction(modalityKey);
+
     private static string GetModalitySystemInstruction(string modalityKey)
     {
         return modalityKey.Trim().ToLowerInvariant() switch
