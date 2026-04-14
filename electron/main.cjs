@@ -1,15 +1,27 @@
 'use strict';
 
+
+// ── Log PATH and check for whisper presence (for speech-to-text) ──
+const path = require('path');
+const fs = require('fs');
+const sep = process.platform === 'win32' ? ';' : ':';
+const whisperExe = process.platform === 'win32' ? 'whisper.exe' : 'whisper';
+const found = (process.env.PATH || '').split(sep).some(p => fs.existsSync(path.join(p, whisperExe)));
+if (!found) {
+  console.warn('[Electron] whisper not found in PATH!');
+}
+console.log('[Electron] PATH:', process.env.PATH);
+
+'use strict';
+
 const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
-const { defineIpcApi, defineIpcEvents }            = require('electron-message-bridge');
+const { defineIpcApi, defineIpcEvents } = require('electron-message-bridge');
 const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
   require('electron-message-bridge/menus');
 const { registerSpeechWhisperMain } =
   require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
-const fs   = require('fs');
-const path = require('path');
 const backendLifecycle = require('./backendLifecycle.cjs');
-const pipeBroker       = require('./pipeBroker.cjs');
+const pipeBroker = require('./pipeBroker.cjs');
 
 /** Must match backendLifecycle default (override with GODOT_BLAZOR_URL). */
 const defaultDevUrl = 'http://127.0.0.1:5044';
@@ -17,13 +29,51 @@ const defaultDevUrl = 'http://127.0.0.1:5044';
 // ── Speech-to-text (Whisper.cpp via node-record-lpcm16) ───────────────────────
 // Configure paths for Whisper CLI and model; adjust to your local setup.
 // The plugin handles IPC registration under `stt:*` channels by default.
+const whisperBin = process.platform === 'win32' ? 'whisper.cmd' : 'whisper';
+const modelPath = process.env.WHISPER_MODEL || path.join(__dirname, '..', 'models', 'ggml-base.bin');
+console.log('[Electron] Using whisperBin:', whisperBin);
 const stt = registerSpeechWhisperMain({
   // Path to whisper.cpp CLI binary (e.g., `whisper-cli`, `main`, or `whisper.exe`)
-  whisperBin: process.env.WHISPER_BIN || path.join(__dirname, '..', 'bin', 'whisper-cli'),
+  whisperBin,
   // Path to GGML Whisper model file (e.g., ggml-base.bin, ggml-small.bin)
-  modelPath:  process.env.WHISPER_MODEL || path.join(__dirname, '..', 'models', 'ggml-base.bin'),
+  modelPath,
 });
 
+if (fs.existsSync(modelPath)) {
+  console.log('[Electron] Found Whisper model at:', modelPath);
+} else {
+  console.error('[Electron] Whisper model not found at:', modelPath);
+}
+
+if (fs.existsSync(whisperBin)) {
+  console.log('[Electron] Found Whisper binary at:', whisperBin);
+} else {
+  console.error('[Electron] Whisper binary not found at:', whisperBin);
+}
+
+if (stt?.options?.modelPath && stt?.options?.whisperBin) {
+  if (fs.existsSync(stt.options.modelPath)) {
+    console.log('[Electron] Found Whisper model at:', stt.options.modelPath);
+  } else {
+    console.error('[Electron] Whisper model not found at:', stt.options.modelPath);
+  }
+
+  if (fs.existsSync(stt.options.whisperBin)) {
+    console.log('[Electron] Found Whisper binary at:', stt.options.whisperBin);
+  } else {
+    console.error('[Electron] Whisper binary not found at:', stt.options.whisperBin);
+  }
+}
+else {
+  console.error('[Electron] STT manager options not properly set:', stt?.options);
+}
+
+console.log(stt)
+
+/**
+ * Returns the Blazor origin from the GODOT_BLAZOR_URL environment variable or the default dev URL.
+ * @returns {string}  Blazor origin (e.g., `https://localhost:5044`)
+ */
 function getBlazorOrigin() {
   try {
     return new URL(process.env.GODOT_BLAZOR_URL || defaultDevUrl).origin;
@@ -32,6 +82,12 @@ function getBlazorOrigin() {
   }
 }
 
+/**
+ * Installs the Electron renderer CSP.  The policy is applied to all sessions and allows the required features for
+ * Blazor WebAssembly (including `wasm-unsafe-eval` for the mono runtime) while maintaining a strong default policy.
+ * The `connect-src` directive allows WebSocket connections to the Blazor origin for hot reload and IPC, while
+ * restricting other external connections.  Adjust the policy as needed if your app requires additional features or
+ */
 function installContentSecurityPolicy() {
   const blazorOrigin = getBlazorOrigin();
 
@@ -71,6 +127,11 @@ function installContentSecurityPolicy() {
   });
 }
 
+/**
+ * Safely checks if a path exists.  Returns `false` for empty strings or `null`.
+ * @param {string} p
+ * @returns {boolean}
+ */
 function safeExistsSync(p) {
   return typeof p === 'string' && p.length > 0 && fs.existsSync(p);
 }
@@ -106,9 +167,9 @@ const ipcApi = defineIpcApi({
   invokeCommand: async (command, payloadJson) => {
     if (!backendLifecycle.isReady()) {
       return {
-        success:      false,
-        payloadJson:  null,
-        errorCode:    'BACKEND_NOT_READY',
+        success: false,
+        payloadJson: null,
+        errorCode: 'BACKEND_NOT_READY',
         errorMessage: 'The local backend is not ready yet. Please wait and retry.',
       };
     }
@@ -119,9 +180,9 @@ const ipcApi = defineIpcApi({
         payload = JSON.parse(payloadJson);
       } catch {
         return {
-          success:      false,
-          payloadJson:  null,
-          errorCode:    'INVALID_PAYLOAD',
+          success: false,
+          payloadJson: null,
+          errorCode: 'INVALID_PAYLOAD',
           errorMessage: 'payloadJson is not valid JSON.',
         };
       }
@@ -131,9 +192,9 @@ const ipcApi = defineIpcApi({
       return await pipeBroker.invoke(command, payload);
     } catch (err) {
       return {
-        success:      false,
-        payloadJson:  null,
-        errorCode:    'BROKER_ERROR',
+        success: false,
+        payloadJson: null,
+        errorCode: 'BROKER_ERROR',
         errorMessage: err.message,
       };
     }
@@ -149,27 +210,42 @@ const ipcApi = defineIpcApi({
 
 const ipcEvents = defineIpcEvents({
   /** File-menu folder selection forwarded to the active renderer window. */
-  folderSelected: (_path) => {},
+  folderSelected: (_path) => { },
   /** Backend pipe became ready (initial start or supervised restart). */
-  backendReady:   () => {},
+  backendReady: () => { },
   /** Backend process crashed; payload: `{ code: number|null, signal: string|null }`. */
-  backendCrashed: (_detail) => {},
+  backendCrashed: (_detail) => { },
   /** Backend exceeded max restart attempts; no further supervision. */
-  backendFailed:  () => {},
+  backendFailed: () => { },
 });
 
 // ── Window factory ────────────────────────────────────────────────────────────
 
+/**
+ * Creates a new Electron window.  The window is configured with the following settings:
+ *
+ *   • Width: 1280px
+ *   • Height: 800px
+ *   • WebPreferences:
+ *     • preload: path.join(__dirname, 'preload.cjs')
+ *     • contextIsolation: true (to isolate renderer context and enhance security)
+ *     • sandbox: false (to allow loading of local files)
+ *     • nodeIntegration: false (to prevent loading of Node.js modules)
+ *     • enableRemoteModule: false (to prevent loading of Electron modules)
+ *     • webSecurity: false (to disable CSP)
+ *
+ * @returns {BrowserWindow}
+ */
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     webPreferences: {
-      preload:          path.join(__dirname, 'preload.cjs'),
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       // Preload uses CommonJS `require(...)` (electron-message-bridge + local modules).
       // With sandbox enabled, preload require surface is restricted and bridge injection can fail.
-      sandbox:          false,
+      sandbox: false,
     },
   });
 
@@ -220,7 +296,7 @@ async function buildAndSetMenuAsync() {
       if (!w) return;
       const { canceled, filePaths } = await dialog.showOpenDialog(w, {
         properties: ['openDirectory'],
-        title:       'Select Project Folder',
+        title: 'Select Project Folder',
         buttonLabel: 'Open Folder',
       });
       if (!canceled && filePaths[0]) {
@@ -264,10 +340,10 @@ async function buildAndSetMenuAsync() {
         await shell.openPath(docsPath);
       } else {
         await dialog.showMessageBox({
-          type:    'info',
-          title:   'Documentation',
+          type: 'info',
+          title: 'Documentation',
           message: 'Development guide not found.',
-          detail:  'Expected docs/DEVELOPMENT.md in the repository root.',
+          detail: 'Expected docs/DEVELOPMENT.md in the repository root.',
         });
       }
     }),
@@ -278,10 +354,10 @@ async function buildAndSetMenuAsync() {
      */
     'help.about': commandAction(async () => {
       await dialog.showMessageBox({
-        type:    'info',
-        title:   'About Godot Generator',
+        type: 'info',
+        title: 'About Godot Generator',
         message: 'Godot Generator',
-        detail:  `Version: ${app.getVersion()}\n\nAI-powered generator for Godot projects.`,
+        detail: `Version: ${app.getVersion()}\n\nAI-powered generator for Godot projects.`,
       });
     }),
   };
@@ -304,6 +380,25 @@ async function buildAndSetMenuAsync() {
 
   // ── Assemble final platform-aware template ───────────────────────────────────
 
+  /**
+   * Assembles the final platform-aware menu template.  The template is assembled from the following sources:
+   *
+   *   • The declarative JSON spec (menu.json) is loaded and parsed into a typed action registry.
+   *   • The cross-platform menu structure lives in menu.json as `DeclarativeMenuItem[]`.
+   *   • Each clickable item carries an `actionId` that is resolved here in the action registry using typed
+   *     descriptors from `electron-message-bridge/menus`:
+   *
+   *     commandAction(fn) — local async logic, main-process only
+   *     serviceAction(fn) — shared service function also called by IPC handlers
+   *     emitAction(fn)    — zero-arg closure that fires an ipcEvents.emit(...)
+   *
+   *   • Platform-specific items that cannot be expressed in a static JSON (macOS app menu needing `app.name`,
+   *     macOS Speech submenu, Windows-only Window menu) are assembled inline and merged around the JSON-derived
+   *     template.
+   *
+   * @param {object} actions
+   * @returns {MenuItemConstructorOptions[]}
+   */
   const template = [
     // macOS: prepend the app-name menu (requires runtime `app.name`, not in JSON).
     ...(isMac ? [{
@@ -339,6 +434,16 @@ async function buildAndSetMenuAsync() {
 
 // ── Context menu (dynamic — stays inline, not suitable for a static JSON spec) ──
 
+/**
+ *  Enables a right-click context menu in the given window.  The menu adapts to the context:
+ *
+ *   • If right-clicking on an editable element (input, textarea, contenteditable), show cut/copy/paste/selectAll.
+ *   • If right-clicking on a selection, show undo/redo.
+ *   • If right-clicking anywhere else, show close.
+ *
+ * @param {*} win
+ * @returns
+ */
 function enableContextMenu(win) {
   if (!win) return;
 
@@ -419,3 +524,31 @@ app.on('before-quit', async (event) => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+console.log('==================== main.cjs ENTRY ====================');
+process.stdout.write('>>> main.cjs process.stdout.write <<<\n');
+process.on('exit', () => { console.log('>>> main.cjs process exiting <<<'); });
+
+const { execFileSync } = require('child_process');
+try {
+  let output;
+  if (process.platform === 'win32') {
+    // Use shell: true so whisper.cmd can be executed
+    output = execFileSync('whisper.cmd', ['--help'], { encoding: 'utf8', shell: true });
+  } else {
+    output = execFileSync('whisper', ['--help'], { encoding: 'utf8' });
+  }
+  console.log('[Electron] whisper --help output:', output);
+} catch (err) {
+  console.error('[Electron] Failed to run whisper:', err);
+}
+
+
+async function fileExists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
