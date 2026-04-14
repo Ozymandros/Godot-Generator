@@ -15,13 +15,14 @@ console.log('[Electron] PATH:', process.env.PATH);
 'use strict';
 
 const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
-const { defineIpcApi, defineIpcEvents } = require('electron-message-bridge');
+const { defineIpcApi, defineIpcEvents } = require('@ozymandros/electron-message-bridge');
 const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
-  require('electron-message-bridge/menus');
+  require('@ozymandros/electron-message-bridge/menus');
 const { registerSpeechWhisperMain } =
   require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
 const backendLifecycle = require('./backendLifecycle.cjs');
 const pipeBroker = require('./pipeBroker.cjs');
+const { registerWhisperPlugin } = require('./speechWhisperSetup.cjs');
 
 /** Must match backendLifecycle default (override with GODOT_BLAZOR_URL). */
 const defaultDevUrl = 'http://127.0.0.1:5044';
@@ -29,15 +30,14 @@ const defaultDevUrl = 'http://127.0.0.1:5044';
 // ── Speech-to-text (Whisper.cpp via node-record-lpcm16) ───────────────────────
 // Configure paths for Whisper CLI and model; adjust to your local setup.
 // The plugin handles IPC registration under `stt:*` channels by default.
-const whisperBin = process.platform === 'win32' ? 'whisper.cmd' : 'whisper';
-const modelPath = process.env.WHISPER_MODEL || path.join(__dirname, '..', 'models', 'ggml-base.bin');
-console.log('[Electron] Using whisperBin:', whisperBin);
-const stt = registerSpeechWhisperMain({
-  // Path to whisper.cpp CLI binary (e.g., `whisper-cli`, `main`, or `whisper.exe`)
-  whisperBin,
-  // Path to GGML Whisper model file (e.g., ggml-base.bin, ggml-small.bin)
-  modelPath,
+const { stt, options: whisperOptions } = registerWhisperPlugin(registerSpeechWhisperMain, {
+  platform: process.platform,
+  env: process.env,
+  baseDir: __dirname,
 });
+const whisperBin = whisperOptions.whisperBin;
+const modelPath = whisperOptions.modelPath;
+console.log('[Electron] Using whisperBin:', whisperBin);
 
 if (fs.existsSync(modelPath)) {
   console.log('[Electron] Found Whisper model at:', modelPath);

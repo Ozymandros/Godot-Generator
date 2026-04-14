@@ -19,6 +19,7 @@ const { spawn }    = require('child_process');
 const net          = require('net');
 const path         = require('path');
 const EventEmitter = require('events');
+const fs           = require('fs');
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
@@ -29,6 +30,14 @@ const MAX_RESTARTS    = 5;        // stop supervising after this many rapid rest
 const RAPID_WINDOW    = 10_000;   // ms window for counting rapid restarts
 const DEFAULT_UI_URL  = 'http://127.0.0.1:5044';
 const EXISTING_BACKEND_PROBE_TIMEOUT = 1_000;
+
+const deps = {
+  spawnFn: spawn,
+  netModule: net,
+  fsModule: fs,
+  nowFn: () => Date.now(),
+  setTimeoutFn: setTimeout,
+};
 
 // ── Resolve backend executable ───────────────────────────────────────────────
 
@@ -44,8 +53,7 @@ function resolveBackendCommand() {
 
   // Packaged path (electron-builder copies to resources/backend/)
   const bundled = path.join(process.resourcesPath ?? '', 'backend', exeName);
-  const fs = require('fs');
-  if (fs.existsSync(bundled)) {
+  if (deps.fsModule.existsSync(bundled)) {
     return { cmd: bundled, args: [], isBundled: true };
   }
 
@@ -69,15 +77,15 @@ function resolveBackendCommand() {
  */
 function waitForPipeReady(timeoutMs) {
   return new Promise((resolve, reject) => {
-    const deadline = Date.now() + timeoutMs;
+    const deadline = deps.nowFn() + timeoutMs;
 
     function attempt() {
-      if (Date.now() > deadline) {
+      if (deps.nowFn() > deadline) {
         return reject(new Error(`Backend pipe not ready within ${timeoutMs}ms.`));
       }
-      const sock = net.createConnection(PIPE_NAME);
+      const sock = deps.netModule.createConnection(PIPE_NAME);
       sock.on('connect', () => { sock.destroy(); resolve(); });
-      sock.on('error', () => { sock.destroy(); setTimeout(attempt, 300); });
+      sock.on('error', () => { sock.destroy(); deps.setTimeoutFn(attempt, 300); });
     }
 
     attempt();
@@ -136,7 +144,7 @@ class BackendLifecycle extends EventEmitter {
     if (this._process) {
       this._process.kill('SIGTERM');
       // Give it a second to exit cleanly before forcing
-      await new Promise((res) => setTimeout(res, 1000));
+      await new Promise((res) => deps.setTimeoutFn(res, 1000));
       if (this._process && !this._process.killed) {
         this._process.kill('SIGKILL');
       }
@@ -153,7 +161,7 @@ class BackendLifecycle extends EventEmitter {
       process.env.ASPNETCORE_ENVIRONMENT || (isBundled ? 'Production' : 'Development');
     console.log(`[BackendLifecycle] Spawning backend: ${cmd} ${args.join(' ')}`);
 
-    this._process = spawn(cmd, args, {
+    this._process = deps.spawnFn(cmd, args, {
       env: {
         ...process.env,
         GODOT_DESKTOP_IPC: '1',
@@ -180,7 +188,7 @@ class BackendLifecycle extends EventEmitter {
   }
 
   _scheduledRestart() {
-    const now = Date.now();
+    const now = deps.nowFn();
     if (now - this._lastRestartAt < RAPID_WINDOW) {
       this._restartCount++;
     } else {
@@ -195,7 +203,7 @@ class BackendLifecycle extends EventEmitter {
     }
 
     console.log(`[BackendLifecycle] Restarting in ${RESTART_DELAY}ms (attempt ${this._restartCount}/${MAX_RESTARTS}).`);
-    setTimeout(async () => {
+    deps.setTimeoutFn(async () => {
       if (this._stopping) return;
 
       // Another instance may have become healthy between crash and retry.
@@ -223,4 +231,28 @@ class BackendLifecycle extends EventEmitter {
   }
 }
 
-module.exports = new BackendLifecycle();
+const lifecycle = new BackendLifecycle();
+
+function __setTestDeps(partial) {
+  if (!partial || typeof partial !== 'object') return;
+  if (partial.spawnFn) deps.spawnFn = partial.spawnFn;
+  if (partial.netModule) deps.netModule = partial.netModule;
+  if (partial.fsModule) deps.fsModule = partial.fsModule;
+  if (partial.nowFn) deps.nowFn = partial.nowFn;
+  if (partial.setTimeoutFn) deps.setTimeoutFn = partial.setTimeoutFn;
+}
+
+function __resetTestDeps() {
+  deps.spawnFn = spawn;
+  deps.netModule = net;
+  deps.fsModule = fs;
+  deps.nowFn = () => Date.now();
+  deps.setTimeoutFn = setTimeout;
+}
+
+module.exports = lifecycle;
+module.exports.BackendLifecycle = BackendLifecycle;
+module.exports.resolveBackendCommand = resolveBackendCommand;
+module.exports.waitForPipeReady = waitForPipeReady;
+module.exports.__setTestDeps = __setTestDeps;
+module.exports.__resetTestDeps = __resetTestDeps;

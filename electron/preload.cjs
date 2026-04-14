@@ -1,7 +1,7 @@
 'use strict';
 
 const { exposeApiToRenderer, exposeEventsToRenderer, exposeValues } =
-  require('electron-message-bridge/preload');
+  require('@ozymandros/electron-message-bridge/preload');
 const { exposeSpeechWhisperToRenderer } =
   require('@ozymandros/electron-message-bridge-plugin-speech-whisper/preload');
 const { API_CHANNELS, EVENT_CHANNELS } = require('./ipcDefinitions.cjs');
