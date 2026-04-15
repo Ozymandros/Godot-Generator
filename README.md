@@ -27,6 +27,7 @@ Where to start
 - Development guide: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 - Testing guide: [`docs/TESTING.md`](docs/TESTING.md)
 - CI & coverage: [`docs/CI.md`](docs/CI.md)
+- Electron STT / Whisper setup: see **Whisper CLI configuration** in [`GodotGenerator.Blazor/README.md`](GodotGenerator.Blazor/README.md)
 
 Supported generation areas
 - Text, code, image, audio, video, sprites

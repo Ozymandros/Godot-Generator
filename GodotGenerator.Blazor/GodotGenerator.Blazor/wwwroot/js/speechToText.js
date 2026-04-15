@@ -207,6 +207,7 @@
   'use strict';
 
   let _recording = false;
+  let _sessionId = 0;
   /** @type {object|null} DotNetObjectReference<PromptInputSection> */
   let _dotNetRef = null;
   /** @type {(() => void)|null} */
@@ -271,20 +272,32 @@
 
       _dotNetRef = dotNetRef;
       _recording = true;
+      _sessionId += 1;
+      const sessionId = _sessionId;
+      console.info(`[godotSpeech] start() session=${sessionId}`);
 
       // Subscribe before starting so no transcript events are missed.
       _transcriptUnsub = window.godotElectronInterop.onSpeechTranscript(async (text) => {
         await dispatchTranscript(text);
         // Whisper fires once per session; stop automatically after delivery.
+        console.info(`[godotSpeech] transcript received; auto-stop session=${sessionId}`);
         await window.godotSpeech.stop();
       });
 
       try {
         await window.godotElectronInterop.startSpeech();
+        try {
+          const postStartStatus = await window.godotElectronInterop.getSpeechStatus();
+          void postStartStatus;
+        } catch (statusErr) {
+          void statusErr;
+        }
+        console.info(`[godotSpeech] start() completed session=${sessionId}`);
       } catch (err) {
         _recording = false;
         if (_transcriptUnsub) { _transcriptUnsub(); _transcriptUnsub = null; }
         await dispatchStopped();
+        console.warn(`[godotSpeech] start() failed session=${sessionId}:`, err);
         throw err;
       }
     },
@@ -294,21 +307,35 @@
      * Safe to call when not recording (no-op).
      */
     stop: async function () {
-      if (!_recording) return;
-      _recording = false;
-
-      if (_transcriptUnsub) {
-        _transcriptUnsub();
-        _transcriptUnsub = null;
+      try {
+        if (window.godotElectronInterop?.getSpeechStatus) {
+          const preStopStatus = await window.godotElectronInterop.getSpeechStatus();
+          void preStopStatus;
+        }
+      } catch (statusErr) {
+        void statusErr;
       }
+      if (!_recording) {
+        console.info('[godotSpeech] stop() ignored: no active local recording flag.');
+        return;
+      }
+      _recording = false;
 
       try {
         if (window.godotElectronInterop && window.godotElectronInterop.hasSpeech()) {
+          console.info('[godotSpeech] stop() -> stopSpeech()');
           await window.godotElectronInterop.stopSpeech();
         }
       } catch (err) {
         console.warn('[godotSpeech] stopSpeech error:', err);
       } finally {
+        if (_transcriptUnsub) {
+          // Keep transcript subscription active until stopSpeech completes,
+          // so manual stop does not miss the final Whisper result event.
+          _transcriptUnsub();
+          _transcriptUnsub = null;
+        }
+        console.info('[godotSpeech] stop() completed.');
         await dispatchStopped();
       }
     },

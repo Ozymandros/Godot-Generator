@@ -226,6 +226,12 @@ window.godotElectronInterop = {
    */
   startSpeech: async function () {
     if (!this.hasSpeech()) throw new Error('Speech-to-text not available.');
+    try {
+      const status = await window.speech.status();
+      console.info('[godotElectronInterop] startSpeech status before start:', status);
+    } catch (err) {
+      console.warn('[godotElectronInterop] Unable to read speech status before start:', err);
+    }
     return await window.speech.start();
   },
 
@@ -236,7 +242,36 @@ window.godotElectronInterop = {
    */
   stopSpeech: async function () {
     if (!this.hasSpeech()) throw new Error('Speech-to-text not available.');
-    return await window.speech.stop();
+    try {
+      const status = await window.speech.status();
+      const state = typeof status?.state === 'string' ? status.state.toUpperCase() : '';
+      // Avoid stop only when state is explicitly idle.
+      // Runtime evidence showed ERROR can still follow an active LISTENING session.
+      if (state && state !== 'LISTENING') {
+        console.info('[godotElectronInterop] stopSpeech skipped: not recording.', status);
+        return;
+      }
+    } catch {
+      // If status probing fails, continue and let stop() decide.
+    }
+
+    try {
+      const result = await window.speech.stop();
+      return result;
+    } catch (err) {
+      const message = typeof err?.message === 'string' ? err.message : String(err ?? '');
+      // Idempotent stop semantics for UI calls (race between transcript auto-stop and UI stop).
+      if (message.includes('No active recording')) {
+        try {
+          const status = await window.speech.status();
+          console.info('[godotElectronInterop] stopSpeech received "No active recording". Current status:', status);
+        } catch {
+          console.info('[godotElectronInterop] stopSpeech received "No active recording".');
+        }
+        return;
+      }
+      throw err;
+    }
   },
 
   /**

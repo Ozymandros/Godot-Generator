@@ -90,6 +90,22 @@ pnpm start
 
 `pnpm start` now supervises the local .NET backend process and uses the typed IPC path (`GODOT_DESKTOP_IPC=1`) automatically.
 
+### Whisper CLI configuration (Speech-to-Text)
+
+Speech-to-Text requires a Whisper CLI binary compatible with whisper.cpp arguments (`-m -f -nt`).
+
+1. Download a whisper.cpp release for your platform and extract it anywhere you prefer (for example `C:\Tools\whispercpp\` on Windows).
+2. Keep the executable and required DLLs together in that folder.
+3. In `electron/`, copy `whisper.config.example.json` to `whisper.config.json`.
+4. Edit `whisper.config.json` with your local paths:
+   - `whisperBinPath`: absolute path to `main.exe` / `whisper.exe` from whisper.cpp.
+   - `modelPath`: absolute path to your model (or keep your existing model path).
+
+Notes:
+- `whisper.config.json` is loaded by the Electron shell at startup.
+- You can still override the binary path with `WHISPER_BIN`.
+- You can still override model path with `WHISPER_MODEL`.
+
 Default UI URL is `http://127.0.0.1:5044`. Override with:
 
 ```bash

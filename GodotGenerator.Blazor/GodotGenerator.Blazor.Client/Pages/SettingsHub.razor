@@ -61,6 +61,9 @@
             <SmartField Label="Base path (output)"
                         Help="Relative path for generated projects (e.g. ./output). Stored in preferences."
                         @bind-Value="_outputBasePath" />
+            <SmartField Label="Whisper CLI path (desktop STT)"
+                        Help="Optional absolute path to whisper.cpp binary (main.exe/whisper.exe). Used by Electron Speech-to-Text."
+                        @bind-Value="_whisperBinPath" />
             <SmartField Label="Workspace notes" FieldType="@SmartFieldType.Multiline"
                         Help="Optional notes for this workspace (local UI only for now)."
                         @bind-Value="_notes" />
@@ -200,6 +203,7 @@
 
     private string _backendUrl = string.Empty;
     private string _outputBasePath = string.Empty;
+    private string _whisperBinPath = string.Empty;
     private string _defaultScriptLanguage = string.Empty;
 
     private static readonly string[] _defaultScriptLanguageOptions = ["GDScript", "C#"];
@@ -301,6 +305,7 @@
         var prefs = ParsePreferences(data.GetValueOrDefault("preferences"));
         _backendUrl = GetDictString(prefs, PreferenceKeys.AppBackendUrl);
         _outputBasePath = GetDictString(prefs, PreferenceKeys.AppOutputBasePath);
+        _whisperBinPath = GetDictString(prefs, PreferenceKeys.AppWhisperBinPath);
         _notes = GetDictString(prefs, PreferenceKeys.AppWorkspaceNotes);
         _defaultScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(GetDictString(prefs, PreferenceKeys.PreferredLanguage));
         _llmProvider = GetDictString(prefs, PreferenceKeys.PreferredLlmProvider);
@@ -621,6 +626,7 @@
             {
                 (PreferenceKeys.AppBackendUrl, NullIfEmpty(_backendUrl)),
                 (PreferenceKeys.AppOutputBasePath, NullIfEmpty(_outputBasePath)),
+                (PreferenceKeys.AppWhisperBinPath, NullIfEmpty(_whisperBinPath)),
                 (PreferenceKeys.AppWorkspaceNotes, NullIfEmpty(_notes)),
                 (PreferenceKeys.PreferredLanguage, PreferredScriptLanguagePref.ToStoredValue(_defaultScriptLanguage)),
                 (PreferenceKeys.PreferredLlmProvider, NullIfEmpty(_llmProvider)),

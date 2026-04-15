@@ -1,20 +1,11 @@
 'use strict';
 
-
-// ── Log PATH and check for whisper presence (for speech-to-text) ──
 const path = require('path');
 const fs = require('fs');
-const sep = process.platform === 'win32' ? ';' : ':';
-const whisperExe = process.platform === 'win32' ? 'whisper.exe' : 'whisper';
-const found = (process.env.PATH || '').split(sep).some(p => fs.existsSync(path.join(p, whisperExe)));
-if (!found) {
-  console.warn('[Electron] whisper not found in PATH!');
-}
-console.log('[Electron] PATH:', process.env.PATH);
 
-'use strict';
-
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
+const { app, BrowserWindow, Menu, dialog, shell, systemPreferences, session } = require('electron');
+const childProcess = require('child_process');
+const os = require('os');
 const { defineIpcApi, defineIpcEvents } = require('@ozymandros/electron-message-bridge');
 const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
   require('@ozymandros/electron-message-bridge/menus');
@@ -35,6 +26,281 @@ const { stt, options: whisperOptions } = registerWhisperPlugin(registerSpeechWhi
   env: process.env,
   baseDir: __dirname,
 });
+const whisperBinPreferenceKey = 'app.whisper_bin_path';
+
+if (stt?.manager) {
+  const manager = stt.manager;
+  const originalStart = manager.start.bind(manager);
+  const originalStop = manager.stop.bind(manager);
+  const originalGetStatus = manager.getStatus.bind(manager);
+  const originalEnsureRecorder = typeof manager.ensureRecorder === 'function'
+    ? manager.ensureRecorder.bind(manager)
+    : null;
+  let _prevObservedState = manager.getState?.() ?? null;
+  let _stateValue = manager.state;
+  let _whisperBinAvailability = {
+    configured: false,
+    exists: false,
+    whisperBin: null,
+    reason: 'Whisper path is not configured.',
+  };
+
+  if (originalEnsureRecorder) {
+    manager.ensureRecorder = async (...args) => {
+      const recorderFactory = await originalEnsureRecorder(...args);
+      const explicitDevice = (process.env.SOX_AUDIO_DEVICE || process.env.AUDIODEV || '').trim();
+      if (!explicitDevice || typeof recorderFactory !== 'function') {
+        return recorderFactory;
+      }
+      return (options = {}) => recorderFactory({ ...options, device: explicitDevice });
+    };
+  }
+
+  Object.defineProperty(manager, 'state', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return _stateValue;
+    },
+    set(next) {
+      _stateValue = next;
+    },
+  });
+
+  function _toErrorMessage(err) {
+    if (err instanceof Error) return err.message || err.name || 'Unknown Error';
+    if (typeof err === 'string') return err;
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return String(err);
+    }
+  }
+
+  async function _refreshWhisperBinFromPreference(origin) {
+    manager.options = manager.options || {};
+    const setAvailability = (configured, exists, whisperBin, reason) => {
+      _whisperBinAvailability = { configured, exists, whisperBin, reason };
+    };
+    if (!backendLifecycle.isReady()) {
+      manager.options.whisperBin = '';
+      setAvailability(false, false, null, 'Backend is not ready yet.');
+      return;
+    }
+    try {
+      const response = await pipeBroker.invoke('Preference.Get/v1', { key: whisperBinPreferenceKey });
+      const payload = response?.payloadJson ? JSON.parse(response.payloadJson) : null;
+      const value = (typeof payload?.value === 'string' && payload.value.trim().length > 0)
+        ? payload.value.trim()
+        : (typeof payload?.Value === 'string' && payload.Value.trim().length > 0 ? payload.Value.trim() : null);
+      let effectiveBin = value;
+      if (process.platform === 'win32' && typeof effectiveBin === 'string' && effectiveBin.length > 0) {
+        const normalized = effectiveBin.replace(/\//g, '\\').toLowerCase();
+        if (normalized.endsWith('\\main.exe')) {
+          const cliSibling = path.join(path.dirname(effectiveBin), 'whisper-cli.exe');
+          if (safeExistsSync(cliSibling)) {
+            effectiveBin = cliSibling;
+          }
+        }
+      }
+      const exists = !!effectiveBin && safeExistsSync(effectiveBin);
+      manager.options.whisperBin = exists ? effectiveBin : '';
+      if (!value) {
+        setAvailability(false, false, null, 'Whisper path is not configured in Settings > General.');
+      } else if (!exists) {
+        setAvailability(true, false, effectiveBin, `Whisper binary was not found at: ${effectiveBin}`);
+      } else {
+        setAvailability(true, true, effectiveBin, null);
+      }
+      void origin;
+    } catch (err) {
+      manager.options.whisperBin = '';
+      setAvailability(false, false, null, 'Failed to read Whisper path preference.');
+      void origin;
+      void err;
+    }
+  }
+
+  manager.start = async (...args) => {
+    try {
+      await _refreshWhisperBinFromPreference('start');
+      if (!_whisperBinAvailability.exists) {
+        const reason = _whisperBinAvailability.reason ?? 'Whisper path is not available.';
+        manager.lastError = reason;
+        throw new Error(reason);
+      }
+      const result = await originalStart(...args);
+      const session = manager.recordingSession ?? null;
+
+      if (session?.fileStream && typeof session.fileStream.on === 'function') {
+        session.fileStream.on('error', (err) => {
+          const message = _toErrorMessage(err);
+          manager.lastError = message;
+          void message;
+        });
+        session.fileStream.on('finish', () => {});
+        session.fileStream.on('close', () => {});
+      }
+
+      if (session?.recording) {
+        const recording = session.recording;
+        if (typeof recording.on === 'function') {
+          recording.on('error', (err) => {
+            const message = _toErrorMessage(err);
+            manager.lastError = message;
+            void message;
+          });
+        }
+        if (typeof recording.stream === 'function') {
+          try {
+            const recStream = recording.stream();
+            if (recStream && typeof recStream.on === 'function') {
+              recStream.on('error', (err) => {
+                const rawMessage = _toErrorMessage(err);
+                const currentState = manager.getState?.() ?? null;
+                const isBenignSoxCloseDuringProcessing = process.platform === 'win32'
+                  && rawMessage.includes('sox has exited with error code null')
+                  && (currentState === 'PROCESSING'
+                    || (currentState === 'ERROR' && !!manager.whisperChild));
+                if (isBenignSoxCloseDuringProcessing) {
+                  return;
+                }
+                const message = rawMessage.includes('no default audio device configured')
+                  ? `${rawMessage}\n\nSet a default microphone in Windows Sound settings and retry.`
+                  : rawMessage;
+                manager.lastError = message;
+                void err;
+              });
+              recStream.on('close', () => {});
+              recStream.on('end', () => {});
+              recStream.on('unpipe', () => {});
+            }
+          } catch (err) {
+            void err;
+          }
+        }
+      }
+      return result;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  manager.stop = async (...args) => {
+    try {
+      await _refreshWhisperBinFromPreference('stop');
+      const currentOutPath = manager.recordingSession?.outPath;
+      if (typeof currentOutPath === 'string' && currentOutPath.length > 0 && safeExistsSync(currentOutPath)) {
+        try {
+          const backupOutPath = path.join(os.tmpdir(), `eiph-stt-safe-${Date.now()}-${Math.random().toString(16).slice(2)}.wav`);
+          fs.copyFileSync(currentOutPath, backupOutPath);
+          if (manager.recordingSession) {
+            manager.recordingSession.outPath = backupOutPath;
+          }
+        } catch (copyErr) {
+          void copyErr;
+        }
+      }
+      const result = await originalStop(...args);
+      manager.lastError = null;
+      return result;
+    } catch (err) {
+      const rawError = _toErrorMessage(err);
+      const normalizedError = (() => {
+        const text = (rawError || '').toLowerCase();
+        if (text.includes("no such option: -m")
+          || text.includes('usage: whisper [options] command [args]')) {
+          return [
+            'The detected "whisper" command is not whisper.cpp CLI.',
+            'Install whisper.cpp and set WHISPER_BIN to the whisper.cpp executable path.',
+          ].join('\n');
+        }
+        if (text.includes('spawn') && text.includes('whisper') && text.includes('enoent')) {
+          return [
+            'Whisper executable was not found in PATH.',
+            'Install whisper.cpp and/or set WHISPER_BIN to the whisper.cpp executable path.',
+          ].join('\n');
+        }
+        return rawError;
+      })();
+      manager.lastError = normalizedError;
+      throw new Error(normalizedError);
+    }
+  };
+
+  manager.getStatus = async (...args) => {
+    await _refreshWhisperBinFromPreference('getStatus');
+    const status = await originalGetStatus(...args);
+    const currentState = manager.getState?.() ?? null;
+    const effectiveStatus = (currentState === 'ERROR' && !status?.error && manager.lastError)
+      ? { ...status, error: manager.lastError }
+      : status;
+    const normalizedStatus = (() => {
+      if (!_whisperBinAvailability.exists) {
+        return {
+          ...effectiveStatus,
+          canRecord: false,
+          hasBinary: false,
+          error: _whisperBinAvailability.reason ?? 'Whisper path is not available.',
+        };
+      }
+      const errorText = typeof effectiveStatus?.error === 'string'
+        ? effectiveStatus.error.toLowerCase()
+        : '';
+      const looksLikeSoxInputDeviceFailure = errorText.includes('no default audio device configured')
+        || (process.platform === 'win32' && errorText.includes('sox has exited with error code 1'));
+      if (looksLikeSoxInputDeviceFailure) {
+        const actionableError = errorText.includes('no default audio device configured')
+          ? effectiveStatus.error
+          : `${effectiveStatus?.error ?? 'Microphone capture failed.'}\n\nSet a default microphone in Windows Sound settings and retry.`;
+        return {
+          ...effectiveStatus,
+          canRecord: false,
+          error: actionableError,
+        };
+      }
+      return effectiveStatus;
+    })();
+    void currentState;
+    void _prevObservedState;
+    _prevObservedState = currentState;
+    return normalizedStatus;
+  };
+}
+
+const _origSpawn = childProcess.spawn;
+childProcess.spawn = function patchedSpawn(cmd, args, options) {
+  const cmdText = typeof cmd === 'string' ? cmd.toLowerCase() : '';
+  const argList = Array.isArray(args) ? args.map((a) => String(a).toLowerCase()) : [];
+  const looksLikeWhisperSpawn = cmdText.includes('whisper')
+    || cmdText.endsWith('\\main.exe')
+    || cmdText.endsWith('/main.exe')
+    || argList.includes('-m') && argList.includes('-f');
+  if (looksLikeWhisperSpawn) {
+    const child = _origSpawn.apply(this, arguments);
+    return child;
+  }
+
+  if (process.platform === 'win32' && typeof cmd === 'string' && cmd.toLowerCase().endsWith('.cmd')) {
+    const nextOptions = { ...(options || {}), shell: true };
+    return _origSpawn.call(this, cmd, args, nextOptions);
+  }
+
+  if (typeof cmd === 'string' && cmd.toLowerCase().includes('sox')) {
+    let nextArgs = Array.isArray(args) ? [...args] : [];
+    if (process.platform === 'win32' && nextArgs.includes('--default-device')) {
+      nextArgs = [
+        '-t',
+        'waveaudio',
+        'default',
+        ...nextArgs.filter((a) => a !== '--default-device'),
+      ];
+    }
+    return _origSpawn.call(this, cmd, nextArgs, options);
+  }
+  return _origSpawn.apply(this, arguments);
+};
+
 const whisperBin = whisperOptions.whisperBin;
 const modelPath = whisperOptions.modelPath;
 console.log('[Electron] Using whisperBin:', whisperBin);
@@ -45,23 +311,31 @@ if (fs.existsSync(modelPath)) {
   console.error('[Electron] Whisper model not found at:', modelPath);
 }
 
-if (fs.existsSync(whisperBin)) {
-  console.log('[Electron] Found Whisper binary at:', whisperBin);
+if (whisperBin) {
+  if (fs.existsSync(whisperBin)) {
+    console.log('[Electron] Found Whisper binary at:', whisperBin);
+  } else {
+    console.error('[Electron] Whisper binary not found at:', whisperBin);
+  }
 } else {
-  console.error('[Electron] Whisper binary not found at:', whisperBin);
+  console.log('[Electron] Using plugin default whisper binary resolution.');
 }
 
-if (stt?.options?.modelPath && stt?.options?.whisperBin) {
+if (stt?.options?.modelPath) {
   if (fs.existsSync(stt.options.modelPath)) {
     console.log('[Electron] Found Whisper model at:', stt.options.modelPath);
   } else {
     console.error('[Electron] Whisper model not found at:', stt.options.modelPath);
   }
 
-  if (fs.existsSync(stt.options.whisperBin)) {
-    console.log('[Electron] Found Whisper binary at:', stt.options.whisperBin);
+  if (stt.options.whisperBin) {
+    if (fs.existsSync(stt.options.whisperBin)) {
+      console.log('[Electron] Found Whisper binary at:', stt.options.whisperBin);
+    } else {
+      console.error('[Electron] Whisper binary not found at:', stt.options.whisperBin);
+    }
   } else {
-    console.error('[Electron] Whisper binary not found at:', stt.options.whisperBin);
+    console.log('[Electron] STT plugin is using its internal whisper binary default.');
   }
 }
 else {
@@ -102,7 +376,7 @@ function installContentSecurityPolicy() {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src 'self' ${blazorOrigin} ws: wss:`,
+    `connect-src 'self' ${blazorOrigin} http://127.0.0.1:7650 ws: wss:`,
     "media-src 'self' data: blob:",
   ].join('; ');
 
@@ -125,6 +399,40 @@ function installContentSecurityPolicy() {
       });
     });
   });
+}
+
+async function ensureMicrophonePermissionOnWindows() {
+  if (process.platform !== 'win32') {
+    return;
+  }
+  try {
+    const micAccess = typeof systemPreferences?.getMediaAccessStatus === 'function'
+      ? systemPreferences.getMediaAccessStatus('microphone')
+      : 'unavailable';
+    if (micAccess !== 'granted') {
+      const opened = await shell.openExternal('ms-settings:privacy-microphone');
+      void opened;
+    }
+  } catch (err) {
+    void err;
+  }
+}
+
+function installMediaPermissionHandlers() {
+  try {
+    session.defaultSession.setPermissionCheckHandler((_webContents, permission, _requestingOrigin) => {
+      const allowed = permission === 'media';
+      return allowed;
+    });
+
+    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+      const allowed = permission === 'media';
+      void details;
+      callback(allowed);
+    });
+  } catch (err) {
+    void err;
+  }
 }
 
 /**
@@ -478,6 +786,8 @@ function enableContextMenu(win) {
 
 app.whenReady().then(async () => {
   installContentSecurityPolicy();
+  installMediaPermissionHandlers();
+  await ensureMicrophonePermissionOnWindows();
 
   // Build and apply the application menu from the declarative JSON spec.
   await buildAndSetMenuAsync();
@@ -500,6 +810,9 @@ app.whenReady().then(async () => {
 
   // Notify all renderer windows when the backend becomes (re-)ready.
   backendLifecycle.on('ready', () => {
+    if (stt?.manager) {
+      _refreshWhisperBinFromPreference('backend-ready').catch(() => {});
+    }
     BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendReady'));
   });
 
@@ -524,24 +837,6 @@ app.on('before-quit', async (event) => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
-
-console.log('==================== main.cjs ENTRY ====================');
-process.stdout.write('>>> main.cjs process.stdout.write <<<\n');
-process.on('exit', () => { console.log('>>> main.cjs process exiting <<<'); });
-
-const { execFileSync } = require('child_process');
-try {
-  let output;
-  if (process.platform === 'win32') {
-    // Use shell: true so whisper.cmd can be executed
-    output = execFileSync('whisper.cmd', ['--help'], { encoding: 'utf8', shell: true });
-  } else {
-    output = execFileSync('whisper', ['--help'], { encoding: 'utf8' });
-  }
-  console.log('[Electron] whisper --help output:', output);
-} catch (err) {
-  console.error('[Electron] Failed to run whisper:', err);
-}
 
 
 async function fileExists(path) {

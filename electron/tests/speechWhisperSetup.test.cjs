@@ -1,31 +1,84 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { resolveWhisperOptions, registerWhisperPlugin } = require('../speechWhisperSetup.cjs');
+const {
+  readWhisperConfig,
+  resolveWhisperBin,
+  resolveWhisperOptions,
+  registerWhisperPlugin,
+} = require('../speechWhisperSetup.cjs');
 
-test('resolveWhisperOptions uses whisper.cmd on Windows', () => {
+test('readWhisperConfig returns empty object when file does not exist', () => {
+  const config = readWhisperConfig({
+    baseDir: 'C:\\repo\\electron',
+    env: {},
+    fsModule: { existsSync: () => false, readFileSync: () => '' },
+  });
+
+  assert.deepEqual(config, {});
+});
+
+test('readWhisperConfig parses json config when present', () => {
+  const config = readWhisperConfig({
+    baseDir: 'C:\\repo\\electron',
+    env: {},
+    fsModule: {
+      existsSync: (p) => p.endsWith('whisper.config.json'),
+      readFileSync: () => '{"whisperBinPath":"C:\\\\Tools\\\\whisper\\\\main.exe"}',
+    },
+  });
+
+  assert.equal(config.whisperBinPath, 'C:\\Tools\\whisper\\main.exe');
+});
+
+test('resolveWhisperBin prefers config path over env and default', () => {
+  const whisperBin = resolveWhisperBin({
+    env: { WHISPER_BIN: 'D:\\override\\whisper.exe' },
+    config: { whisperBinPath: 'C:\\Tools\\whisper\\main.exe' },
+  });
+
+  assert.equal(whisperBin, 'C:\\Tools\\whisper\\main.exe');
+});
+
+test('resolveWhisperBin falls back to env then default command', () => {
+  const fromEnv = resolveWhisperBin({
+    env: { WHISPER_BIN: 'D:\\override\\whisper.exe' },
+    config: {},
+  });
+  const defaultBin = resolveWhisperBin({ env: {}, config: {} });
+
+  assert.equal(fromEnv, 'D:\\override\\whisper.exe');
+  assert.equal(defaultBin, 'whisper');
+});
+
+test('resolveWhisperOptions uses config whisperBin and modelPath', () => {
   const options = resolveWhisperOptions({
     platform: 'win32',
     env: {},
     baseDir: 'C:\\repo\\electron',
+    fsModule: {
+      existsSync: (p) => p.endsWith('whisper.config.json'),
+      readFileSync: () => '{"whisperBinPath":"C:\\\\Tools\\\\whisper\\\\main.exe","modelPath":"C:\\\\Models\\\\ggml-base.bin"}',
+    },
   });
 
-  assert.equal(options.whisperBin, 'whisper.cmd');
-  assert.match(options.modelPath, /models[\\/]+ggml-base\.bin$/);
+  assert.equal(options.whisperBin, 'C:\\Tools\\whisper\\main.exe');
+  assert.equal(options.modelPath, 'C:\\Models\\ggml-base.bin');
 });
 
-test('resolveWhisperOptions uses whisper on non-Windows', () => {
+test('resolveWhisperOptions supports WHISPER_MODEL env override', () => {
   const options = resolveWhisperOptions({
     platform: 'linux',
-    env: {},
+    env: { WHISPER_MODEL: '/tmp/custom-model.bin' },
     baseDir: '/repo/electron',
+    fsModule: { existsSync: () => false, readFileSync: () => '' },
   });
 
   assert.equal(options.whisperBin, 'whisper');
-  assert.match(options.modelPath, /models[\\/]+ggml-base\.bin$/);
+  assert.equal(options.modelPath, '/tmp/custom-model.bin');
 });
 
-test('registerWhisperPlugin passes resolved whisperBin to plugin call', () => {
+test('registerWhisperPlugin always passes whisperBin command to plugin', () => {
   let captured = null;
   const fakeRegister = (opts) => {
     captured = opts;
@@ -36,11 +89,15 @@ test('registerWhisperPlugin passes resolved whisperBin to plugin call', () => {
     platform: 'win32',
     env: {},
     baseDir: 'C:\\repo\\electron',
+    fsModule: {
+      existsSync: (p) => p.endsWith('whisper.config.json'),
+      readFileSync: () => '{"whisperBinPath":"C:\\\\Tools\\\\whisper\\\\main.exe"}',
+    },
   });
 
   assert.ok(captured, 'Expected plugin register function to be called');
-  assert.equal(captured.whisperBin, 'whisper.cmd');
-  assert.equal(result.options.whisperBin, 'whisper.cmd');
+  assert.equal(captured.whisperBin, 'C:\\Tools\\whisper\\main.exe');
+  assert.equal(result.options.whisperBin, 'C:\\Tools\\whisper\\main.exe');
 });
 
 test('registerWhisperPlugin honors WHISPER_MODEL env override', () => {
@@ -54,6 +111,7 @@ test('registerWhisperPlugin honors WHISPER_MODEL env override', () => {
     platform: 'linux',
     env: { WHISPER_MODEL: '/tmp/custom-model.bin' },
     baseDir: '/repo/electron',
+    fsModule: { existsSync: () => false, readFileSync: () => '' },
   });
 
   assert.equal(captured.whisperBin, 'whisper');
