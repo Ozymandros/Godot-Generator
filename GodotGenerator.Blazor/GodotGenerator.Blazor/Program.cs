@@ -24,6 +24,8 @@ builder.Services.AddGodotGeneratorInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IGodotGeneratorApiService, GodotGeneratorApiService>();
 builder.Services.AddScoped<ProjectStateService>();
 builder.Services.AddScoped<ElectronBridgeService>();
+// AppLogService must be registered before LogBufferService (the shim depends on it).
+builder.Services.AddSingleton<AppLogService>();
 builder.Services.AddSingleton<LogBufferService>();
 builder.Services.AddSingleton<StatusBannerService>();
 builder.Services.AddScoped<IGodotGeneratorClientTransport, ElectronIpcTransport>();

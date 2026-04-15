@@ -19,6 +19,12 @@ const PIPE_NAME     = '\\\\.\\pipe\\godot-generator-ipc';
 const CALL_TIMEOUT  = 30_000; // ms per individual command call
 
 let _callCounter = 0;
+const deps = {
+  netModule: net,
+  setTimeoutFn: setTimeout,
+  clearTimeoutFn: clearTimeout,
+  nowFn: () => Date.now(),
+};
 
 /**
  * Generates a unique correlation id for each outgoing command.
@@ -26,7 +32,7 @@ let _callCounter = 0;
  */
 function newCorrelationId() {
   _callCounter++;
-  return `elec-${Date.now()}-${_callCounter}`;
+  return `elec-${deps.nowFn()}-${_callCounter}`;
 }
 
 // ── Wire helpers ──────────────────────────────────────────────────────────────
@@ -101,16 +107,11 @@ async function invoke(command, payload = null) {
   };
 
   return new Promise((resolve, reject) => {
-    const timer  = setTimeout(
-      () => { socket.destroy(); reject(new Error(`IPC call '${command}' timed out after ${CALL_TIMEOUT}ms.`)); },
-      CALL_TIMEOUT,
-    );
-
-    const socket = net.createConnection(PIPE_NAME, async () => {
+    const socket = deps.netModule.createConnection(PIPE_NAME, async () => {
       try {
         socket.write(buildFrame(envelope));
         const response = await readResponse(socket);
-        clearTimeout(timer);
+        deps.clearTimeoutFn(timer);
         socket.destroy();
 
         if (response.correlationId !== correlationId) {
@@ -119,17 +120,45 @@ async function invoke(command, payload = null) {
           resolve(response);
         }
       } catch (err) {
-        clearTimeout(timer);
+        deps.clearTimeoutFn(timer);
         socket.destroy();
         reject(err);
       }
     });
 
+    const timer  = deps.setTimeoutFn(
+      () => { socket.destroy(); reject(new Error(`IPC call '${command}' timed out after ${CALL_TIMEOUT}ms.`)); },
+      CALL_TIMEOUT,
+    );
+
     socket.on('error', (err) => {
-      clearTimeout(timer);
+      deps.clearTimeoutFn(timer);
       reject(new Error(`Pipe connection error for command '${command}': ${err.message}`));
     });
   });
 }
 
-module.exports = { invoke };
+function __setTestDeps(partial) {
+  if (!partial || typeof partial !== 'object') return;
+  if (partial.netModule) deps.netModule = partial.netModule;
+  if (partial.setTimeoutFn) deps.setTimeoutFn = partial.setTimeoutFn;
+  if (partial.clearTimeoutFn) deps.clearTimeoutFn = partial.clearTimeoutFn;
+  if (partial.nowFn) deps.nowFn = partial.nowFn;
+}
+
+function __resetTestDeps() {
+  deps.netModule = net;
+  deps.setTimeoutFn = setTimeout;
+  deps.clearTimeoutFn = clearTimeout;
+  deps.nowFn = () => Date.now();
+  _callCounter = 0;
+}
+
+module.exports = {
+  invoke,
+  buildFrame,
+  readResponse,
+  newCorrelationId,
+  __setTestDeps,
+  __resetTestDeps,
+};

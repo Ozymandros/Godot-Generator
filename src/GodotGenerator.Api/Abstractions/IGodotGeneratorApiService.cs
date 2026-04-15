@@ -1,5 +1,6 @@
 #nullable enable
 using GodotGenerator.Api.Dtos;
+using GodotGenerator.Application.Dtos;
 
 namespace GodotGenerator.Api.Abstractions;
 
@@ -55,6 +56,14 @@ public interface IGodotGeneratorApiService
 
     /// <summary>Generates Godot node operations (add, configure, reparent, set properties).</summary>
     Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Improves an existing prompt or generates a sample prompt for the given modality.
+    /// Uses a direct LLM call with no plugin tools.
+    /// </summary>
+    Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistRequest request,
+        CancellationToken cancellationToken = default);
 
     /// <summary>Gets a preference value by key.</summary>
     Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default);

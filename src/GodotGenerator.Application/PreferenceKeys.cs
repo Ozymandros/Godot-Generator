@@ -52,6 +52,9 @@ public static class PreferenceKeys
     /// <summary>Base path for generated output (relative or absolute).</summary>
     public const string AppOutputBasePath = "app.output_base_path";
 
+    /// <summary>Optional absolute path to Whisper CLI binary used by desktop STT.</summary>
+    public const string AppWhisperBinPath = "app.whisper_bin_path";
+
     /// <summary>Optional free-form notes for the current workspace/configuration.</summary>
     public const string AppWorkspaceNotes = "app.workspace_notes";
 

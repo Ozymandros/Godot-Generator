@@ -58,4 +58,50 @@ public sealed class ModalityTurnComposerTests
         Assert.Contains("MyGame", turn.Prompt, StringComparison.Ordinal);
         Assert.StartsWith("[Project:", turn.Prompt, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Every new Godot-specific modality must have a distinct, non-empty system instruction.
+    /// </summary>
+    [Theory]
+    [InlineData("godot-lighting", "lighting")]
+    [InlineData("godot-camera", "camera")]
+    [InlineData("godot-shaders", "shader")]
+    [InlineData("godot-signals", "signal")]
+    [InlineData("godot-nodes", "node")]
+    public void GetSystemInstruction_returns_non_empty_for_new_modalities(string key, string keyword)
+    {
+        var sut = new ModalityTurnComposer();
+        var instruction = sut.GetSystemInstruction(key);
+
+        Assert.False(string.IsNullOrWhiteSpace(instruction));
+        Assert.Contains(keyword, instruction, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// New modalities produce distinct system instructions — none fall through to the default.
+    /// </summary>
+    [Fact]
+    public void GetSystemInstruction_all_new_modalities_are_distinct_from_default()
+    {
+        var sut = new ModalityTurnComposer();
+        var defaultInstruction = sut.GetSystemInstruction("__unknown__");
+        string[] newModalities = ["godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes"];
+
+        foreach (var key in newModalities)
+        {
+            var instruction = sut.GetSystemInstruction(key);
+            Assert.NotEqual(defaultInstruction, instruction);
+        }
+    }
+
+    /// <summary>
+    /// GetSystemInstruction is exposed through the IModalityTurnComposer interface.
+    /// </summary>
+    [Fact]
+    public void IModalityTurnComposer_exposes_GetSystemInstruction()
+    {
+        IModalityTurnComposer sut = new ModalityTurnComposer();
+        var instruction = sut.GetSystemInstruction("godot-physics");
+        Assert.Contains("physics", instruction, StringComparison.OrdinalIgnoreCase);
+    }
 }
