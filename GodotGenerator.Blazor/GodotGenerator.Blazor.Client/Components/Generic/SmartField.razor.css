@@ -27,7 +27,27 @@
     flex-direction: column;
 }
 
+.prompt-output {
+    position: relative;
+}
+
+.prompt-output__actions {
+    position: absolute;
+    right: 0.5rem;
+    top: 0.5rem;
+    display: inline-flex;
+    gap: 0.25rem;
+    z-index: 2;
+}
+
 .smart-field ::deep .prompt-action-btn {
+    min-width: 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+}
+
+.smart-field ::deep .prompt-output-action-btn {
     min-width: 30px;
     width: 30px;
     height: 30px;

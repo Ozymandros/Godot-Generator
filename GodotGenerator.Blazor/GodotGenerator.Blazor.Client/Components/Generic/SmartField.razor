@@ -24,6 +24,19 @@
                 }
             </div>
         }
+        else if (FieldType == SmartFieldType.PromptOutput)
+        {
+            <div class="@PromptOutputContainerClass">
+                <FluentTextArea Value="@Value" ValueChanged="ValueChanged" Rows="@(Rows ?? 5)" Placeholder="@Placeholder"
+                    Disabled="@Disabled" ReadOnly="@ReadOnly" Class="@PromptOutputMultilineClass" />
+                @if (ChildContent is not null)
+                {
+                    <div class="prompt-output__actions" role="group" aria-label="Prompt output actions">
+                        @ChildContent
+                    </div>
+                }
+            </div>
+        }
         else if (FieldType == SmartFieldType.Select)
         {
             <FluentCombobox TOption="string"
@@ -115,10 +128,12 @@
     private string MultilineClass => JoinClass("app-input-like app-input-like--textarea", InputClass);
 
     private string PromptMultilineClass => JoinClass("app-input-like app-input-like--textarea prompt-input", InputClass);
+    private string PromptOutputMultilineClass => JoinClass("app-input-like app-input-like--textarea prompt-output", InputClass);
 
     private string SelectClass => JoinClass("app-combobox-like", InputClass);
 
     private string PromptContainerClass => "prompt-input";
+    private string PromptOutputContainerClass => "prompt-output";
 
     private static string JoinClass(string first, string? second) =>
         string.IsNullOrWhiteSpace(second) ? first : $"{first} {second.Trim()}";
