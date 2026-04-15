@@ -143,9 +143,8 @@
     /// <summary>Set after a successful config envelope load (providers/models + prefs applied).</summary>
     private bool _registryReady;
 
-    /// <summary>Bumped after registry load so Fluent comboboxes remount with populated provider/model option
-    lists.</summary>
-private int _registryUiEpoch;
+    /// <summary>Bumped after registry load so Fluent comboboxes remount with populated provider/model option lists.</summary>
+    private int _registryUiEpoch;
 
     private string GenerateButtonLabel => $"Generate — {Title}";
 

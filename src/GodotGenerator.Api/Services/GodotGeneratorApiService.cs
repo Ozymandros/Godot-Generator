@@ -101,8 +101,34 @@ public sealed class GodotGeneratorApiService(
 
         try
         {
+            // Apply the same provider/model preference-resolution precedence used by
+            // GenerateByModalityAsync so that the user's configured provider (e.g. DeepSeek)
+            // is honoured when no explicit override is supplied by the caller.
+            var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(request.Modality);
+            var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId  = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var effective = EffectiveSelectionPolicy.Resolve(
+                request.Modality,
+                request.Provider,
+                request.PreferredModelId,
+                panelLanguageOverride: null,
+                globalPreferredLanguage: null,
+                preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [providerKey] = preferredProvider,
+                    [modelKey]    = preferredModelId,
+                },
+                hostDefaultProvider: null,
+                hostDefaultModelId: null);
+
+            var resolvedRequest = request with
+            {
+                Provider         = effective.Provider,
+                PreferredModelId = effective.ModelId,
+            };
+
             var result = await enhancePrompt
-                .ExecuteAsync(request, cancellationToken)
+                .ExecuteAsync(resolvedRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!result.Success)
