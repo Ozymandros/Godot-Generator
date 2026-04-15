@@ -68,6 +68,9 @@ internal sealed class PromptAssistCommandHandler : ICommandHandler
             cmdRequest.Modality,
             cmdRequest.CurrentPrompt ?? string.Empty,
             cmdRequest.SystemPromptOverride,
+            cmdRequest.FunctionalScope,
+            cmdRequest.ViewTitle,
+            cmdRequest.ViewDescription,
             cmdRequest.Provider,
             cmdRequest.PreferredModelId);
 

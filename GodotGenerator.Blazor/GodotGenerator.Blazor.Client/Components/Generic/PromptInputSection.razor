@@ -14,49 +14,45 @@
             <FluentLabel Typo="Typography.H6" Class="app-fluent-title-tight">@Title</FluentLabel>
         }
 
-        <div class="prompt-input-wrap">
-            <SmartField Label="@Label"
-                        FieldType="@SmartFieldType.Multiline"
-                        Rows="@Rows"
-                        Placeholder="@Placeholder"
-                        Value="@Prompt"
-                        ValueChanged="OnPromptChangedAsync" />
+        <SmartField Label="@Label"
+                    FieldType="@SmartFieldType.Prompt"
+                    Rows="@Rows"
+                    Placeholder="@Placeholder"
+                    Value="@Prompt"
+                    ValueChanged="OnPromptChangedAsync">
+            @* Wand button: improve prompt when text present, generate sample when empty. *@
+            <FluentButton Appearance="Appearance.Stealth"
+                          Class="prompt-action-btn"
+                          Title="@WandTooltip"
+                          aria-label="@WandTooltip"
+                          Disabled="@_enhanceBusy"
+                          OnClick="EnhanceAsync">
+                @if (_enhanceBusy)
+                {
+                    <FluentProgressRing Width="14px" />
+                }
+                else
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size20.SparkleAction())" Width="16px" />
+                }
+            </FluentButton>
 
-            <div class="prompt-input-wrap__actions" role="group" aria-label="Prompt actions">
-                @* Wand button: improve prompt when text present, generate sample when empty. *@
-                <FluentButton Appearance="Appearance.Stealth"
-                              Class="prompt-action-btn"
-                              Title="@WandTooltip"
-                              aria-label="@WandTooltip"
-                              Disabled="@_enhanceBusy"
-                              OnClick="EnhanceAsync">
-                    @if (_enhanceBusy)
-                    {
-                        <FluentProgressRing Width="14px" />
-                    }
-                    else
-                    {
-                        <FluentIcon Value="@(new Icons.Regular.Size20.SparkleAction())" Width="16px" />
-                    }
-                </FluentButton>
-
-                @* Mic button: start/stop speech-to-text. *@
-                <FluentButton Appearance="Appearance.Stealth"
-                              Class="@MicButtonClass"
-                              Title="@MicTooltip"
-                              aria-label="@MicTooltip"
-                              OnClick="ToggleSpeechAsync">
-                    @if (_recording)
-                    {
-                        <FluentIcon Value="@(new Icons.Regular.Size20.MicPulse())" Width="16px" />
-                    }
-                    else
-                    {
-                        <FluentIcon Value="@(new Icons.Regular.Size20.MicRecord())" Width="16px" />
-                    }
-                </FluentButton>
-            </div>
-        </div>
+            @* Mic button: start/stop speech-to-text. *@
+            <FluentButton Appearance="Appearance.Stealth"
+                          Class="@MicButtonClass"
+                          Title="@MicTooltip"
+                          aria-label="@MicTooltip"
+                          OnClick="ToggleSpeechAsync">
+                @if (_recording)
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size20.MicPulse())" Width="16px" />
+                }
+                else
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size20.MicRecord())" Width="16px" />
+                }
+            </FluentButton>
+        </SmartField>
 
         @if (_enhanceError is not null)
         {
@@ -100,6 +96,15 @@
 
     /// <summary>Optional system-prompt supplement from Advanced Options.</summary>
     [Parameter] public string? SystemPromptOverride { get; set; }
+
+    /// <summary>Optional functional scope label for the active screen/workflow.</summary>
+    [Parameter] public string? FunctionalScope { get; set; }
+
+    /// <summary>Optional active screen title to scope prompt assist outputs.</summary>
+    [Parameter] public string? ViewTitle { get; set; }
+
+    /// <summary>Optional active screen description to scope prompt assist outputs.</summary>
+    [Parameter] public string? ViewDescription { get; set; }
 
     // ── State ─────────────────────────────────────────────────────────────────
 
@@ -165,6 +170,15 @@
                 SystemPromptOverride: string.IsNullOrWhiteSpace(SystemPromptOverride)
                     ? null
                     : SystemPromptOverride.Trim(),
+                FunctionalScope: string.IsNullOrWhiteSpace(FunctionalScope)
+                    ? null
+                    : FunctionalScope.Trim(),
+                ViewTitle: string.IsNullOrWhiteSpace(ViewTitle)
+                    ? null
+                    : ViewTitle.Trim(),
+                ViewDescription: string.IsNullOrWhiteSpace(ViewDescription)
+                    ? null
+                    : ViewDescription.Trim(),
                 Provider: string.IsNullOrWhiteSpace(ProviderOverride)
                     ? null
                     : ProviderOverride.Trim(),

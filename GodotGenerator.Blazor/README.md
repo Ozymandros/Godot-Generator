@@ -92,19 +92,44 @@ pnpm start
 
 ### Whisper CLI configuration (Speech-to-Text)
 
-Speech-to-Text requires a Whisper CLI binary compatible with whisper.cpp arguments (`-m -f -nt`).
+Speech-to-Text is available from the **Prompt** input mic button (desktop/Electron only).
+The app now requires an explicit Whisper binary path; there is no implicit PATH fallback.
+
+#### End-user setup (recommended)
 
 1. Download a whisper.cpp release for your platform and extract it anywhere you prefer (for example `C:\Tools\whispercpp\` on Windows).
 2. Keep the executable and required DLLs together in that folder.
-3. In `electron/`, copy `whisper.config.example.json` to `whisper.config.json`.
-4. Edit `whisper.config.json` with your local paths:
-   - `whisperBinPath`: absolute path to `main.exe` / `whisper.exe` from whisper.cpp.
-   - `modelPath`: absolute path to your model (or keep your existing model path).
+3. Open **Settings -> General** in the app.
+4. Set **Whisper CLI path (desktop STT)** to your local executable (prefer `whisper-cli.exe` on recent Windows builds).
+5. Save settings.
+
+If this path is missing or invalid, the prompt mic button is disabled.
+
+#### Optional developer bootstrap (config/env)
+
+You can still preconfigure startup defaults in Electron:
+
+- `electron/whisper.config.json` (copy from `whisper.config.example.json`)
+  - `whisperBinPath`: absolute binary path
+  - `modelPath`: absolute model path
+- `WHISPER_BIN`: binary path override
+- `WHISPER_MODEL`: model path override
 
 Notes:
-- `whisper.config.json` is loaded by the Electron shell at startup.
-- You can still override the binary path with `WHISPER_BIN`.
-- You can still override model path with `WHISPER_MODEL`.
+- Runtime speech execution is governed by the persisted **General Settings** preference.
+- Prompt mic/wand actions are rendered only in prompt inputs, not in generic textareas.
+
+### Prompt actions (Wand + Mic)
+
+In generation workspaces, the prompt textarea has two built-in actions:
+
+- **Wand**:
+  - If prompt has text: improves/rewrites it.
+  - If prompt is empty: generates a sample prompt suggestion.
+- **Mic**:
+  - Starts/stops speech-to-text and inserts transcript into the prompt.
+
+Prompt assist is scoped by the active screen context (modality + view title/description), so sample/improved prompts are targeted to the current functional flow instead of broad app-wide suggestions.
 
 Default UI URL is `http://127.0.0.1:5044`. Override with:
 

@@ -60,6 +60,9 @@
                                 Placeholder="@PromptPlaceholder"
                                 @bind-Prompt="_prompt"
                                 Modality="@ModalityKey"
+                                FunctionalScope="@ModalityContextLabel"
+                                ViewTitle="@Title"
+                                ViewDescription="@Description"
                                 ProviderOverride="@_providerOverride"
                                 ModelOverride="@_modelOverride"
                                 SystemPromptOverride="@_advanced.SystemPromptOverride" />
@@ -110,6 +113,7 @@
 
     /// <summary>Modality slug passed to <see cref="PromptInputSection"/> for prompt-assist context.</summary>
     private string ModalityKey => ModalityRoutes.GetSlug(Modality);
+    private string ModalityContextLabel => Modality.ToString();
 
     [Parameter] public string Title { get; set; } = "Generate";
 

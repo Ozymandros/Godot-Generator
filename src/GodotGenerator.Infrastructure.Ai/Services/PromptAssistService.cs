@@ -85,6 +85,21 @@ public sealed class PromptAssistService(
         var sb = new StringBuilder();
         sb.AppendLine("You are a concise prompt-engineering assistant for a Godot 4 AI game generator.");
         sb.AppendLine($"Generation context: {modalityInstruction}");
+        if (!string.IsNullOrWhiteSpace(request.FunctionalScope))
+        {
+            sb.AppendLine($"Functional scope: {request.FunctionalScope.Trim()}");
+        }
+        if (!string.IsNullOrWhiteSpace(request.ViewTitle))
+        {
+            sb.AppendLine($"Active screen title: {request.ViewTitle.Trim()}");
+        }
+        if (!string.IsNullOrWhiteSpace(request.ViewDescription))
+        {
+            sb.AppendLine($"Active screen description: {request.ViewDescription.Trim()}");
+        }
+        sb.AppendLine(
+            "Scope rule: keep the output tightly aligned to the active screen/function context above. " +
+            "Do not broaden to whole-app or whole-project scope unless the user prompt explicitly asks for it.");
 
         if (!string.IsNullOrWhiteSpace(request.SystemPromptOverride))
         {

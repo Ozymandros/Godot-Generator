@@ -31,7 +31,7 @@ test('readWhisperConfig parses json config when present', () => {
   assert.equal(config.whisperBinPath, 'C:\\Tools\\whisper\\main.exe');
 });
 
-test('resolveWhisperBin prefers config path over env and default', () => {
+test('resolveWhisperBin prefers config path over env and empty fallback', () => {
   const whisperBin = resolveWhisperBin({
     env: { WHISPER_BIN: 'D:\\override\\whisper.exe' },
     config: { whisperBinPath: 'C:\\Tools\\whisper\\main.exe' },
@@ -40,7 +40,7 @@ test('resolveWhisperBin prefers config path over env and default', () => {
   assert.equal(whisperBin, 'C:\\Tools\\whisper\\main.exe');
 });
 
-test('resolveWhisperBin falls back to env then default command', () => {
+test('resolveWhisperBin falls back to env then empty string', () => {
   const fromEnv = resolveWhisperBin({
     env: { WHISPER_BIN: 'D:\\override\\whisper.exe' },
     config: {},
@@ -48,7 +48,7 @@ test('resolveWhisperBin falls back to env then default command', () => {
   const defaultBin = resolveWhisperBin({ env: {}, config: {} });
 
   assert.equal(fromEnv, 'D:\\override\\whisper.exe');
-  assert.equal(defaultBin, 'whisper');
+  assert.equal(defaultBin, '');
 });
 
 test('resolveWhisperOptions uses config whisperBin and modelPath', () => {
@@ -74,11 +74,11 @@ test('resolveWhisperOptions supports WHISPER_MODEL env override', () => {
     fsModule: { existsSync: () => false, readFileSync: () => '' },
   });
 
-  assert.equal(options.whisperBin, 'whisper');
+  assert.equal(options.whisperBin, '');
   assert.equal(options.modelPath, '/tmp/custom-model.bin');
 });
 
-test('registerWhisperPlugin always passes whisperBin command to plugin', () => {
+test('registerWhisperPlugin always passes resolved whisperBin to plugin', () => {
   let captured = null;
   const fakeRegister = (opts) => {
     captured = opts;
@@ -114,7 +114,7 @@ test('registerWhisperPlugin honors WHISPER_MODEL env override', () => {
     fsModule: { existsSync: () => false, readFileSync: () => '' },
   });
 
-  assert.equal(captured.whisperBin, 'whisper');
+  assert.equal(captured.whisperBin, '');
   assert.equal(captured.modelPath, '/tmp/custom-model.bin');
 });
 

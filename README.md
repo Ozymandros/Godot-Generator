@@ -27,12 +27,17 @@ Where to start
 - Development guide: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 - Testing guide: [`docs/TESTING.md`](docs/TESTING.md)
 - CI & coverage: [`docs/CI.md`](docs/CI.md)
-- Electron STT / Whisper setup: see **Whisper CLI configuration** in [`GodotGenerator.Blazor/README.md`](GodotGenerator.Blazor/README.md)
+- Prompt actions and Electron STT / Whisper setup: see **Prompt actions (Wand + Mic)** and **Whisper CLI configuration** in [`GodotGenerator.Blazor/README.md`](GodotGenerator.Blazor/README.md)
 
 Supported generation areas
 - Text, code, image, audio, video, sprites
 - Godot UI, Godot physics, scenes, Godot project, animations
 - **Godot MCP–oriented:** lighting, camera, shaders, signals, nodes (narrowed MCP tool surface per modality when `Orchestration:EnableModalityToolFiltering` is true)
+
+Prompt UX notes
+- Prompt-only actions: wand (enhance/suggest) and microphone (speech-to-text) are attached to prompt inputs, not to arbitrary textareas.
+- Context-aware assist: wand outputs are scoped to the active generation view/modality context.
+- Explicit Whisper path required for desktop STT: when missing/invalid, the mic action is disabled.
 
 Quickstart (local development)
 1. Prerequisites

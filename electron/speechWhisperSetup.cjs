@@ -33,8 +33,8 @@ function resolveWhisperBin({ env, config }) {
     return env.WHISPER_BIN.trim();
   }
 
-  // Default command fallback (lets PATH resolve where available).
-  return 'whisper';
+  // No fallback: binary must be explicitly configured by path.
+  return '';
 }
 
 function resolveWhisperOptions({

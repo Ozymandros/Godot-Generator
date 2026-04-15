@@ -25,12 +25,25 @@ public static class PromptAssistCommandNames
 /// Optional additional system-prompt text supplied by the caller (e.g. from the
 /// Advanced Options section).  Appended after the modality system instruction.
 /// </param>
+/// <param name="FunctionalScope">
+/// Optional functional area label for the active view (e.g. <c>image generation</c>,
+/// <c>audio generation</c>, <c>godot physics</c>).
+/// </param>
+/// <param name="ViewTitle">
+/// Optional UI screen title where the prompt assistant is being used.
+/// </param>
+/// <param name="ViewDescription">
+/// Optional UI screen description used to better scope sample/improved prompts.
+/// </param>
 /// <param name="Provider">Optional provider override for this call.</param>
 /// <param name="PreferredModelId">Optional model-id override for this call.</param>
 public sealed record PromptAssistEnhanceRequest(
     string Modality,
     string CurrentPrompt,
     string? SystemPromptOverride = null,
+    string? FunctionalScope = null,
+    string? ViewTitle = null,
+    string? ViewDescription = null,
     string? Provider = null,
     string? PreferredModelId = null);
 
