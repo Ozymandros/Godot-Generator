@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAiOrchestrationService, AiOrchestrationService>();
         services.AddSingleton<GodotGenerator.Application.Abstractions.ILlmDiscoveryInfoProvider, LlmDiscoveryInfoProvider>();
         services.AddSingleton<GodotGenerator.Application.Abstractions.IGodotMcpToolCatalog, GodotMcpToolCatalog>();
+        services.AddSingleton<GodotGenerator.Application.Abstractions.IPromptAssistService, PromptAssistService>();
         services.AddGodotGeneratorApplication();
         return services;
     }

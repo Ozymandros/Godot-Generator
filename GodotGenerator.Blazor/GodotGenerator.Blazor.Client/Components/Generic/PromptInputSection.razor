@@ -1,4 +1,11 @@
-@* Prompt block shared across panels (Unity-Generator PromptInputSection). *@
+@* Prompt block shared across all generation panels.
+   Top-right corner of the textarea hosts two transparent outline buttons:
+   • Wand (SparkleAction) — AI improve/generate sample via SK (no tools).
+   • Mic  (MicRecord/MicPulse) — speech-to-text via Electron Whisper / Web Speech API.
+*@
+@inject GodotGeneratorClientFacade Api
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <FluentCard Class="app-content-wide settings-card-host">
     <div class="settings-card__inner">
@@ -6,27 +13,276 @@
         {
             <FluentLabel Typo="Typography.H6" Class="app-fluent-title-tight">@Title</FluentLabel>
         }
+
         <SmartField Label="@Label"
-                    FieldType="@SmartFieldType.Multiline"
+                    FieldType="@SmartFieldType.Prompt"
                     Rows="@Rows"
                     Placeholder="@Placeholder"
                     Value="@Prompt"
-                    ValueChanged="OnPromptChangedAsync" />
+                    ValueChanged="OnPromptChangedAsync">
+            @* Wand button: improve prompt when text present, generate sample when empty. *@
+            <FluentButton Appearance="Appearance.Stealth"
+                          Class="prompt-action-btn"
+                          Title="@WandTooltip"
+                          aria-label="@WandTooltip"
+                          Disabled="@_enhanceBusy"
+                          OnClick="EnhanceAsync">
+                @if (_enhanceBusy)
+                {
+                    <FluentProgressRing Width="14px" />
+                }
+                else
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size20.SparkleAction())" Width="16px" />
+                }
+            </FluentButton>
+
+            @* Mic button: start/stop speech-to-text. *@
+            <FluentButton Appearance="Appearance.Stealth"
+                          Class="@MicButtonClass"
+                          Title="@MicTooltip"
+                          aria-label="@MicTooltip"
+                          OnClick="ToggleSpeechAsync">
+                @if (_recording)
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size20.MicPulse())" Width="16px" />
+                }
+                else
+                {
+                    <FluentIcon Value="@(new Icons.Regular.Size20.MicRecord())" Width="16px" />
+                }
+            </FluentButton>
+        </SmartField>
+
+        @if (_enhanceError is not null)
+        {
+            <AppMessageBar Intent="MessageIntent.Error" Class="app-margin-top-xs">@_enhanceError</AppMessageBar>
+        }
     </div>
 </FluentCard>
 
 @code {
+    // ── Parameters ───────────────────────────────────────────────────────────
+
+    /// <summary>Optional heading shown above the textarea.</summary>
     [Parameter] public string? Title { get; set; }
 
+    /// <summary>Field label (shown inside the SmartField).</summary>
     [Parameter] public string? Label { get; set; }
 
+    /// <summary>Placeholder text for the textarea.</summary>
     [Parameter] public string? Placeholder { get; set; }
 
+    /// <summary>Number of visible text rows.</summary>
     [Parameter] public int Rows { get; set; } = 6;
 
+    /// <summary>Current prompt text (two-way bound).</summary>
     [Parameter] public string Prompt { get; set; } = string.Empty;
 
+    /// <summary>Raised whenever the prompt text changes.</summary>
     [Parameter] public EventCallback<string> PromptChanged { get; set; }
 
+    /// <summary>
+    /// Modality key (e.g. <c>godot-physics</c>) forwarded to the prompt-assist
+    /// backend so it can apply the correct system instruction.
+    /// </summary>
+    [Parameter] public string Modality { get; set; } = "text";
+
+    /// <summary>Optional provider override from the parent workspace.</summary>
+    [Parameter] public string? ProviderOverride { get; set; }
+
+    /// <summary>Optional model-id override from the parent workspace.</summary>
+    [Parameter] public string? ModelOverride { get; set; }
+
+    /// <summary>Optional system-prompt supplement from Advanced Options.</summary>
+    [Parameter] public string? SystemPromptOverride { get; set; }
+
+    /// <summary>Optional functional scope label for the active screen/workflow.</summary>
+    [Parameter] public string? FunctionalScope { get; set; }
+
+    /// <summary>Optional active screen title to scope prompt assist outputs.</summary>
+    [Parameter] public string? ViewTitle { get; set; }
+
+    /// <summary>Optional active screen description to scope prompt assist outputs.</summary>
+    [Parameter] public string? ViewDescription { get; set; }
+
+    // ── State ─────────────────────────────────────────────────────────────────
+
+    private bool _enhanceBusy;
+    private string? _enhanceError;
+    private bool _recording;
+
+    // JS interop handle — the JS side calls back into this component.
+    private DotNetObjectReference<PromptInputSection>? _dotNetRef;
+
+    // ── Computed ──────────────────────────────────────────────────────────────
+
+    private string WandTooltip => string.IsNullOrWhiteSpace(Prompt)
+        ? "Generate sample prompt (AI)"
+        : "Improve prompt (AI)";
+
+    private string MicTooltip => _recording ? "Stop recording" : "Start speech-to-text";
+
+    private string MicButtonClass => _recording
+        ? "prompt-action-btn prompt-action-btn--active"
+        : "prompt-action-btn";
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    protected override void OnInitialized()
+    {
+        _dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    /// <summary>Cleans up the DotNetObjectReference and stops any active recording.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_recording)
+        {
+            await StopSpeechCoreAsync().ConfigureAwait(false);
+        }
+
+        _dotNetRef?.Dispose();
+    }
+
+    // ── Prompt binding ────────────────────────────────────────────────────────
+
     private Task OnPromptChangedAsync(string value) => PromptChanged.InvokeAsync(value);
+
+    // ── Wand: AI improve / generate sample ───────────────────────────────────
+
+    /// <summary>
+    /// Sends the current prompt (or empty string) to the backend for SK enhancement.
+    /// The response is written back into the textarea via <see cref="PromptChanged"/>.
+    /// No Godot plugin tools are used on this path.
+    /// </summary>
+    private async Task EnhanceAsync()
+    {
+        _enhanceError = null;
+        _enhanceBusy = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new PromptAssistEnhanceRequest(
+                Modality: Modality,
+                CurrentPrompt: Prompt.Trim(),
+                SystemPromptOverride: string.IsNullOrWhiteSpace(SystemPromptOverride)
+                    ? null
+                    : SystemPromptOverride.Trim(),
+                FunctionalScope: string.IsNullOrWhiteSpace(FunctionalScope)
+                    ? null
+                    : FunctionalScope.Trim(),
+                ViewTitle: string.IsNullOrWhiteSpace(ViewTitle)
+                    ? null
+                    : ViewTitle.Trim(),
+                ViewDescription: string.IsNullOrWhiteSpace(ViewDescription)
+                    ? null
+                    : ViewDescription.Trim(),
+                Provider: string.IsNullOrWhiteSpace(ProviderOverride)
+                    ? null
+                    : ProviderOverride.Trim(),
+                PreferredModelId: string.IsNullOrWhiteSpace(ModelOverride)
+                    ? null
+                    : ModelOverride.Trim());
+
+            var response = await Api
+                .EnhancePromptAsync(request)
+                .ConfigureAwait(false);
+
+            if (!response.Success)
+            {
+                _enhanceError = response.Error ?? "Prompt enhancement failed.";
+                return;
+            }
+
+            var improved = response.Data?.GetValueOrDefault("result")?.ToString() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(improved))
+            {
+                await PromptChanged.InvokeAsync(improved).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _enhanceError = ex.Message;
+        }
+        finally
+        {
+            _enhanceBusy = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Mic: speech-to-text ───────────────────────────────────────────────────
+
+    /// <summary>Starts recording when idle; stops when active.</summary>
+    private Task ToggleSpeechAsync() =>
+        _recording ? StopSpeechCoreAsync() : StartSpeechCoreAsync();
+
+    private async Task StartSpeechCoreAsync()
+    {
+        _enhanceError = null;
+        try
+        {
+            // Pass the .NET ref so JS can invoke OnSpeechTranscript / OnSpeechStopped.
+            await JS.InvokeVoidAsync("godotSpeech.start", _dotNetRef).ConfigureAwait(false);
+            _recording = true;
+        }
+        catch (JSException ex)
+        {
+            _enhanceError = $"Speech not available: {ex.Message}";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task StopSpeechCoreAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("godotSpeech.stop").ConfigureAwait(false);
+        }
+        catch (JSException)
+        {
+            // Best-effort; reset state regardless.
+        }
+        finally
+        {
+            _recording = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Called from JS when a speech transcript segment arrives.
+    /// Appends the text to the current prompt value.
+    /// </summary>
+    [JSInvokable]
+    public async Task OnSpeechTranscript(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
+        var appended = string.IsNullOrWhiteSpace(Prompt)
+            ? text.Trim()
+            : $"{Prompt.TrimEnd()} {text.Trim()}";
+
+        await PromptChanged.InvokeAsync(appended).ConfigureAwait(false);
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Called from JS when the speech session ends (natural completion or error).
+    /// </summary>
+    [JSInvokable]
+    public Task OnSpeechStopped()
+    {
+        _recording = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 }

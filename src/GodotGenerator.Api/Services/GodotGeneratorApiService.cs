@@ -23,6 +23,7 @@ public sealed class GodotGeneratorApiService(
     GetApiKeysUseCase getApiKeys,
     SaveApiKeysUseCase saveApiKeys,
     GetAllConfigUseCase getAllConfig,
+    EnhancePromptUseCase enhancePrompt,
     IModalityTurnComposer modalityTurnComposer,
     IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
@@ -90,6 +91,70 @@ public sealed class GodotGeneratorApiService(
     /// <inheritdoc />
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         GenerateByModalityAsync("godot-nodes", request, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        try
+        {
+            // Apply the same provider/model preference-resolution precedence used by
+            // GenerateByModalityAsync so that the user's configured provider (e.g. DeepSeek)
+            // is honoured when no explicit override is supplied by the caller.
+            var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(request.Modality);
+            var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId  = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var effective = EffectiveSelectionPolicy.Resolve(
+                request.Modality,
+                request.Provider,
+                request.PreferredModelId,
+                panelLanguageOverride: null,
+                globalPreferredLanguage: null,
+                preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [providerKey] = preferredProvider,
+                    [modelKey]    = preferredModelId,
+                },
+                hostDefaultProvider: null,
+                hostDefaultModelId: null);
+
+            var resolvedRequest = request with
+            {
+                Provider         = effective.Provider,
+                PreferredModelId = effective.ModelId,
+            };
+
+            var result = await enhancePrompt
+                .ExecuteAsync(resolvedRequest, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return ApiResponse<Dictionary<string, object?>>.Fail(
+                    result.Error ?? "Prompt assist failed.");
+            }
+
+            return ApiResponse<Dictionary<string, object?>>.Ok(
+                new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["result"] = result.Result,
+                    ["mode"] = result.Mode,
+                    ["modality"] = request.Modality,
+                });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "EnhancePromptAsync failed for modality {Modality}", request.Modality);
+            return ApiResponse<Dictionary<string, object?>>.Fail(ex.Message);
+        }
+    }
 
     /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)

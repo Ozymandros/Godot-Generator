@@ -1,17 +1,23 @@
+```
+# Dependencies
+node_modules/
+# Environment
+.env
+.env.local
+.env.
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+# Logs
+*.log
+bin/
+obj/
 out/
-debug-*.log
-**/node_modules/
-test-results/
-coverage-report/
-coverage-report-core/
-coverage-report-core2/
-playwright-report/
-playwright/.cache/
-.vs/
-**/bin/
-**/obj/
-*.user
-
-.fake
+coverage/
 TestResults
-test/GodotGenerator.Infrastructure.Ai.Tests/TestResults/
+models/
+```
+.fake

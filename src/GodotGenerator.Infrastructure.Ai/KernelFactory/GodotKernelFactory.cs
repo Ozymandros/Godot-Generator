@@ -1,8 +1,13 @@
 #nullable enable
 using GodotGenerator.Application.Orchestration;
+using GodotGenerator.Application;
+using GodotGenerator.Application.Abstractions;
+using GodotGenerator.Application.Configuration;
+using GodotGenerator.Application.Services;
 using GodotMcp.Plugin;
 using GodotMcp.Plugin.Extensions;
 using GodotGenerator.Infrastructure.Ai.Options;
+using System.Text.Json;
 using GodotGenerator.Infrastructure.Ai.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -18,6 +23,7 @@ public sealed class GodotKernelFactory(
     IServiceProvider rootServices,
     IOptions<LlmOptions> llmOptions,
     IOptions<OrchestrationOptions> orchestrationOptions,
+    IPreferenceRepository preferences,
     Services.IProviderSecretResolver providerSecretResolver,
     ILoggerFactory loggerFactory,
     ILogger<GodotKernelFactory> logger) : IKernelFactory
@@ -59,7 +65,14 @@ public sealed class GodotKernelFactory(
             EnsureApiKeyConfigured(apiKey, effectiveProvider);
             await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-            var kernel = BuildKernel(apiKey!, modelId, modalityKeyForToolFiltering, applyFiltering);
+            var endpoint = ResolveProviderEndpoint(effectiveProvider);
+            var kernel = BuildKernel(
+                effectiveProvider,
+                apiKey!,
+                modelId,
+                endpoint,
+                modalityKeyForToolFiltering,
+                applyFiltering);
             _kernelsByCacheKey[cacheKey] = kernel;
             if (_pluginInitializationSkipped)
             {
@@ -192,21 +205,159 @@ public sealed class GodotKernelFactory(
         }
     }
 
+    private Uri? ResolveProviderEndpoint(string provider)
+    {
+        var providerConfigEndpoint = ResolveProviderConfigEndpoint(provider);
+        if (providerConfigEndpoint is not null)
+        {
+            return providerConfigEndpoint;
+        }
+
+        var json = preferences
+            .GetAsync(PreferenceKeys.ProvidersRegistryV1, CancellationToken.None)
+            .ConfigureAwait(false)
+            .GetAwaiter()
+            .GetResult();
+
+        var doc = ConfigurationRegistryService.ParseProviderRegistry(json);
+        foreach (var entry in doc.Providers)
+        {
+            if (!string.Equals(entry.Id, provider, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!entry.OpenAiCompatibility)
+            {
+                throw new InvalidOperationException(
+                    $"Provider '{provider}' is not marked OpenAI-compatible.");
+            }
+
+            var effectiveEndpoint = string.IsNullOrWhiteSpace(entry.Endpoint)
+                ? GetDefaultEndpoint(provider)
+                : entry.Endpoint.Trim();
+            if (string.IsNullOrWhiteSpace(effectiveEndpoint))
+            {
+                return null;
+            }
+
+            if (Uri.TryCreate(effectiveEndpoint, UriKind.Absolute, out var endpoint))
+            {
+                return endpoint;
+            }
+
+            throw new InvalidOperationException(
+                $"Provider '{provider}' endpoint '{effectiveEndpoint}' is not a valid absolute URI.");
+        }
+
+        var fallbackEndpoint = GetDefaultEndpoint(provider);
+        if (string.IsNullOrWhiteSpace(fallbackEndpoint))
+        {
+            return null;
+        }
+
+        if (Uri.TryCreate(fallbackEndpoint, UriKind.Absolute, out var fallbackUri))
+        {
+            return fallbackUri;
+        }
+
+        throw new InvalidOperationException(
+            $"Provider '{provider}' default endpoint '{fallbackEndpoint}' is not a valid absolute URI.");
+    }
+
+    private Uri? ResolveProviderConfigEndpoint(string provider)
+    {
+        var key = $"providers/{provider}";
+        var json = preferences
+            .GetAsync(key, CancellationToken.None)
+            .ConfigureAwait(false)
+            .GetAwaiter()
+            .GetResult();
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            if (!doc.RootElement.TryGetProperty("endpoint", out var endpointElement))
+            {
+                return null;
+            }
+
+            var endpoint = endpointElement.GetString();
+            if (string.IsNullOrWhiteSpace(endpoint))
+            {
+                return null;
+            }
+
+            if (Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri))
+            {
+                return uri;
+            }
+
+            throw new InvalidOperationException(
+                $"Provider '{provider}' endpoint '{endpoint}' from key '{key}' is not a valid absolute URI.");
+        }
+        catch (JsonException ex)
+        {
+            throw new InvalidOperationException(
+                $"Provider settings for '{provider}' at key '{key}' are not valid JSON.", ex);
+        }
+    }
+
+    private static string? GetDefaultEndpoint(string provider)
+    {
+        return provider.ToLowerInvariant() switch
+        {
+            "anthropic" => "https://api.anthropic.com/v1",
+            "google" => "https://generativelanguage.googleapis.com",
+            "vertex_ai" => "https://aiplatform.googleapis.com",
+            "deepseek" => "https://api.deepseek.com/v1",
+            "openrouter" => "https://openrouter.ai/api/v1",
+            "huggingface" => "https://api-inference.huggingface.co",
+            "ollama" => "http://localhost:11434/v1",
+            "groq" => "https://api.groq.com/openai/v1",
+            "qwen" => "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "stability" => "https://api.stability.ai",
+            "flux" => "https://api.bfl.ai/v1",
+            "elevenlabs" => "https://api.elevenlabs.io",
+            "playht" => "https://api.play.ht/api/v2",
+            _ => null,
+        };
+    }
+
     /// <summary>
     /// Builds a semantic kernel for a specific model and registers Godot tools.
     /// </summary>
+    /// <param name="provider">Resolved provider id.</param>
     /// <param name="apiKey">Provider API key.</param>
     /// <param name="modelId">Resolved model id.</param>
+    /// <param name="endpoint">Optional OpenAI-compatible endpoint override.</param>
     /// <param name="modalityKeyForToolFiltering">Modality key when filtering is enabled.</param>
     /// <param name="applyToolFiltering">Whether to narrow Godot MCP functions for the modality.</param>
     /// <returns>Ready-to-use kernel instance.</returns>
-    private Kernel BuildKernel(string apiKey, string modelId, string? modalityKeyForToolFiltering, bool applyToolFiltering)
+    private Kernel BuildKernel(
+        string provider,
+        string apiKey,
+        string modelId,
+        Uri? endpoint,
+        string? modalityKeyForToolFiltering,
+        bool applyToolFiltering)
     {
         try
         {
             var kernelBuilder = Kernel.CreateBuilder();
             kernelBuilder.Services.AddSingleton(loggerFactory);
-            kernelBuilder.AddOpenAIChatCompletion(modelId, apiKey);
+            if (endpoint is null)
+            {
+                kernelBuilder.AddOpenAIChatCompletion(modelId, apiKey);
+            }
+            else
+            {
+                kernelBuilder.AddOpenAIChatCompletion(modelId, endpoint, apiKey);
+            }
 
             var kernel = kernelBuilder.Build();
             if (_pluginInitializationSkipped)
@@ -228,7 +379,11 @@ public sealed class GodotKernelFactory(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed during kernel build or Godot tool registration for model {ModelId}.", modelId);
+            logger.LogError(
+                ex,
+                "Failed during kernel build or Godot tool registration for provider {Provider}, model {ModelId}.",
+                provider,
+                modelId);
             throw new InvalidOperationException("Failed to build Semantic Kernel with Godot tools.", ex);
         }
     }

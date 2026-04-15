@@ -5,6 +5,7 @@ using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Application.UseCases;
+using GodotGenerator.Application;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -88,9 +89,87 @@ public sealed class GodotGeneratorApiServiceTests
         Assert.Equal("k1", get.Data!["openai"]);
     }
 
+    /// <summary>
+    /// EnhancePromptAsync returns success with result and mode fields.
+    /// </summary>
+    [Fact]
+    public async Task EnhancePromptAsync_returns_ok_with_result_and_mode()
+    {
+        var promptAssist = new Mock<IPromptAssistService>();
+        promptAssist
+            .Setup(s => s.EnhanceAsync(It.IsAny<PromptAssistRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PromptAssistResult.Ok("improved prompt text", "improve"));
+
+        var api = CreateApiService(
+            new InMemoryPreferenceRepository(),
+            new Mock<IAiOrchestrationService>().Object,
+            promptAssist.Object);
+
+        var result = await api.EnhancePromptAsync(new PromptAssistRequest("code", "do stuff"));
+
+        Assert.True(result.Success);
+        Assert.Equal("improved prompt text", result.Data!["result"]?.ToString());
+        Assert.Equal("improve",              result.Data!["mode"]?.ToString());
+    }
+
+    /// <summary>
+    /// EnhancePromptAsync propagates service failures as API failures.
+    /// </summary>
+    [Fact]
+    public async Task EnhancePromptAsync_service_failure_returns_api_failure()
+    {
+        var promptAssist = new Mock<IPromptAssistService>();
+        promptAssist
+            .Setup(s => s.EnhanceAsync(It.IsAny<PromptAssistRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PromptAssistResult.Fail("no key configured"));
+
+        var api = CreateApiService(
+            new InMemoryPreferenceRepository(),
+            new Mock<IAiOrchestrationService>().Object,
+            promptAssist.Object);
+
+        var result = await api.EnhancePromptAsync(new PromptAssistRequest("code", "anything"));
+
+        Assert.False(result.Success);
+        Assert.Contains("no key configured", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// All five new Godot modalities route through GenerateByModality correctly (smoke test).
+    /// </summary>
+    [Theory]
+    [InlineData("godot-lighting")]
+    [InlineData("godot-camera")]
+    [InlineData("godot-shaders")]
+    [InlineData("godot-signals")]
+    [InlineData("godot-nodes")]
+    public async Task Generate_new_godot_modalities_succeed_and_return_modality_key(string modalityKey)
+    {
+        var ai = new Mock<IAiOrchestrationService>();
+        ai.Setup(x => x.RunTurnAsync(It.IsAny<AgentTurnRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new AgentTurnResult(true, "ok"));
+
+        var api = CreateApiService(new InMemoryPreferenceRepository(), ai.Object);
+
+        // Route to the correct method based on modalityKey
+        var result = modalityKey switch
+        {
+            "godot-lighting" => await api.GenerateGodotLightingAsync(new GenerateRequest("add lights")),
+            "godot-camera"   => await api.GenerateGodotCameraAsync(new GenerateRequest("setup cam")),
+            "godot-shaders"  => await api.GenerateGodotShadersAsync(new GenerateRequest("write shader")),
+            "godot-signals"  => await api.GenerateGodotSignalsAsync(new GenerateRequest("connect signal")),
+            "godot-nodes"    => await api.GenerateGodotNodesAsync(new GenerateRequest("add node")),
+            _                => throw new InvalidOperationException($"Unknown modality: {modalityKey}"),
+        };
+
+        Assert.True(result.Success);
+        Assert.Equal(modalityKey, result.Data!["modality"]?.ToString());
+    }
+
     private static GodotGeneratorApiService CreateApiService(
         IPreferenceRepository preferences,
-        IAiOrchestrationService ai)
+        IAiOrchestrationService ai,
+        IPromptAssistService? promptAssist = null)
     {
         var run = new RunAgentTurnUseCase(ai, NullLogger<RunAgentTurnUseCase>.Instance);
         var getPref = new GetPreferenceUseCase(preferences, NullLogger<GetPreferenceUseCase>.Instance);
@@ -99,6 +178,8 @@ public sealed class GodotGeneratorApiServiceTests
         var saveKeys = new SaveApiKeysUseCase(preferences, NullLogger<SaveApiKeysUseCase>.Instance);
         var llmDiscovery = new DefaultLlmDiscoveryInfoProvider();
         var all = new GetAllConfigUseCase(getKeys, getPref, llmDiscovery);
+        var assist = promptAssist ?? new Mock<IPromptAssistService>().Object;
+        var enhance = new EnhancePromptUseCase(assist, NullLogger<EnhancePromptUseCase>.Instance);
         var composer = new ModalityTurnComposer();
         var catalog = new NullGodotMcpToolCatalog();
 
@@ -109,6 +190,7 @@ public sealed class GodotGeneratorApiServiceTests
             getKeys,
             saveKeys,
             all,
+            enhance,
             composer,
             catalog,
             NullLogger<GodotGeneratorApiService>.Instance);

@@ -27,6 +27,7 @@ public static class DesktopIpcServiceExtensions
         services.AddSingleton<ICommandHandler, PreferenceCommandHandler>();
         services.AddSingleton<ICommandHandler, KeysCommandHandler>();
         services.AddSingleton<ICommandHandler, GenerateCommandHandler>();
+        services.AddSingleton<ICommandHandler, PromptAssistCommandHandler>();
 
         // The dispatcher is built from the ICommandHandler registrations above.
         services.AddSingleton<CommandDispatcher>();

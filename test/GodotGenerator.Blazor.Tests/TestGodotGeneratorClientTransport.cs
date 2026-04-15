@@ -4,6 +4,7 @@ using System.Text.Json;
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Blazor.Client.Models;
 using GodotGenerator.Blazor.Client.Services.Transport;
+using GodotGenerator.Desktop.Contracts.Commands;
 
 namespace GodotGenerator.Blazor.Tests;
 
@@ -55,4 +56,9 @@ internal sealed class TestGodotGeneratorClientTransport : IGodotGeneratorClientT
         ApiKeysRequest request,
         CancellationToken cancellationToken = default) =>
         Task.FromResult(ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>()));
+
+    public Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(PromptAssistEnhanceRequest request, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?> { ["message"] = "fake" }));
+    }
 }
