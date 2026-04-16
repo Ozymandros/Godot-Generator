@@ -1,5 +1,6 @@
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
+using GodotGenerator.Application.Dtos;
 using GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
 using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
@@ -54,6 +55,7 @@ public sealed class GenerateCommandHandlerTests
     [InlineData(GenerateCommandNames.GodotShaders)]
     [InlineData(GenerateCommandNames.GodotSignals)]
     [InlineData(GenerateCommandNames.GodotNodes)]
+    [InlineData(GenerateCommandNames.Wizard)]
     public async Task HandleAsync_ValidCommand_ReturnsSuccess(string command)
     {
         var api = new Mock<IGodotGeneratorApiService>();
@@ -88,6 +90,8 @@ public sealed class GenerateCommandHandlerTests
         api.Setup(a => a.GenerateGodotSignalsAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
         api.Setup(a => a.GenerateGodotNodesAsync(It.IsAny<GenerateRequest>(), It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+        api.Setup(a => a.RunWizardAsync(It.IsAny<WizardRequest>(), It.IsAny<CancellationToken>()))
            .ReturnsAsync(OkResult());
 
         var h = Build(api.Object);

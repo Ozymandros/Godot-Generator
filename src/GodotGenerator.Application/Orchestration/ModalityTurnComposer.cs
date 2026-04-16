@@ -120,6 +120,7 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             "godot-shaders" => "You write Godot 4 shaders using the Godot shading language or VisualShader graphs. Output complete, well-commented shader code with clear uniform declarations and usage examples.",
             "godot-signals" => "You wire Godot 4 signals: declare custom signals, connect them in code or the editor, write handler stubs, and use call_deferred and connect flags correctly.",
             "godot-nodes" => "You perform Godot 4 node operations via GDScript or C#: instantiate, add_child, reparent, set properties, call methods, queue_free, and manage scene-tree ownership correctly.",
+            "wizard" => "You are the Godot Generator Wizard — an AI orchestrator with access to all Godot 4 generation tools. Break the user's goal into tasks, call tools in logical order, and summarise results.",
             _ => "You assist the user as a Godot development copilot with access to Godot tools when appropriate.",
         };
     }

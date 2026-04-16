@@ -68,6 +68,7 @@ public sealed class ModalityTurnComposerTests
     [InlineData("godot-shaders", "shader")]
     [InlineData("godot-signals", "signal")]
     [InlineData("godot-nodes", "node")]
+    [InlineData("wizard", "orchestrat")]
     public void GetSystemInstruction_returns_non_empty_for_new_modalities(string key, string keyword)
     {
         var sut = new ModalityTurnComposer();
@@ -85,7 +86,7 @@ public sealed class ModalityTurnComposerTests
     {
         var sut = new ModalityTurnComposer();
         var defaultInstruction = sut.GetSystemInstruction("__unknown__");
-        string[] newModalities = ["godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes"];
+        string[] newModalities = ["godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes", "wizard"];
 
         foreach (var key in newModalities)
         {

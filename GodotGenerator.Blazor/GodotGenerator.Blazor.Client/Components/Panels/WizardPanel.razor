@@ -1,0 +1,51 @@
+@* Wizard: orchestrates multiple generation tools to fulfil a project-scoped goal.
+   The Wizard LLM selects which tools to call (code, scenes, physics, lighting, etc.)
+   and returns a consolidated summary. Functionally similar to Code panel but
+   backed by a separate SK kernel that exposes the full GodotGeneratorApi plugin. *@
+@inject ProjectStateService ProjectState
+
+<GenerationWorkspace Modality="GenerationModality.Wizard"
+                     Title="Wizard"
+                     Badge="Orchestrator"
+                     Description="Describe your project goal. The Wizard orchestrates multiple generation tools — code, scenes, physics, lighting, shaders, and more — to accomplish it in one turn."
+                     PromptPlaceholder="Describe what you want to build or configure in your Godot 4 project…"
+                     CreateRequest="BuildRequest">
+    <AdditionalFields>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
+            <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">
+                The Wizard uses your configured LLM provider with access to all Godot Generator tools.
+                It may make several generation calls in sequence — complex goals may take longer than a single panel.
+            </FluentLabel>
+            <SmartField Label="Godot project path (optional)"
+                        Placeholder="e.g. C:\Projects\MyGame or /home/user/MyGame"
+                        Help="When set, MCP-aware tools can validate node paths and scene references."
+                        @bind-Value="_godotProjectPath" />
+        </FluentStack>
+    </AdditionalFields>
+</GenerationWorkspace>
+
+@code {
+    private string _godotProjectPath = string.Empty;
+
+    private GenerateRequest BuildRequest(string prompt)
+    {
+        var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+        // Forward the active project path for tool-level MCP validation if available.
+        var projectPath = !string.IsNullOrWhiteSpace(_godotProjectPath)
+            ? _godotProjectPath.Trim()
+            : ProjectState.ActiveProjectPath;
+
+        if (!string.IsNullOrWhiteSpace(projectPath))
+        {
+            options[GenerationOptionKeys.GodotProjectPath] = projectPath;
+        }
+
+        return new GenerateRequest(
+            Prompt: prompt,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName)
+                ? null
+                : ProjectState.ActiveProjectName.Trim(),
+            Options: options.Count > 0 ? options : null);
+    }
+}

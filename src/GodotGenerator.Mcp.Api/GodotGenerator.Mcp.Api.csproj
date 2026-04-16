@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GodotGenerator.Mcp.Api</RootNamespace>
+    <AssemblyName>GodotGenerator.Mcp.Api</AssemblyName>
+    <Description>MCP-facing API adapters for wizard plugin calls.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GodotGenerator.Api\GodotGenerator.Api.csproj" />
+    <ProjectReference Include="..\GodotGenerator.Wizard.Contracts\GodotGenerator.Wizard.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+  </ItemGroup>
+
+</Project>

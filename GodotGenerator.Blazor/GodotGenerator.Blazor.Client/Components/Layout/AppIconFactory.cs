@@ -29,4 +29,6 @@ public static class AppIconFactory
     public static Icon SlideGrid { get; } = new FluentIcons.Regular.Size20.SlideGrid();
     public static Icon ChevronRight { get; } = new FluentIcons.Regular.Size20.ChevronRight();
     public static Icon ChevronDown { get; } = new FluentIcons.Regular.Size20.ChevronDown();
+    /// <summary>Wizard — AI orchestration with tool-calling.</summary>
+    public static Icon Wizard { get; } = new FluentIcons.Regular.Size20.BotSparkle();
 }

@@ -24,6 +24,7 @@ public sealed class GodotGeneratorApiService(
     SaveApiKeysUseCase saveApiKeys,
     GetAllConfigUseCase getAllConfig,
     EnhancePromptUseCase enhancePrompt,
+    RunWizardUseCase runWizard,
     IModalityTurnComposer modalityTurnComposer,
     IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
@@ -152,6 +153,68 @@ public sealed class GodotGeneratorApiService(
         catch (Exception ex)
         {
             logger.LogError(ex, "EnhancePromptAsync failed for modality {Modality}", request.Modality);
+            return ApiResponse<Dictionary<string, object?>>.Fail(ex.Message);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<Dictionary<string, object?>>> RunWizardAsync(
+        WizardRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        try
+        {
+            // Resolve effective provider/model using the same preference chain as other modalities.
+            var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys("wizard");
+            var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId  = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var effective = EffectiveSelectionPolicy.Resolve(
+                "wizard",
+                request.Provider,
+                request.PreferredModelId,
+                panelLanguageOverride: null,
+                globalPreferredLanguage: null,
+                preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [providerKey] = preferredProvider,
+                    [modelKey]    = preferredModelId,
+                },
+                hostDefaultProvider: null,
+                hostDefaultModelId: null);
+
+            var resolved = request with
+            {
+                Provider         = effective.Provider,
+                PreferredModelId = effective.ModelId,
+            };
+
+            var result = await runWizard
+                .ExecuteAsync(resolved, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return ApiResponse<Dictionary<string, object?>>.Fail(result.Error ?? "Wizard failed.");
+            }
+
+            return ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["modality"]     = "wizard",
+                ["provider"]     = effective.Provider,
+                ["modelId"]      = effective.ModelId,
+                ["message"]      = result.Message,
+                ["toolsInvoked"] = result.ToolsInvoked,
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RunWizardAsync failed");
             return ApiResponse<Dictionary<string, object?>>.Fail(ex.Message);
         }
     }
@@ -307,6 +370,7 @@ public sealed class GodotGeneratorApiService(
             "godot-shaders" => "godot-shaders",
             "godot-signals" => "godot-signals",
             "godot-nodes" => "godot-nodes",
+            "wizard" => "wizard",
             _ => "text",
         };
     }

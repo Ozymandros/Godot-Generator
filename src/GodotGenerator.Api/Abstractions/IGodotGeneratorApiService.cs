@@ -65,6 +65,14 @@ public interface IGodotGeneratorApiService
         PromptAssistRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Runs one Wizard orchestration turn.  The LLM may call multiple generation
+    /// or configuration tools before producing a consolidated response.
+    /// </summary>
+    Task<ApiResponse<Dictionary<string, object?>>> RunWizardAsync(
+        WizardRequest request,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets a preference value by key.</summary>
     Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default);
 

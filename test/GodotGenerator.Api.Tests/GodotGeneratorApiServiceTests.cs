@@ -9,6 +9,7 @@ using GodotGenerator.Application;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
+// WizardResult, WizardRequest are in GodotGenerator.Application.Dtos (already imported above)
 
 namespace GodotGenerator.Api.Tests;
 
@@ -166,10 +167,83 @@ public sealed class GodotGeneratorApiServiceTests
         Assert.Equal(modalityKey, result.Data!["modality"]?.ToString());
     }
 
+    /// <summary>RunWizardAsync returns success with message and toolsInvoked fields.</summary>
+    [Fact]
+    public async Task RunWizardAsync_returns_ok_with_message_and_tools_invoked()
+    {
+        var wizard = new Mock<IWizardOrchestrationService>();
+        wizard
+            .Setup(s => s.RunAsync(It.IsAny<WizardRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(WizardResult.Ok("Scene + code generated.", ["GodotGeneratorApi.create_scene"]));
+
+        var api = CreateApiService(
+            new InMemoryPreferenceRepository(),
+            new Mock<IAiOrchestrationService>().Object,
+            wizardSvc: wizard.Object);
+
+        var result = await api.RunWizardAsync(new WizardRequest("Build a platformer"));
+
+        Assert.True(result.Success);
+        Assert.Contains("Scene", result.Data!["message"]?.ToString());
+        Assert.Equal("wizard", result.Data!["modality"]?.ToString());
+    }
+
+    /// <summary>RunWizardAsync propagates service failures as API failures.</summary>
+    [Fact]
+    public async Task RunWizardAsync_service_failure_returns_api_failure()
+    {
+        var wizard = new Mock<IWizardOrchestrationService>();
+        wizard
+            .Setup(s => s.RunAsync(It.IsAny<WizardRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(WizardResult.Fail("API key missing"));
+
+        var api = CreateApiService(
+            new InMemoryPreferenceRepository(),
+            new Mock<IAiOrchestrationService>().Object,
+            wizardSvc: wizard.Object);
+
+        var result = await api.RunWizardAsync(new WizardRequest("do something"));
+
+        Assert.False(result.Success);
+    }
+
+    /// <summary>
+    /// Legacy wizard endpoint contract remains stable and applies provider/model preferences.
+    /// </summary>
+    [Fact]
+    public async Task RunWizardAsync_resolves_provider_and_model_from_preferences()
+    {
+        var repo = new InMemoryPreferenceRepository();
+        await repo.SetAsync("preferred_llm_provider", "openai");
+        await repo.SetAsync("preferred_llm_model", "gpt-4.1");
+
+        WizardRequest? captured = null;
+        var wizard = new Mock<IWizardOrchestrationService>();
+        wizard
+            .Setup(s => s.RunAsync(It.IsAny<WizardRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<WizardRequest, CancellationToken>((req, _) => captured = req)
+            .ReturnsAsync(WizardResult.Ok("ok", []));
+
+        var api = CreateApiService(
+            repo,
+            new Mock<IAiOrchestrationService>().Object,
+            wizardSvc: wizard.Object);
+
+        var result = await api.RunWizardAsync(new WizardRequest("Build menu flow"));
+
+        Assert.True(result.Success);
+        Assert.NotNull(captured);
+        Assert.Equal("openai", captured!.Provider);
+        Assert.Equal("gpt-4.1", captured.PreferredModelId);
+        Assert.Equal("wizard", result.Data!["modality"]?.ToString());
+        Assert.NotNull(result.Data!["toolsInvoked"]);
+    }
+
     private static GodotGeneratorApiService CreateApiService(
         IPreferenceRepository preferences,
         IAiOrchestrationService ai,
-        IPromptAssistService? promptAssist = null)
+        IPromptAssistService? promptAssist = null,
+        IWizardOrchestrationService? wizardSvc = null)
     {
         var run = new RunAgentTurnUseCase(ai, NullLogger<RunAgentTurnUseCase>.Instance);
         var getPref = new GetPreferenceUseCase(preferences, NullLogger<GetPreferenceUseCase>.Instance);
@@ -180,6 +254,8 @@ public sealed class GodotGeneratorApiServiceTests
         var all = new GetAllConfigUseCase(getKeys, getPref, llmDiscovery);
         var assist = promptAssist ?? new Mock<IPromptAssistService>().Object;
         var enhance = new EnhancePromptUseCase(assist, NullLogger<EnhancePromptUseCase>.Instance);
+        var wizardOrch = wizardSvc ?? new Mock<IWizardOrchestrationService>().Object;
+        var runWizard = new RunWizardUseCase(wizardOrch, NullLogger<RunWizardUseCase>.Instance);
         var composer = new ModalityTurnComposer();
         var catalog = new NullGodotMcpToolCatalog();
 
@@ -191,6 +267,7 @@ public sealed class GodotGeneratorApiServiceTests
             saveKeys,
             all,
             enhance,
+            runWizard,
             composer,
             catalog,
             NullLogger<GodotGeneratorApiService>.Instance);

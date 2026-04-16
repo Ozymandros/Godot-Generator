@@ -1,6 +1,7 @@
 using System.Text.Json;
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
+using GodotGenerator.Application.Dtos;
 using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
 using GodotGenerator.Desktop.Contracts.Serialization;
@@ -114,8 +115,34 @@ internal sealed class GenerateCommandHandler : ICommandHandler
             GenerateCommandNames.GodotShaders => apiService.GenerateGodotShadersAsync(request, ct),
             GenerateCommandNames.GodotSignals => apiService.GenerateGodotSignalsAsync(request, ct),
             GenerateCommandNames.GodotNodes => apiService.GenerateGodotNodesAsync(request, ct),
+            GenerateCommandNames.Wizard     => apiService.RunWizardAsync(
+                new WizardRequest(
+                    Prompt: request.Prompt,
+                    ProjectName: request.ProjectName,
+                    GodotProjectPath: GetOptionString(request.Options, "godot_project_path"),
+                    Provider: request.Provider,
+                    PreferredModelId: request.PreferredModelId,
+                    SystemPromptOverride: request.SystemPrompt),
+                ct),
             _ => throw new InvalidOperationException($"No modality mapping for command '{command}'.")
         };
+
+    /// <summary>Extracts a string value from an options dictionary; returns null if absent or not a string.</summary>
+    private static string? GetOptionString(
+        IReadOnlyDictionary<string, object?>? options,
+        string key)
+    {
+        if (options is null || !options.TryGetValue(key, out var raw) || raw is null)
+        {
+            return null;
+        }
+
+        return raw switch
+        {
+            string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
+            _        => raw.ToString()?.Trim(),
+        };
+    }
 
     private static ResponseEnvelope Failure(string correlationId, string errorCode, string? message) =>
         new(correlationId, false, null, errorCode, message);
