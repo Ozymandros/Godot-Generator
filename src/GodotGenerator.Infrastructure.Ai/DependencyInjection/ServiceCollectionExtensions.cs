@@ -48,6 +48,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IKernelFactory, GodotKernelFactory>();
         services.AddSingleton<IProviderSecretResolver, PreferenceProviderSecretResolver>();
+        services.AddSingleton<IProviderConnectionResolver, ProviderConnectionResolver>();
         services.AddSingleton<IProviderCapabilityRouter, ProviderCapabilityRouter>();
         services.AddSingleton<GodotGenerator.Application.Abstractions.IGodotProjectPathValidator, GodotProjectPathValidator>();
         services.AddSingleton<IAiOrchestrationService, AiOrchestrationService>();

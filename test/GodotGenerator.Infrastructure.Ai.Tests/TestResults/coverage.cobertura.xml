@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<coverage line-rate="0.48450000000000004" branch-rate="0.4827" version="1.9" timestamp="1776277322" lines-covered="157" lines-valid="324" branches-covered="84" branches-valid="174">
+<coverage line-rate="0.5515" branch-rate="0.5132" version="1.9" timestamp="1776327129" lines-covered="230" lines-valid="417" branches-covered="136" branches-valid="265">
   <sources>
     <source>C:\Projects\Godot-Generator-Avalonia\src\GodotGenerator.Infrastructure.Ai\</source>
   </sources>
   <packages>
-    <package name="GodotGenerator.Infrastructure.Ai" line-rate="0.48450000000000004" branch-rate="0.4827" complexity="189">
+    <package name="GodotGenerator.Infrastructure.Ai" line-rate="0.5515" branch-rate="0.5132" complexity="286">
       <classes>
         <class name="GodotGenerator.Infrastructure.Ai.Services.AiOrchestrationService" filename="Services\AiOrchestrationService.cs" line-rate="0.25" branch-rate="0.1153" complexity="27">
           <methods>
@@ -1326,16 +1326,460 @@
             <line number="14" hits="4" branch="False" />
           </lines>
         </class>
-        <class name="GodotGenerator.Infrastructure.Ai.Options.LlmOptions" filename="Options\LlmOptions.cs" line-rate="0.6666" branch-rate="1" complexity="3">
+        <class name="GodotGenerator.Infrastructure.Ai.Services.ProviderConnectionResolver" filename="Services\ProviderConnectionResolver.cs" line-rate="0.7014" branch-rate="0.5316" complexity="80">
           <methods>
-            <method name="get_ChatModelId" signature="()" line-rate="1" branch-rate="1" complexity="1">
+            <method name="ResolveProviderEndpoint" signature="(System.String)" line-rate="0.95" branch-rate="0.9" complexity="10">
               <lines>
-                <line number="21" hits="6" branch="False" />
+                <line number="64" hits="6" branch="False" />
+                <line number="65" hits="5" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="9" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="67" hits="1" branch="False" />
+                <line number="70" hits="4" branch="False" />
+                <line number="71" hits="4" branch="False" />
+                <line number="72" hits="4" branch="False" />
+                <line number="73" hits="4" branch="False" />
+                <line number="74" hits="4" branch="False" />
+                <line number="76" hits="4" branch="False" />
+                <line number="77" hits="18" branch="True" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="185" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="79" hits="7" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="97" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="84" hits="4" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="106" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="86" hits="1" branch="False" />
+                <line number="87" hits="1" branch="False" />
+                <line number="90" hits="3" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="142" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="91" hits="3" branch="False" />
+                <line number="92" hits="3" branch="False" />
+                <line number="94" hits="3" branch="False" />
+                <line number="97" hits="0" branch="False" />
+                <line number="98" hits="3" branch="False" />
+              </lines>
+            </method>
+            <method name="ResolveProviderConfigEndpoint" signature="(System.String)" line-rate="0.7" branch-rate="0.6666" complexity="6">
+              <lines>
+                <line number="102" hits="6" branch="False" />
+                <line number="103" hits="6" branch="False" />
+                <line number="104" hits="6" branch="False" />
+                <line number="105" hits="6" branch="False" />
+                <line number="106" hits="6" branch="False" />
+                <line number="107" hits="6" branch="False" />
+                <line number="108" hits="6" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="58" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="110" hits="4" branch="False" />
+                <line number="115" hits="2" branch="False" />
+                <line number="116" hits="2" branch="True" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="104" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="118" hits="0" branch="False" />
+                <line number="121" hits="2" branch="False" />
+                <line number="122" hits="2" branch="True" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="130" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="124" hits="0" branch="False" />
+                <line number="127" hits="2" branch="False" />
+                <line number="129" hits="0" branch="False" />
+                <line number="131" hits="0" branch="False" />
+                <line number="132" hits="0" branch="False" />
+                <line number="133" hits="0" branch="False" />
+                <line number="135" hits="1" branch="False" />
+              </lines>
+            </method>
+            <method name="ParseEndpoint" signature="(System.String,System.String)" line-rate="1" branch-rate="1" complexity="4">
+              <lines>
+                <line number="139" hits="5" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="6" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="141" hits="1" branch="False" />
+                <line number="144" hits="4" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="19" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="146" hits="3" branch="False" />
+                <line number="149" hits="1" branch="False" />
+                <line number="150" hits="1" branch="False" />
+              </lines>
+            </method>
+            <method name="GetDefaultEndpoint" signature="(System.String)" line-rate="0.2352" branch-rate="0.42369999999999997" complexity="59">
+              <lines>
+                <line number="154" hits="1" branch="True" condition-coverage="42.37% (25/59)">
+                  <conditions>
+                    <condition number="8" type="jump" coverage="100%" />
+                    <condition number="23" type="switch" coverage="44.44%" />
+                    <condition number="76" type="jump" coverage="0%" />
+                    <condition number="81" type="jump" coverage="0%" />
+                    <condition number="110" type="jump" coverage="50%" />
+                    <condition number="118" type="jump" coverage="50%" />
+                    <condition number="147" type="jump" coverage="0%" />
+                    <condition number="176" type="jump" coverage="0%" />
+                    <condition number="184" type="jump" coverage="0%" />
+                    <condition number="89" type="jump" coverage="50%" />
+                    <condition number="126" type="jump" coverage="50%" />
+                    <condition number="155" type="jump" coverage="50%" />
+                    <condition number="192" type="jump" coverage="50%" />
+                    <condition number="213" type="jump" coverage="50%" />
+                    <condition number="276" type="jump" coverage="50%" />
+                    <condition number="234" type="jump" coverage="50%" />
+                    <condition number="339" type="jump" coverage="50%" />
+                    <condition number="360" type="jump" coverage="50%" />
+                    <condition number="399" type="jump" coverage="50%" />
+                    <condition number="297" type="jump" coverage="50%" />
+                    <condition number="417" type="jump" coverage="50%" />
+                    <condition number="435" type="jump" coverage="50%" />
+                    <condition number="255" type="jump" coverage="50%" />
+                    <condition number="450" type="jump" coverage="50%" />
+                    <condition number="378" type="jump" coverage="50%" />
+                    <condition number="318" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="155" hits="1" branch="False" />
+                <line number="156" hits="0" branch="False" />
+                <line number="157" hits="0" branch="False" />
+                <line number="158" hits="0" branch="False" />
+                <line number="159" hits="0" branch="False" />
+                <line number="160" hits="0" branch="False" />
+                <line number="161" hits="0" branch="False" />
+                <line number="162" hits="0" branch="False" />
+                <line number="163" hits="0" branch="False" />
+                <line number="164" hits="0" branch="False" />
+                <line number="165" hits="0" branch="False" />
+                <line number="166" hits="0" branch="False" />
+                <line number="167" hits="0" branch="False" />
+                <line number="168" hits="0" branch="False" />
+                <line number="169" hits="1" branch="False" />
+                <line number="170" hits="1" branch="False" />
+              </lines>
+            </method>
+            <method name=".ctor" signature="(GodotGenerator.Application.Abstractions.IPreferenceRepository,GodotGenerator.Infrastructure.Ai.Services.IProviderSecretResolver,Microsoft.Extensions.Options.IOptions`1&lt;GodotGenerator.Infrastructure.Ai.Options.LlmOptions&gt;)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="16" hits="7" branch="False" />
+                <line number="17" hits="7" branch="False" />
+                <line number="18" hits="7" branch="False" />
+                <line number="19" hits="7" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="64" hits="6" branch="False" />
+            <line number="65" hits="5" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="9" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="67" hits="1" branch="False" />
+            <line number="70" hits="4" branch="False" />
+            <line number="71" hits="4" branch="False" />
+            <line number="72" hits="4" branch="False" />
+            <line number="73" hits="4" branch="False" />
+            <line number="74" hits="4" branch="False" />
+            <line number="76" hits="4" branch="False" />
+            <line number="77" hits="18" branch="True" condition-coverage="50% (1/2)">
+              <conditions>
+                <condition number="185" type="jump" coverage="50%" />
+              </conditions>
+            </line>
+            <line number="79" hits="7" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="97" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="84" hits="4" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="106" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="86" hits="1" branch="False" />
+            <line number="87" hits="1" branch="False" />
+            <line number="90" hits="3" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="142" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="91" hits="3" branch="False" />
+            <line number="92" hits="3" branch="False" />
+            <line number="94" hits="3" branch="False" />
+            <line number="97" hits="0" branch="False" />
+            <line number="98" hits="3" branch="False" />
+            <line number="102" hits="6" branch="False" />
+            <line number="103" hits="6" branch="False" />
+            <line number="104" hits="6" branch="False" />
+            <line number="105" hits="6" branch="False" />
+            <line number="106" hits="6" branch="False" />
+            <line number="107" hits="6" branch="False" />
+            <line number="108" hits="6" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="58" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="110" hits="4" branch="False" />
+            <line number="115" hits="2" branch="False" />
+            <line number="116" hits="2" branch="True" condition-coverage="50% (1/2)">
+              <conditions>
+                <condition number="104" type="jump" coverage="50%" />
+              </conditions>
+            </line>
+            <line number="118" hits="0" branch="False" />
+            <line number="121" hits="2" branch="False" />
+            <line number="122" hits="2" branch="True" condition-coverage="50% (1/2)">
+              <conditions>
+                <condition number="130" type="jump" coverage="50%" />
+              </conditions>
+            </line>
+            <line number="124" hits="0" branch="False" />
+            <line number="127" hits="2" branch="False" />
+            <line number="129" hits="0" branch="False" />
+            <line number="131" hits="0" branch="False" />
+            <line number="132" hits="0" branch="False" />
+            <line number="133" hits="0" branch="False" />
+            <line number="135" hits="1" branch="False" />
+            <line number="139" hits="5" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="6" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="141" hits="1" branch="False" />
+            <line number="144" hits="4" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="19" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="146" hits="3" branch="False" />
+            <line number="149" hits="1" branch="False" />
+            <line number="150" hits="1" branch="False" />
+            <line number="154" hits="1" branch="True" condition-coverage="42.37% (25/59)">
+              <conditions>
+                <condition number="8" type="jump" coverage="100%" />
+                <condition number="23" type="switch" coverage="44.44%" />
+                <condition number="76" type="jump" coverage="0%" />
+                <condition number="81" type="jump" coverage="0%" />
+                <condition number="110" type="jump" coverage="50%" />
+                <condition number="118" type="jump" coverage="50%" />
+                <condition number="147" type="jump" coverage="0%" />
+                <condition number="176" type="jump" coverage="0%" />
+                <condition number="184" type="jump" coverage="0%" />
+                <condition number="89" type="jump" coverage="50%" />
+                <condition number="126" type="jump" coverage="50%" />
+                <condition number="155" type="jump" coverage="50%" />
+                <condition number="192" type="jump" coverage="50%" />
+                <condition number="213" type="jump" coverage="50%" />
+                <condition number="276" type="jump" coverage="50%" />
+                <condition number="234" type="jump" coverage="50%" />
+                <condition number="339" type="jump" coverage="50%" />
+                <condition number="360" type="jump" coverage="50%" />
+                <condition number="399" type="jump" coverage="50%" />
+                <condition number="297" type="jump" coverage="50%" />
+                <condition number="417" type="jump" coverage="50%" />
+                <condition number="435" type="jump" coverage="50%" />
+                <condition number="255" type="jump" coverage="50%" />
+                <condition number="450" type="jump" coverage="50%" />
+                <condition number="378" type="jump" coverage="50%" />
+                <condition number="318" type="jump" coverage="50%" />
+              </conditions>
+            </line>
+            <line number="155" hits="1" branch="False" />
+            <line number="156" hits="0" branch="False" />
+            <line number="157" hits="0" branch="False" />
+            <line number="158" hits="0" branch="False" />
+            <line number="159" hits="0" branch="False" />
+            <line number="160" hits="0" branch="False" />
+            <line number="161" hits="0" branch="False" />
+            <line number="162" hits="0" branch="False" />
+            <line number="163" hits="0" branch="False" />
+            <line number="164" hits="0" branch="False" />
+            <line number="165" hits="0" branch="False" />
+            <line number="166" hits="0" branch="False" />
+            <line number="167" hits="0" branch="False" />
+            <line number="168" hits="0" branch="False" />
+            <line number="169" hits="1" branch="False" />
+            <line number="170" hits="1" branch="False" />
+            <line number="16" hits="7" branch="False" />
+            <line number="17" hits="7" branch="False" />
+            <line number="18" hits="7" branch="False" />
+            <line number="19" hits="7" branch="False" />
+          </lines>
+        </class>
+        <class name="GodotGenerator.Infrastructure.Ai.Services.ProviderConnectionResolver/&lt;ResolveApiKeyAsync&gt;d__5" filename="Services\ProviderConnectionResolver.cs" line-rate="1" branch-rate="0.8332999999999999" complexity="6">
+          <methods>
+            <method name="MoveNext" signature="()" line-rate="1" branch-rate="0.8332999999999999" complexity="6">
+              <lines>
+                <line number="47" hits="7" branch="False" />
+                <line number="48" hits="7" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="145" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="50" hits="5" branch="False" />
+                <line number="53" hits="2" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="173" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="55" hits="1" branch="False" />
+                <line number="56" hits="1" branch="True" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="200" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="59" hits="1" branch="False" />
+                <line number="60" hits="7" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="47" hits="7" branch="False" />
+            <line number="48" hits="7" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="145" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="50" hits="5" branch="False" />
+            <line number="53" hits="2" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="173" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="55" hits="1" branch="False" />
+            <line number="56" hits="1" branch="True" condition-coverage="50% (1/2)">
+              <conditions>
+                <condition number="200" type="jump" coverage="50%" />
+              </conditions>
+            </line>
+            <line number="59" hits="1" branch="False" />
+            <line number="60" hits="7" branch="False" />
+          </lines>
+        </class>
+        <class name="GodotGenerator.Infrastructure.Ai.Services.ProviderConnectionResolver/&lt;ResolveAsync&gt;d__4" filename="Services\ProviderConnectionResolver.cs" line-rate="1" branch-rate="0.8332999999999999" complexity="6">
+          <methods>
+            <method name="MoveNext" signature="()" line-rate="1" branch-rate="0.8332999999999999" complexity="6">
+              <lines>
+                <line number="27" hits="7" branch="True" condition-coverage="50% (1/2)">
+                  <conditions>
+                    <condition number="32" type="jump" coverage="50%" />
+                  </conditions>
+                </line>
+                <line number="28" hits="7" branch="False" />
+                <line number="29" hits="7" branch="False" />
+                <line number="30" hits="7" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="74" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="31" hits="7" branch="False" />
+                <line number="32" hits="7" branch="False" />
+                <line number="34" hits="7" branch="False" />
+                <line number="35" hits="7" branch="True" condition-coverage="100% (2/2)">
+                  <conditions>
+                    <condition number="233" type="jump" coverage="100%" />
+                  </conditions>
+                </line>
+                <line number="37" hits="1" branch="False" />
+                <line number="38" hits="1" branch="False" />
+                <line number="41" hits="6" branch="False" />
+                <line number="42" hits="4" branch="False" />
+                <line number="43" hits="4" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="27" hits="7" branch="True" condition-coverage="50% (1/2)">
+              <conditions>
+                <condition number="32" type="jump" coverage="50%" />
+              </conditions>
+            </line>
+            <line number="28" hits="7" branch="False" />
+            <line number="29" hits="7" branch="False" />
+            <line number="30" hits="7" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="74" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="31" hits="7" branch="False" />
+            <line number="32" hits="7" branch="False" />
+            <line number="34" hits="7" branch="False" />
+            <line number="35" hits="7" branch="True" condition-coverage="100% (2/2)">
+              <conditions>
+                <condition number="233" type="jump" coverage="100%" />
+              </conditions>
+            </line>
+            <line number="37" hits="1" branch="False" />
+            <line number="38" hits="1" branch="False" />
+            <line number="41" hits="6" branch="False" />
+            <line number="42" hits="4" branch="False" />
+            <line number="43" hits="4" branch="False" />
+          </lines>
+        </class>
+        <class name="GodotGenerator.Infrastructure.Ai.Services.ProviderConnectionSettings" filename="Services\ProviderConnectionSettings.cs" line-rate="1" branch-rate="1" complexity="5">
+          <methods>
+            <method name="get_Provider" signature="()" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="13" hits="1" branch="False" />
+              </lines>
+            </method>
+            <method name="get_ModelId" signature="()" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="14" hits="2" branch="False" />
               </lines>
             </method>
             <method name="get_ApiKey" signature="()" line-rate="1" branch-rate="1" complexity="1">
               <lines>
-                <line number="26" hits="2" branch="False" />
+                <line number="15" hits="2" branch="False" />
+              </lines>
+            </method>
+            <method name="get_Endpoint" signature="()" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="16" hits="7" branch="False" />
+              </lines>
+            </method>
+            <method name=".ctor" signature="(System.String,System.String,System.String,System.Uri)" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="12" hits="4" branch="False" />
+              </lines>
+            </method>
+          </methods>
+          <lines>
+            <line number="13" hits="1" branch="False" />
+            <line number="14" hits="2" branch="False" />
+            <line number="15" hits="2" branch="False" />
+            <line number="16" hits="7" branch="False" />
+            <line number="12" hits="4" branch="False" />
+          </lines>
+        </class>
+        <class name="GodotGenerator.Infrastructure.Ai.Options.LlmOptions" filename="Options\LlmOptions.cs" line-rate="0.6666" branch-rate="1" complexity="3">
+          <methods>
+            <method name="get_ChatModelId" signature="()" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="21" hits="26" branch="False" />
+              </lines>
+            </method>
+            <method name="get_ApiKey" signature="()" line-rate="1" branch-rate="1" complexity="1">
+              <lines>
+                <line number="26" hits="4" branch="False" />
               </lines>
             </method>
             <method name="get_OrganizationId" signature="()" line-rate="0" branch-rate="1" complexity="1">
@@ -1345,8 +1789,8 @@
             </method>
           </methods>
           <lines>
-            <line number="21" hits="6" branch="False" />
-            <line number="26" hits="2" branch="False" />
+            <line number="21" hits="26" branch="False" />
+            <line number="26" hits="4" branch="False" />
             <line number="31" hits="0" branch="False" />
           </lines>
         </class>

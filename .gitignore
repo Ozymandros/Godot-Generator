@@ -17,7 +17,7 @@ bin/
 obj/
 out/
 coverage/
-TestResults
+TestResults/
 models/
 ```
 .fake

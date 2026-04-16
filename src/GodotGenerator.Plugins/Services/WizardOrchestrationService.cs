@@ -1,11 +1,9 @@
 #nullable enable
 
 using System.Text;
-using GodotGenerator.Application;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Configuration;
 using GodotGenerator.Application.Dtos;
-using GodotGenerator.Application.Services;
 using GodotGenerator.Infrastructure.Ai.Options;
 using GodotGenerator.Infrastructure.Ai.Services;
 using GodotGenerator.Plugins.Plugins;
@@ -23,9 +21,7 @@ namespace GodotGenerator.Plugins.Services;
 /// </summary>
 public sealed class WizardOrchestrationService(
     WizardMcpPlugin wizardPlugin,
-    IProviderSecretResolver providerSecretResolver,
-    IPreferenceRepository preferences,
-    IOptions<LlmOptions> llmOptions,
+    IProviderConnectionResolver providerConnectionResolver,
     IOptions<OrchestrationOptions> orchestrationOptions,
     ILoggerFactory loggerFactory,
     ILogger<WizardOrchestrationService> logger) : IWizardOrchestrationService
@@ -111,32 +107,19 @@ public sealed class WizardOrchestrationService(
     /// <returns>Configured kernel with wizard plugin tools registered.</returns>
     private async Task<Kernel> BuildKernelAsync(string? provider, string? preferredModelId, CancellationToken cancellationToken)
     {
-        var effectiveProvider = string.IsNullOrWhiteSpace(provider) ? "openai" : provider.Trim().ToLowerInvariant();
-        var modelId = string.IsNullOrWhiteSpace(preferredModelId) ? llmOptions.Value.ChatModelId : preferredModelId.Trim();
-
-        var apiKey = await providerSecretResolver.ResolveApiKeyAsync(effectiveProvider, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(apiKey) &&
-            string.Equals(effectiveProvider, "openai", StringComparison.OrdinalIgnoreCase))
-        {
-            apiKey = llmOptions.Value.ApiKey;
-        }
-
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            throw new InvalidOperationException(
-                $"API key for provider '{effectiveProvider}' is not configured. Set it in Settings -> Secrets.");
-        }
+        var connection = await providerConnectionResolver
+            .ResolveAsync(provider, preferredModelId, cancellationToken)
+            .ConfigureAwait(false);
 
         var builder = Kernel.CreateBuilder();
         builder.Services.AddSingleton(loggerFactory);
-        var endpoint = ResolveProviderEndpoint(effectiveProvider);
-        if (endpoint is null)
+        if (connection.Endpoint is null)
         {
-            builder.AddOpenAIChatCompletion(modelId, apiKey);
+            builder.AddOpenAIChatCompletion(connection.ModelId, connection.ApiKey);
         }
         else
         {
-            builder.AddOpenAIChatCompletion(modelId, endpoint, apiKey);
+            builder.AddOpenAIChatCompletion(connection.ModelId, connection.Endpoint, connection.ApiKey);
         }
 
         var kernel = builder.Build();
@@ -144,8 +127,8 @@ public sealed class WizardOrchestrationService(
 
         logger.LogInformation(
             "Wizard kernel built for provider={Provider}, model={ModelId}; {ToolCount} tools registered.",
-            effectiveProvider,
-            modelId,
+            connection.Provider,
+            connection.ModelId,
             kernel.Plugins.SelectMany(static plugin => plugin).Count());
 
         return kernel;
@@ -220,78 +203,4 @@ public sealed class WizardOrchestrationService(
         }
     }
 
-    /// <summary>
-    /// Resolves the provider endpoint from registry settings or built-in defaults.
-    /// </summary>
-    /// <param name="provider">Provider id.</param>
-    /// <returns>Provider endpoint URI when available; otherwise null.</returns>
-    private Uri? ResolveProviderEndpoint(string provider)
-    {
-        var json = preferences
-            .GetAsync(PreferenceKeys.ProvidersRegistryV1, CancellationToken.None)
-            .ConfigureAwait(false)
-            .GetAwaiter()
-            .GetResult();
-
-        var doc = ConfigurationRegistryService.ParseProviderRegistry(json);
-        var entry = doc.Providers.FirstOrDefault(x => string.Equals(x.Id, provider, StringComparison.OrdinalIgnoreCase));
-        if (entry is not null)
-        {
-            if (!entry.OpenAiCompatibility)
-            {
-                throw new InvalidOperationException($"Provider '{provider}' is not marked OpenAI-compatible.");
-            }
-
-            var configured = string.IsNullOrWhiteSpace(entry.Endpoint) ? GetDefaultEndpoint(provider) : entry.Endpoint.Trim();
-            return TryParseEndpoint(provider, configured);
-        }
-
-        return TryParseEndpoint(provider, GetDefaultEndpoint(provider));
-    }
-
-    /// <summary>
-    /// Validates and parses endpoint strings into absolute URIs.
-    /// </summary>
-    /// <param name="provider">Provider id used for diagnostics.</param>
-    /// <param name="endpoint">Endpoint string candidate.</param>
-    /// <returns>Absolute endpoint URI or null when endpoint is empty.</returns>
-    private static Uri? TryParseEndpoint(string provider, string? endpoint)
-    {
-        if (string.IsNullOrWhiteSpace(endpoint))
-        {
-            return null;
-        }
-
-        if (Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
-        {
-            return uri;
-        }
-
-        throw new InvalidOperationException(
-            $"Provider '{provider}' endpoint '{endpoint}' is not a valid absolute URI.");
-    }
-
-    /// <summary>
-    /// Returns built-in OpenAI-compatible endpoint defaults for known providers.
-    /// </summary>
-    /// <param name="provider">Provider id.</param>
-    /// <returns>Default endpoint URI as string when known; otherwise null.</returns>
-    private static string? GetDefaultEndpoint(string provider) =>
-        provider.ToLowerInvariant() switch
-        {
-            "anthropic" => "https://api.anthropic.com/v1",
-            "google" => "https://generativelanguage.googleapis.com",
-            "vertex_ai" => "https://aiplatform.googleapis.com",
-            "deepseek" => "https://api.deepseek.com/v1",
-            "openrouter" => "https://openrouter.ai/api/v1",
-            "huggingface" => "https://api-inference.huggingface.co",
-            "ollama" => "http://localhost:11434/v1",
-            "groq" => "https://api.groq.com/openai/v1",
-            "qwen" => "https://dashscope.aliyuncs.com/compatible-mode/v1",
-            "stability" => "https://api.stability.ai",
-            "flux" => "https://api.bfl.ai/v1",
-            "elevenlabs" => "https://api.elevenlabs.io",
-            "playht" => "https://api.play.ht/api/v2",
-            _ => null,
-        };
 }
