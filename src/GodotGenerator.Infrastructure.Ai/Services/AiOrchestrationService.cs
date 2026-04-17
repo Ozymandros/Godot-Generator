@@ -1,4 +1,5 @@
 #nullable enable
+using System.Text.Json;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Application.Orchestration;
@@ -54,6 +55,7 @@ public sealed class AiOrchestrationService(
                     request.Modality,
                     effectiveCancellationToken)
                 .ConfigureAwait(false);
+            kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger));
             var chat = kernel.GetRequiredService<IChatCompletionService>();
 
             var history = new ChatHistory();
@@ -222,5 +224,128 @@ public sealed class AiOrchestrationService(
         }
 
         return message.Length > 500 ? message[..500] + "..." : message;
+    }
+
+    private sealed class GodotToolDebugFilter(ILogger logger) : IFunctionInvocationFilter
+    {
+        public async Task OnFunctionInvocationAsync(
+            FunctionInvocationContext context,
+            Func<FunctionInvocationContext, Task> next)
+        {
+            var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
+
+            var isGodotTool =
+                string.Equals(context.Function.PluginName, "godot", StringComparison.OrdinalIgnoreCase) ||
+                context.Function.Name.StartsWith("godot_", StringComparison.OrdinalIgnoreCase) ||
+                invocationId.Contains("godot.godot_", StringComparison.OrdinalIgnoreCase);
+            if (isGodotTool)
+            {
+                CoerceBoolArgument(context, "enabled", invocationId, logger);
+                CoerceBoolArgument(context, "isCSharp", invocationId, logger);
+                CoerceBoolArgument(context, "is_c_sharp", invocationId, logger);
+                CoerceBoolArgument(context, "iscsharp", invocationId, logger);
+            }
+
+            await next(context).ConfigureAwait(false);
+        }
+
+        private static void CoerceBoolArgument(
+            FunctionInvocationContext context,
+            string key,
+            string invocationId,
+            ILogger logger)
+        {
+            if (!context.Arguments.TryGetValue(key, out var raw) || raw is null)
+            {
+                return;
+            }
+
+            if (!TryCoerceToBool(raw, out var coerced))
+            {
+                return;
+            }
+
+            var isAlreadyBool = raw is bool rawBool && rawBool == coerced;
+            if (!isAlreadyBool)
+            {
+                context.Arguments[key] = coerced;
+            }
+
+        }
+
+        private static bool TryCoerceToBool(object? value, out bool result)
+        {
+            result = false;
+            if (value is null)
+            {
+                return false;
+            }
+
+            if (value is bool b)
+            {
+                result = b;
+                return true;
+            }
+
+            if (value is string s)
+            {
+                var normalized = s.Trim().ToLowerInvariant();
+                if (normalized is "true" or "1" or "yes" or "y" or "on")
+                {
+                    result = true;
+                    return true;
+                }
+                if (normalized is "false" or "0" or "no" or "n" or "off")
+                {
+                    result = false;
+                    return true;
+                }
+
+                return bool.TryParse(normalized, out result);
+            }
+
+            switch (value)
+            {
+                case int i:
+                    result = i != 0;
+                    return true;
+                case long l:
+                    result = l != 0L;
+                    return true;
+                case float f:
+                    result = Math.Abs(f) > float.Epsilon;
+                    return true;
+                case double d:
+                    result = Math.Abs(d) > double.Epsilon;
+                    return true;
+                case decimal m:
+                    result = m != 0m;
+                    return true;
+                case JsonElement el:
+                    if (el.ValueKind == JsonValueKind.True)
+                    {
+                        result = true;
+                        return true;
+                    }
+                    if (el.ValueKind == JsonValueKind.False)
+                    {
+                        result = false;
+                        return true;
+                    }
+                    if (el.ValueKind == JsonValueKind.Number)
+                    {
+                        result = el.GetDouble() != 0d;
+                        return true;
+                    }
+                    if (el.ValueKind == JsonValueKind.String)
+                    {
+                        var inner = el.GetString();
+                        return inner is not null && TryCoerceToBool(inner, out result);
+                    }
+                    break;
+            }
+
+            return false;
+        }
     }
 }

@@ -17,11 +17,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.6" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.74.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.74.0" />
+
+    <!--
+      TODO: Add the following NuGet packages when they are available, then replace the
+      stub implementations in WizardExternalPluginFactory.cs with the real API calls.
+
+      <PackageReference Include="ElevenLabs.McpClient" Version="x.y.z" />
+        https://www.nuget.org/packages/ElevenLabs.McpClient
+
+      <PackageReference Include="ImageGenMcp.SemanticKernel.Plugin" Version="x.y.z" />
+        https://www.nuget.org/packages/ImageGenMcp.SemanticKernel.Plugin
+    -->
   </ItemGroup>
 
 </Project>

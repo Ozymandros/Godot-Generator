@@ -1967,17 +1967,6 @@ fluent-text-area.app-textarea-log::part(control) {
   margin-top: 0;
 }
 
-.generation-workspace__result-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--app-space-sm);
-}
-
-.generation-workspace__result-header .generation-workspace__result-title {
-  margin: var(--app-space-lg) 0 var(--app-space-sm) 0;
-}
-
 .generation-workspace__cta {
   width: 100%;
   margin: var(--app-space-lg) 0 var(--app-space-md) 0;

@@ -154,7 +154,7 @@
         [LogEntryLevel.Debug, LogEntryLevel.Information, LogEntryLevel.Warning, LogEntryLevel.Error];
 
     private static readonly LogEntryKind?[] _allKinds =
-        [null, LogEntryKind.Application, LogEntryKind.IpcRequest, LogEntryKind.IpcResponse];
+        [null, LogEntryKind.Application, LogEntryKind.IpcRequest, LogEntryKind.IpcResponse, LogEntryKind.Backend];
 
     private readonly HashSet<LogEntryLevel> _activeLevels = new(
         [LogEntryLevel.Information, LogEntryLevel.Warning, LogEntryLevel.Error]);
@@ -302,6 +302,7 @@
         LogEntryKind.Application    => "App",
         LogEntryKind.IpcRequest     => "IPC →",
         LogEntryKind.IpcResponse    => "IPC ←",
+        LogEntryKind.Backend        => "Backend",
         _                           => k.ToString()!,
     };
 
@@ -310,6 +311,7 @@
         LogEntryKind.Application  => "app",
         LogEntryKind.IpcRequest   => "ipc-req",
         LogEntryKind.IpcResponse  => "ipc-resp",
+        LogEntryKind.Backend      => "backend",
         _                         => "app",
     };
 
@@ -317,6 +319,7 @@
     {
         LogEntryKind.IpcRequest  => "→",
         LogEntryKind.IpcResponse => "←",
+        LogEntryKind.Backend     => "⬡",
         _                        => "·",
     };
 }

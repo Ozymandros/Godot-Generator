@@ -10,14 +10,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.13.2" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.14.0" />
     <ProjectReference Include="..\GodotGenerator.Blazor.Client\GodotGenerator.Blazor.Client.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Infrastructure.Ai\GodotGenerator.Infrastructure.Ai.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Api\GodotGenerator.Api.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Mcp.Api\GodotGenerator.Mcp.Api.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Plugins\GodotGenerator.Plugins.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Desktop.Contracts\GodotGenerator.Desktop.Contracts.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.6" />
   </ItemGroup>
 
 </Project>

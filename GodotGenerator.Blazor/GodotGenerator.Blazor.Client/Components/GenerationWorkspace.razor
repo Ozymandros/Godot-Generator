@@ -74,11 +74,6 @@
                 <FluentCard Class="settings-card-host generation-workspace__result">
                     <div class="generation-workspace__result-header">
                         <p class="generation-workspace__result-title">Preview</p>
-                        <FluentButton Appearance="Appearance.Stealth" Class="prompt-output-action-btn"
-                            Title="Prettify output" aria-label="Prettify output"
-                            Disabled="@string.IsNullOrWhiteSpace(_result)" OnClick="PrettifyResultAsync">
-                            <FluentIcon Value="@(new Icons.Regular.Size20.SparkleAction())" Width="16px" />
-                        </FluentButton>
                     </div>
                     <div class="settings-card__inner generation-workspace__result-inner">
                         <SmartField FieldType="@SmartFieldType.PromptOutput" Value="@_result"
@@ -151,62 +146,6 @@
     private Task OnResultPreviewChanged(string value)
     {
         _result = value;
-        return Task.CompletedTask;
-    }
-
-    private Task PrettifyResultAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_result))
-        {
-            return Task.CompletedTask;
-        }
-
-        var trimmed = _result.Trim();
-        if ((trimmed.StartsWith("{", StringComparison.Ordinal) && trimmed.EndsWith("}", StringComparison.Ordinal))
-        || (trimmed.StartsWith("[", StringComparison.Ordinal) && trimmed.EndsWith("]", StringComparison.Ordinal)))
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(trimmed);
-                _result = JsonSerializer.Serialize(doc.RootElement, new JsonSerializerOptions { WriteIndented = true });
-                StateHasChanged();
-                return Task.CompletedTask;
-            }
-            catch
-            {
-                // Fall back to plain text normalization below.
-            }
-        }
-
-        var normalized = _result.Replace("\r\n", "\n").Replace('\r', '\n');
-        var lines = normalized.Split('\n');
-        var sb = new System.Text.StringBuilder(normalized.Length);
-        var blankRun = 0;
-        foreach (var raw in lines)
-        {
-            var line = raw.TrimEnd();
-            if (line.Length == 0)
-            {
-                blankRun++;
-                if (blankRun > 2)
-                {
-                    continue;
-                }
-            }
-            else
-            {
-                blankRun = 0;
-            }
-
-            if (sb.Length > 0)
-            {
-                sb.AppendLine();
-            }
-            sb.Append(line);
-        }
-
-        _result = sb.ToString().Trim();
-        StateHasChanged();
         return Task.CompletedTask;
     }
 
@@ -338,6 +277,18 @@
 
         var defaultProvider = GetPreferenceString(prefs, providerKey);
         var defaultModel = GetPreferenceString(prefs, modelKey);
+        var payloadDefaultLlmProvider = GetPayloadString(envelopeData.GetValueOrDefault("defaultLlmProvider"));
+        var payloadDefaultLlmModel = GetPayloadString(envelopeData.GetValueOrDefault("defaultChatModelId"));
+        if (string.IsNullOrWhiteSpace(defaultProvider) &&
+            string.Equals(providerKey, PreferenceKeys.PreferredLlmProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            defaultProvider = payloadDefaultLlmProvider ?? string.Empty;
+        }
+        if (string.IsNullOrWhiteSpace(defaultModel) &&
+            string.Equals(modelKey, PreferenceKeys.PreferredLlmModel, StringComparison.OrdinalIgnoreCase))
+        {
+            defaultModel = payloadDefaultLlmModel ?? string.Empty;
+        }
 
         _providerOverride = string.Empty;
         _modelOverride = string.Empty;
@@ -373,12 +324,39 @@
             }
         }
 
+        if (string.IsNullOrWhiteSpace(_providerOverride) && _providerOptions.Count > 0)
+        {
+            _providerOverride = _providerOptions[0];
+            SyncModelOptionsForCurrentProvider();
+        }
+
+        if (string.IsNullOrWhiteSpace(_modelOverride) && _modelOptions.Count > 0)
+        {
+            _modelOverride = _modelOptions[0];
+        }
+
         _advanced.PreferredScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(
         GetPreferenceString(prefs, PreferenceKeys.PreferredLanguage));
     }
 
     private static string GetPreferenceString(IReadOnlyDictionary<string, string?> prefs, string key) =>
     prefs.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : string.Empty;
+
+    private static string? GetPayloadString(object? raw)
+    {
+        if (raw is null)
+        {
+            return null;
+        }
+
+        return raw switch
+        {
+            JsonElement { ValueKind: JsonValueKind.String } el => string.IsNullOrWhiteSpace(el.GetString()) ? null : el.GetString()!.Trim(),
+            JsonElement el => string.IsNullOrWhiteSpace(el.ToString()) ? null : el.ToString().Trim(),
+            string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
+            _ => string.IsNullOrWhiteSpace(raw.ToString()) ? null : raw.ToString()!.Trim(),
+        };
+    }
 
     private static string? FindRegisteredCase(IReadOnlyList<string> registered, string candidate)
     {

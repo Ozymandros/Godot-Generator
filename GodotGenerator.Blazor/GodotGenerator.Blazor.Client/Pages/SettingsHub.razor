@@ -303,16 +303,28 @@
     private void ApplyConfigPayload(Dictionary<string, object?> data)
     {
         var prefs = ParsePreferences(data.GetValueOrDefault("preferences"));
+        var payloadDefaultLlmProvider = GetPayloadString(data.GetValueOrDefault("defaultLlmProvider"));
+        var payloadDefaultLlmModel = GetPayloadString(data.GetValueOrDefault("defaultChatModelId"));
         _backendUrl = GetDictString(prefs, PreferenceKeys.AppBackendUrl);
         _outputBasePath = GetDictString(prefs, PreferenceKeys.AppOutputBasePath);
         _whisperBinPath = GetDictString(prefs, PreferenceKeys.AppWhisperBinPath);
         _notes = GetDictString(prefs, PreferenceKeys.AppWorkspaceNotes);
-        _defaultScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(GetDictString(prefs, PreferenceKeys.PreferredLanguage));
-        _llmProvider = GetDictString(prefs, PreferenceKeys.PreferredLlmProvider);
+        var preferredLanguage = GetDictString(prefs, PreferenceKeys.PreferredLanguage);
+        _defaultScriptLanguage = string.IsNullOrWhiteSpace(preferredLanguage)
+            ? _defaultScriptLanguageOptions[0]
+            : PreferredScriptLanguagePref.ToUiLabel(preferredLanguage);
+
+        var preferredLlmProvider = GetDictString(prefs, PreferenceKeys.PreferredLlmProvider);
+        _llmProvider = string.IsNullOrWhiteSpace(preferredLlmProvider)
+            ? (payloadDefaultLlmProvider ?? string.Empty)
+            : preferredLlmProvider;
         _imageProvider = GetDictString(prefs, PreferenceKeys.PreferredImageProvider);
         _audioProvider = GetDictString(prefs, PreferenceKeys.PreferredAudioProvider);
         _videoProvider = GetDictString(prefs, PreferenceKeys.PreferredVideoProvider);
-        _llmModel = GetDictString(prefs, PreferenceKeys.PreferredLlmModel);
+        var preferredLlmModel = GetDictString(prefs, PreferenceKeys.PreferredLlmModel);
+        _llmModel = string.IsNullOrWhiteSpace(preferredLlmModel)
+            ? (payloadDefaultLlmModel ?? string.Empty)
+            : preferredLlmModel;
         _imageModel = GetDictString(prefs, PreferenceKeys.PreferredImageModel);
         _audioModel = GetDictString(prefs, PreferenceKeys.PreferredAudioModel);
         _videoModel = GetDictString(prefs, PreferenceKeys.PreferredVideoModel);
@@ -325,7 +337,24 @@
         SyncImageModels();
         SyncAudioModels();
         SyncVideoModels();
+        EnsureDefaultSelections();
         _configEpoch++;
+    }
+
+    private static string? GetPayloadString(object? raw)
+    {
+        if (raw is null)
+        {
+            return null;
+        }
+
+        return raw switch
+        {
+            JsonElement { ValueKind: JsonValueKind.String } el => string.IsNullOrWhiteSpace(el.GetString()) ? null : el.GetString()!.Trim(),
+            JsonElement el => string.IsNullOrWhiteSpace(el.ToString()) ? null : el.ToString().Trim(),
+            string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
+            _ => string.IsNullOrWhiteSpace(raw.ToString()) ? null : raw.ToString()!.Trim(),
+        };
     }
 
     private static readonly JsonSerializerOptions ProviderJsonOptions = new()
@@ -546,6 +575,78 @@
     private void SyncAudioModels() => RefillModelOptions(_audioProvider, _audioModelOptions, ref _audioModel);
 
     private void SyncVideoModels() => RefillModelOptions(_videoProvider, _videoModelOptions, ref _videoModel);
+
+    private void EnsureDefaultSelections()
+    {
+        EnsureProviderSelection(ref _llmProvider);
+        EnsureProviderSelection(ref _imageProvider);
+        EnsureProviderSelection(ref _audioProvider);
+        EnsureProviderSelection(ref _videoProvider);
+
+        SyncLlmModels();
+        SyncImageModels();
+        SyncAudioModels();
+        SyncVideoModels();
+
+        EnsureModelSelection(_llmModelOptions, ref _llmModel);
+        EnsureModelSelection(_imageModelOptions, ref _imageModel);
+        EnsureModelSelection(_audioModelOptions, ref _audioModel);
+        EnsureModelSelection(_videoModelOptions, ref _videoModel);
+    }
+
+    private void EnsureProviderSelection(ref string selected)
+    {
+        if (_providerOptions.Count == 0)
+        {
+            selected = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            selected = _providerOptions[0];
+            return;
+        }
+
+        var match = string.Empty;
+        foreach (var provider in _providerOptions)
+        {
+            if (string.Equals(provider, selected, StringComparison.OrdinalIgnoreCase))
+            {
+                match = provider;
+                break;
+            }
+        }
+
+        selected = string.IsNullOrEmpty(match) ? _providerOptions[0] : match;
+    }
+
+    private static void EnsureModelSelection(IReadOnlyList<string> options, ref string selected)
+    {
+        if (options.Count == 0)
+        {
+            selected = string.Empty;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            selected = options[0];
+            return;
+        }
+
+        var match = string.Empty;
+        foreach (var model in options)
+        {
+            if (string.Equals(model, selected, StringComparison.OrdinalIgnoreCase))
+            {
+                match = model;
+                break;
+            }
+        }
+
+        selected = string.IsNullOrEmpty(match) ? options[0] : match;
+    }
 
     private Task OnLlmProviderChanged(string value)
     {

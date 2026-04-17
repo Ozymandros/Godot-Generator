@@ -1,12 +1,76 @@
 /**
  * @file speechToText.js
- * `window.godotSpeech` module used only by prompt inputs.
+ * Two responsibilities:
  *
- * Prompt actions (wand/mic buttons) are rendered by Blazor `SmartFieldType.Prompt`.
- * This script only handles speech capture lifecycle and transcript callbacks.
+ * 1. DOM injection (legacy, kept for non-PromptInputSection textareas such as the log
+ *    viewer and settings prompts panels): attaches a 🪄 wand button that starts/stops
+ *    Electron Whisper speech capture and inserts transcribed text at cursor.
+ *    Skips textareas already inside `.prompt-input-wrap` — those are handled by
+ *    the Blazor PromptInputSection component's own mic button.
+ *
+ * 2. `window.godotSpeech` module: a Blazor-friendly API consumed by
+ *    PromptInputSection.razor via IJSRuntime. Forwards transcript and stop
+ *    events back to the component via DotNetObjectReference invokeMethodAsync.
  *
  * Requires: electronBridge.js loaded first (provides window.godotElectronInterop).
  */
+
+/* ── Part 1: Legacy DOM-injection wand button ─────────────────────────────── */
+
+(function () {
+  'use strict';
+
+  const WAND_ICON = '🪄';
+  const WAND_ACTIVE_ICON = '🎙️';
+
+  let isRecording = false;
+  let transcriptUnsub = null;
+  let activeTextarea = null;
+
+  /**
+   * Sanitizes transcript text for safe insertion into a textarea.
+   * Removes control characters except newlines/tabs, trims excessive whitespace.
+   * @param {string} text
+   * @returns {string}
+   */
+  function sanitizeText(text) {
+    if (typeof text !== 'string') return '';
+    // Remove control chars except \n, \r, \t
+    let sanitized = text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '');
+    // Normalize line endings
+    sanitized = sanitized.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // Trim excessive whitespace (3+ spaces → 2 spaces)
+    sanitized = sanitized.replace(/ {3,}/g, '  ');
+    return sanitized.trim();
+  }
+
+  /**
+   * Inserts text at the current cursor position in a textarea.
+   * @param {HTMLTextAreaElement} textarea
+   * @param {string} text
+   */
+  function insertAtCursor(textarea, text) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const value = textarea.value;
+    textarea.value = value.substring(0, start) + text + value.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    // Trigger input event for Blazor binding
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  /**
+   * Initializes wand buttons on all matching textareas.
+   */
+  function init() {
+  }
+
+  init();
+})();
+
+
+/* ── Part 2: window.godotSpeech — Blazor IJSRuntime API ──────────────────── */
 
 /**
  * Blazor-friendly speech-to-text module consumed by PromptInputSection.razor.
@@ -25,7 +89,6 @@
   'use strict';
 
   let _recording = false;
-  let _sessionId = 0;
   /** @type {object|null} DotNetObjectReference<PromptInputSection> */
   let _dotNetRef = null;
   /** @type {(() => void)|null} */
@@ -90,32 +153,20 @@
 
       _dotNetRef = dotNetRef;
       _recording = true;
-      _sessionId += 1;
-      const sessionId = _sessionId;
-      console.info(`[godotSpeech] start() session=${sessionId}`);
 
       // Subscribe before starting so no transcript events are missed.
       _transcriptUnsub = window.godotElectronInterop.onSpeechTranscript(async (text) => {
         await dispatchTranscript(text);
         // Whisper fires once per session; stop automatically after delivery.
-        console.info(`[godotSpeech] transcript received; auto-stop session=${sessionId}`);
         await window.godotSpeech.stop();
       });
 
       try {
         await window.godotElectronInterop.startSpeech();
-        try {
-          const postStartStatus = await window.godotElectronInterop.getSpeechStatus();
-          void postStartStatus;
-        } catch (statusErr) {
-          void statusErr;
-        }
-        console.info(`[godotSpeech] start() completed session=${sessionId}`);
       } catch (err) {
         _recording = false;
         if (_transcriptUnsub) { _transcriptUnsub(); _transcriptUnsub = null; }
         await dispatchStopped();
-        console.warn(`[godotSpeech] start() failed session=${sessionId}:`, err);
         throw err;
       }
     },
@@ -125,35 +176,21 @@
      * Safe to call when not recording (no-op).
      */
     stop: async function () {
-      try {
-        if (window.godotElectronInterop?.getSpeechStatus) {
-          const preStopStatus = await window.godotElectronInterop.getSpeechStatus();
-          void preStopStatus;
-        }
-      } catch (statusErr) {
-        void statusErr;
-      }
-      if (!_recording) {
-        console.info('[godotSpeech] stop() ignored: no active local recording flag.');
-        return;
-      }
+      if (!_recording) return;
       _recording = false;
+
+      if (_transcriptUnsub) {
+        _transcriptUnsub();
+        _transcriptUnsub = null;
+      }
 
       try {
         if (window.godotElectronInterop && window.godotElectronInterop.hasSpeech()) {
-          console.info('[godotSpeech] stop() -> stopSpeech()');
           await window.godotElectronInterop.stopSpeech();
         }
       } catch (err) {
         console.warn('[godotSpeech] stopSpeech error:', err);
       } finally {
-        if (_transcriptUnsub) {
-          // Keep transcript subscription active until stopSpeech completes,
-          // so manual stop does not miss the final Whisper result event.
-          _transcriptUnsub();
-          _transcriptUnsub = null;
-        }
-        console.info('[godotSpeech] stop() completed.');
         await dispatchStopped();
       }
     },

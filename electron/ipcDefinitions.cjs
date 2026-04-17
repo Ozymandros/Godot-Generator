@@ -36,6 +36,11 @@ const EVENT_CHANNELS = Object.freeze([
   'backendCrashed',
   /** Backend exceeded max restart attempts; no further supervision. */
   'backendFailed',
+  /**
+   * A single line of backend stdout/stderr output.
+   * Payload: `{ stream: 'stdout'|'stderr', message: string, timestamp: string }`.
+   */
+  'backendLog',
 ]);
 
 module.exports = { API_CHANNELS, EVENT_CHANNELS };

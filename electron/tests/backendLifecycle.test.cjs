@@ -39,7 +39,7 @@ test.beforeEach(() => {
 
 test('resolveBackendCommand returns bundled executable when present', () => {
   const oldResourcesPath = process.resourcesPath;
-  process.resourcesPath = 'C:\\fake-resources';
+  process.resourcesPath = '/fake-resources';
 
   lifecycleModule.__setTestDeps({
     fsModule: { existsSync: () => true },
@@ -101,6 +101,50 @@ test('BackendLifecycle.start reuses already running backend and skips spawn', as
 
   assert.equal(instance.isReady(), true);
   assert.equal(spawnCalls, 0);
+});
+
+test('BackendLifecycle._emitLogLines emits one log event per non-empty line', () => {
+  const instance = new lifecycleModule.BackendLifecycle();
+
+  const events = [];
+  instance.on('log', (payload) => events.push(payload));
+
+  instance._emitLogLines('stdout', 'line one\nline two\n\nline three');
+
+  assert.equal(events.length, 3, 'Should emit 3 events (blank line skipped)');
+  assert.equal(events[0].stream, 'stdout');
+  assert.equal(events[0].message, 'line one');
+  assert.equal(events[1].message, 'line two');
+  assert.equal(events[2].message, 'line three');
+  assert.ok(typeof events[0].timestamp === 'string', 'timestamp must be a string');
+});
+
+test('BackendLifecycle._emitLogLines handles Windows CRLF line endings', () => {
+  const instance = new lifecycleModule.BackendLifecycle();
+
+  const events = [];
+  instance.on('log', (payload) => events.push(payload));
+
+  instance._emitLogLines('stderr', 'err one\r\nerr two\r\n');
+
+  assert.equal(events.length, 2);
+  assert.equal(events[0].stream, 'stderr');
+  assert.equal(events[0].message, 'err one');
+  assert.equal(events[1].message, 'err two');
+});
+
+test('BackendLifecycle._emitLogLines truncates lines exceeding 2000 characters', () => {
+  const instance = new lifecycleModule.BackendLifecycle();
+
+  const events = [];
+  instance.on('log', (payload) => events.push(payload));
+
+  const longLine = 'x'.repeat(2_500);
+  instance._emitLogLines('stdout', longLine);
+
+  assert.equal(events.length, 1);
+  assert.ok(events[0].message.endsWith('…[truncated]'));
+  assert.ok(events[0].message.length <= 2_015, 'truncated message must not far exceed 2000 chars');
 });
 
 test('BackendLifecycle emits failed when restart threshold exceeded', async () => {

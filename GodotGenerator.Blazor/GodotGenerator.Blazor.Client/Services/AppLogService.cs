@@ -111,6 +111,31 @@ public sealed class AppLogService
     public void Error(string category, string message, string? detail = null) =>
         Log(LogEntryLevel.Error, category, message, detail);
 
+    // ── Write — backend process ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Appends a line captured from the backend process stdout or stderr.
+    /// </summary>
+    /// <param name="stream">
+    /// <c>"stdout"</c> maps to <see cref="LogEntryLevel.Information"/>;
+    /// any other value (e.g. <c>"stderr"</c>) maps to <see cref="LogEntryLevel.Error"/>.
+    /// </param>
+    /// <param name="message">Pre-split, non-empty log line.</param>
+    public void LogBackend(string stream, string message)
+    {
+        var level = string.Equals(stream, "stdout", StringComparison.OrdinalIgnoreCase)
+            ? LogEntryLevel.Information
+            : LogEntryLevel.Error;
+
+        Append(new LogEntry(
+            Sequence: NextSequence(),
+            Timestamp: DateTimeOffset.Now,
+            Level: level,
+            Kind: LogEntryKind.Backend,
+            Category: "Backend",
+            Message: message));
+    }
+
     // ── Write — IPC ────────────────────────────────────────────────────────────
 
     /// <summary>

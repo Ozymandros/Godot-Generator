@@ -28,9 +28,31 @@ public sealed class JsonPreferenceRepository : IPreferenceRepository, IDisposabl
     {
         ArgumentNullException.ThrowIfNull(options);
         _logger = logger;
-        var root = options.Value.RootPath;
-        Directory.CreateDirectory(root);
-        _filePath = Path.Combine(root, "preferences.json");
+        var configuredRoot = options.Value.RootPath;
+        var configuredFilePath = Path.Combine(configuredRoot, "preferences.json");
+        var legacyFilePath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GodotGenerator",
+            "data",
+            "preferences.json");
+
+        if (!File.Exists(configuredFilePath) && File.Exists(legacyFilePath))
+        {
+            _filePath = legacyFilePath;
+            var legacyRoot = Path.GetDirectoryName(legacyFilePath);
+            if (!string.IsNullOrWhiteSpace(legacyRoot))
+            {
+                Directory.CreateDirectory(legacyRoot);
+            }
+
+            _logger.LogInformation(
+                "Using legacy preferences store at {LegacyPath} because configured store is empty.",
+                legacyFilePath);
+            return;
+        }
+
+        Directory.CreateDirectory(configuredRoot);
+        _filePath = configuredFilePath;
     }
 
     /// <inheritdoc />

@@ -15,8 +15,8 @@
 
 const net = require('net');
 
-const PIPE_NAME     = '\\\\.\\pipe\\godot-generator-ipc';
-const CALL_TIMEOUT  = 30_000; // ms per individual command call
+const PIPE_NAME      = '\\\\.\\pipe\\godot-generator-ipc';
+const DEFAULT_TIMEOUT = 30_000; // ms per individual command call
 
 let _callCounter = 0;
 const deps = {
@@ -83,7 +83,9 @@ function readResponse(socket) {
     });
 
     socket.on('error', reject);
-    socket.on('end', () => reject(new Error('Pipe closed before full response was received.')));
+    socket.on('end', () => {
+      reject(new Error('Pipe closed before full response was received.'));
+    });
   });
 }
 
@@ -94,10 +96,15 @@ function readResponse(socket) {
  *
  * @param {string} command    Versioned command name, e.g. `Config.GetAll/v1`.
  * @param {object|null} payload  Command-specific payload (will be JSON-stringified).
+ * @param {{ timeoutMs?: number }|null} options Optional invocation options.
  * @returns {Promise<{success: boolean, payloadJson: string|null, errorCode: string|null, errorMessage: string|null}>}
  */
-async function invoke(command, payload = null) {
+async function invoke(command, payload = null, options = null) {
   const correlationId = newCorrelationId();
+  const timeoutMs = Number.isFinite(options?.timeoutMs) && options.timeoutMs > 0
+    ? options.timeoutMs
+    : DEFAULT_TIMEOUT;
+  const startedAt = deps.nowFn();
 
   const envelope = {
     correlationId,
@@ -127,8 +134,11 @@ async function invoke(command, payload = null) {
     });
 
     const timer  = deps.setTimeoutFn(
-      () => { socket.destroy(); reject(new Error(`IPC call '${command}' timed out after ${CALL_TIMEOUT}ms.`)); },
-      CALL_TIMEOUT,
+      () => {
+        socket.destroy();
+        reject(new Error(`IPC call '${command}' timed out after ${timeoutMs}ms.`));
+      },
+      timeoutMs,
     );
 
     socket.on('error', (err) => {

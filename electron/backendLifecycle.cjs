@@ -173,10 +173,16 @@ class BackendLifecycle extends EventEmitter {
       windowsHide: true,
     });
 
-    this._process.stdout?.on('data', (d) =>
-      console.log('[backend]', d.toString().trimEnd()));
-    this._process.stderr?.on('data', (d) =>
-      console.error('[backend:err]', d.toString().trimEnd()));
+    this._process.stdout?.on('data', (d) => {
+      const text = d.toString().trimEnd();
+      console.log('[backend]', text);
+      this._emitLogLines('stdout', text);
+    });
+    this._process.stderr?.on('data', (d) => {
+      const text = d.toString().trimEnd();
+      console.error('[backend:err]', text);
+      this._emitLogLines('stderr', text);
+    });
 
     this._process.on('exit', (code, signal) => {
       if (this._stopping) return;
@@ -185,6 +191,34 @@ class BackendLifecycle extends EventEmitter {
       this.emit('crashed', { code, signal });
       this._scheduledRestart();
     });
+  }
+
+  /**
+   * Splits a raw stdout/stderr chunk into individual non-empty lines and emits
+   * a `log` event for each.  Handles both Unix (`\n`) and Windows (`\r\n`) line
+   * endings; skips blank lines; caps each line at 2 000 characters to bound
+   * per-entry payload while still capturing long diagnostics across consecutive
+   * events.
+   *
+   * Consumers (e.g. Electron main) can forward these events to the renderer so
+   * backend logs are visible in the in-app log stream without opening a terminal.
+   *
+   * @param {'stdout'|'stderr'} stream
+   * @param {string} chunk  Raw data chunk, potentially multi-line.
+   */
+  _emitLogLines(stream, chunk) {
+    const MAX_LINE_LENGTH = 2_000;
+    const timestamp = new Date().toISOString();
+    chunk
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .forEach((line) => {
+        const message = line.length > MAX_LINE_LENGTH
+          ? line.slice(0, MAX_LINE_LENGTH) + ' …[truncated]'
+          : line;
+        this.emit('log', { stream, message, timestamp });
+      });
   }
 
   _scheduledRestart() {

@@ -278,7 +278,6 @@ public sealed class GodotGeneratorApiService(
     {
         var snapshot = await getAllConfig.ExecuteAsync(cancellationToken).ConfigureAwait(false);
         var toolNames = await godotToolCatalog.ListRegisteredToolNamesAsync(cancellationToken).ConfigureAwait(false);
-
         var providers = snapshot.ProviderRegistry.Select(MapProviderEntry).Cast<object>().ToList();
         var models = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (providerId, entries) in snapshot.ModelsByProvider)

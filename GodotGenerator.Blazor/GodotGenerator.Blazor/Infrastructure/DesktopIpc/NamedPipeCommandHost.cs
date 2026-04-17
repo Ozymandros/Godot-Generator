@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.IO.Pipes;
+using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
 using GodotGenerator.Desktop.Contracts.Serialization;
 using Microsoft.Extensions.Hosting;
@@ -31,8 +32,17 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     /// <summary>Number of simultaneous accept loops; equals the max server instances.</summary>
     private const int MaxConcurrentConnections = 4;
 
-    /// <summary>Per-connection timeout; prevents hung pipe connections blocking the host.</summary>
-    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(30);
+    /// <summary>Default timeout for command execution when no command-specific timeout applies.</summary>
+    private static readonly TimeSpan DefaultExecutionTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>Timeout for non-wizard generate commands.</summary>
+    private static readonly TimeSpan GenerateExecutionTimeout = TimeSpan.FromSeconds(30);
+
+    /// <summary>Longer timeout budget for wizard turns, which often chain multiple tool invocations.</summary>
+    private static readonly TimeSpan WizardExecutionTimeout = TimeSpan.FromSeconds(240);
+
+    /// <summary>Short grace timeout for writing responses after execution has completed/cancelled.</summary>
+    private static readonly TimeSpan ResponseWriteGraceTimeout = TimeSpan.FromSeconds(5);
 
     private readonly CommandDispatcher _dispatcher;
     private readonly ILogger<NamedPipeCommandHost> _logger;
@@ -110,25 +120,31 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     private async Task HandleConnectionAsync(NamedPipeServerStream server, CancellationToken hostCt)
     {
         await using var _ = server.ConfigureAwait(false);
-
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(hostCt);
-        cts.CancelAfter(ConnectionTimeout);
-        var ct = cts.Token;
+        CommandEnvelope? envelope = null;
 
         try
         {
-            var envelope = await ReadEnvelopeAsync(server, ct).ConfigureAwait(false);
+            envelope = await ReadEnvelopeAsync(server, hostCt).ConfigureAwait(false);
             if (envelope is null)
             {
                 return;
             }
+            var executionTimeout = GetExecutionTimeout(envelope.Command);
 
-            var response = await _dispatcher.DispatchAsync(envelope, ct).ConfigureAwait(false);
-            await WriteResponseAsync(server, response, ct).ConfigureAwait(false);
+            ResponseEnvelope response;
+            using (var executionCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt))
+            {
+                executionCts.CancelAfter(executionTimeout);
+                response = await _dispatcher.DispatchAsync(envelope, executionCts.Token).ConfigureAwait(false);
+            }
+
+            using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt);
+            writeCts.CancelAfter(ResponseWriteGraceTimeout);
+            await WriteResponseAsync(server, response, writeCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            _logger.LogWarning("Pipe connection timed out or was cancelled.");
+            _logger.LogWarning("Pipe connection was cancelled before a response could be fully sent.");
         }
         catch (Exception ex)
         {
@@ -190,5 +206,33 @@ internal sealed class NamedPipeCommandHost : BackgroundService
             total += read;
         }
         return total;
+    }
+
+    /// <summary>
+    /// Gets command-specific execution timeout values, giving wizard generation a longer budget.
+    /// </summary>
+    private static TimeSpan GetExecutionTimeout(string command)
+    {
+        return command switch
+        {
+            GenerateCommandNames.Wizard => WizardExecutionTimeout,
+            GenerateCommandNames.Text
+                or GenerateCommandNames.Code
+                or GenerateCommandNames.Image
+                or GenerateCommandNames.Audio
+                or GenerateCommandNames.Video
+                or GenerateCommandNames.Sprites
+                or GenerateCommandNames.GodotUi
+                or GenerateCommandNames.GodotPhysics
+                or GenerateCommandNames.GodotProject
+                or GenerateCommandNames.Scenes
+                or GenerateCommandNames.Animations
+                or GenerateCommandNames.GodotLighting
+                or GenerateCommandNames.GodotCamera
+                or GenerateCommandNames.GodotShaders
+                or GenerateCommandNames.GodotSignals
+                or GenerateCommandNames.GodotNodes => GenerateExecutionTimeout,
+            _ => DefaultExecutionTimeout,
+        };
     }
 }

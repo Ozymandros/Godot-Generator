@@ -190,6 +190,59 @@ public sealed class AppLogServiceTests
         Assert.Single(snap);
     }
 
+    // ── Backend log streaming ────────────────────────────────────────────────
+
+    [Fact]
+    public void LogBackend_stdout_creates_Information_entry_with_Backend_kind()
+    {
+        var sut = new AppLogService();
+        sut.LogBackend("stdout", "Backend started on port 5044");
+
+        var snap = sut.GetSnapshot(kind: LogEntryKind.Backend);
+        var entry = Assert.Single(snap);
+        Assert.Equal(LogEntryKind.Backend, entry.Kind);
+        Assert.Equal(LogEntryLevel.Information, entry.Level);
+        Assert.Equal("Backend", entry.Category);
+        Assert.Equal("Backend started on port 5044", entry.Message);
+    }
+
+    [Fact]
+    public void LogBackend_stderr_creates_Error_entry_with_Backend_kind()
+    {
+        var sut = new AppLogService();
+        sut.LogBackend("stderr", "Unhandled exception: NullReferenceException");
+
+        var snap = sut.GetSnapshot(kind: LogEntryKind.Backend);
+        var entry = Assert.Single(snap);
+        Assert.Equal(LogEntryKind.Backend, entry.Kind);
+        Assert.Equal(LogEntryLevel.Error, entry.Level);
+    }
+
+    [Fact]
+    public void LogBackend_unknown_stream_defaults_to_Error_level()
+    {
+        var sut = new AppLogService();
+        sut.LogBackend("pipe", "some message");
+
+        var snap = sut.GetSnapshot(kind: LogEntryKind.Backend);
+        var entry = Assert.Single(snap);
+        Assert.Equal(LogEntryLevel.Error, entry.Level);
+    }
+
+    [Fact]
+    public void LogBackend_is_filterable_independently_of_application_and_ipc_entries()
+    {
+        var sut = new AppLogService();
+        sut.Info("UI", "app event");
+        sut.LogIpcRequest("Config.GetAll/v1", "c1");
+        sut.LogBackend("stdout", "backend line one");
+        sut.LogBackend("stderr", "backend error");
+
+        var backendOnly = sut.GetSnapshot(kind: LogEntryKind.Backend);
+        Assert.Equal(2, backendOnly.Count);
+        Assert.All(backendOnly, e => Assert.Equal(LogEntryKind.Backend, e.Kind));
+    }
+
     // ── Clear ───────────────────────────────────────────────────────────────
 
     [Fact]

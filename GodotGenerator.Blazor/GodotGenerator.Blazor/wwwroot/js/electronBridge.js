@@ -138,6 +138,17 @@ window.godotElectronInterop = {
     return window.godotElectronEvents.backendFailed(callback);
   },
 
+  /**
+   * Subscribes to individual backend log lines streamed from stdout/stderr.
+   * Returns an unsubscribe function; call it when the subscriber is disposed.
+   * @param {(payload: {stream: 'stdout'|'stderr', message: string, timestamp: string}) => void} callback
+   * @returns {() => void} unsubscribe
+   */
+  onBackendLog: function (callback) {
+    if (!_hasEvents()) return _noopUnsub;
+    return window.godotElectronEvents.backendLog(callback);
+  },
+
   // ── DotNet-bridge subscriptions (used by ElectronBridgeService) ───────────
   //
   // These functions accept a DotNetObjectReference and subscribe to Electron
@@ -192,8 +203,33 @@ window.godotElectronInterop = {
   },
 
   /**
+   * Subscribes to backend log lines and routes each to the given DotNet
+   * reference's [JSInvokable] method:
+   *   OnBackendLog(string stream, string message, string timestamp)
+   *
+   * Each payload carries a single pre-split, non-empty log line.
+   * Unsubscribe is stored internally; call `disposeSubscriptions()` to clean up.
+   *
+   * @param {DotNetObjectReference} dotNetRef
+   */
+  subscribeBackendLog: function (dotNetRef) {
+    if (!_hasEvents()) return;
+
+    _allUnsubs.push(
+      window.godotElectronEvents.backendLog((payload) => {
+        dotNetRef.invokeMethodAsync(
+          'OnBackendLog',
+          payload?.stream    ?? 'stdout',
+          payload?.message   ?? '',
+          payload?.timestamp ?? new Date().toISOString(),
+        ).catch(console.error);
+      }),
+    );
+  },
+
+  /**
    * Removes all event listeners registered via subscribeLifecycleEvents /
-   * subscribeFolderSelected. Called from ElectronBridgeService.DisposeAsync.
+   * subscribeFolderSelected / subscribeBackendLog. Called from ElectronBridgeService.DisposeAsync.
    */
   disposeSubscriptions: function () {
     _allUnsubs.forEach((unsub) => unsub());

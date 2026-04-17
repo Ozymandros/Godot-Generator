@@ -24,12 +24,28 @@ public sealed class ProviderConnectionResolver(
         string? preferredModelId,
         CancellationToken cancellationToken = default)
     {
-        var effectiveProvider = string.IsNullOrWhiteSpace(provider)
-            ? "openai"
-            : provider.Trim().ToLowerInvariant();
-        var effectiveModelId = string.IsNullOrWhiteSpace(preferredModelId)
-            ? llmOptions.Value.ChatModelId
-            : preferredModelId.Trim();
+        var preferredProvider = await preferences
+            .GetAsync(PreferenceKeys.PreferredLlmProvider, cancellationToken)
+            .ConfigureAwait(false);
+        var preferredModel = await preferences
+            .GetAsync(PreferenceKeys.PreferredLlmModel, cancellationToken)
+            .ConfigureAwait(false);
+
+        var effectiveProvider = !string.IsNullOrWhiteSpace(provider)
+            ? provider.Trim().ToLowerInvariant()
+            : !string.IsNullOrWhiteSpace(preferredProvider)
+                ? preferredProvider.Trim().ToLowerInvariant()
+                : string.Empty;
+        if (string.IsNullOrWhiteSpace(effectiveProvider))
+        {
+            throw new InvalidOperationException(
+                "No default LLM provider is configured. Set one in Settings > Configuration.");
+        }
+        var effectiveModelId = !string.IsNullOrWhiteSpace(preferredModelId)
+            ? preferredModelId.Trim()
+            : !string.IsNullOrWhiteSpace(preferredModel)
+                ? preferredModel.Trim()
+                : llmOptions.Value.ChatModelId;
 
         var apiKey = await ResolveApiKeyAsync(effectiveProvider, cancellationToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(apiKey))

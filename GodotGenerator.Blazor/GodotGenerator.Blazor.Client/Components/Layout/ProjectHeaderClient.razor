@@ -12,7 +12,7 @@
             <FluentLabel Typo="Typography.Body" Class="app-opacity-90">Online</FluentLabel>
         </FluentStack>
         <SmartField Label="Project name" Placeholder="MyGame" Value="@_name" ValueChanged="OnNameChanged" />
-        <SmartField Label="Project path" Placeholder="C:\\Games\\MyGame" Value="@_path" ValueChanged="OnPathChanged" />
+        <SmartField Label="Project path" Placeholder="/Games/MyGame" Value="@_path" ValueChanged="OnPathChanged" />
         <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" Class="app-stack-wrap">
             <FluentButton Appearance="Appearance.Neutral" OnClick="BrowseFolderAsync" Disabled="_pickingFolder">Browse…</FluentButton>
             <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync">Save</FluentButton>
@@ -22,7 +22,7 @@
     {
     <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12" Class="app-stack-wrap">
         <SmartField Label="Project name" Placeholder="MyGame" Value="@_name" ValueChanged="OnNameChanged" />
-        <SmartField Label="Project path" Placeholder="C:\\Games\\MyGame" Value="@_path" ValueChanged="OnPathChanged" />
+        <SmartField Label="Project path" Placeholder="/Games/MyGame" Value="@_path" ValueChanged="OnPathChanged" />
         <FluentButton Appearance="Appearance.Neutral" OnClick="BrowseFolderAsync" Disabled="_pickingFolder">Browse…</FluentButton>
         <FluentButton Appearance="Appearance.Accent" OnClick="SaveAsync">Save project</FluentButton>
     </FluentStack>

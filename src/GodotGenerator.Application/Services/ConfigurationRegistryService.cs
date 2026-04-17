@@ -70,18 +70,26 @@ public static class ConfigurationRegistryService
             Version = 1,
             Providers =
             [
-                new() { Id = Constants.ProviderOpenAi, KeyStoreHandle = Constants.ProviderOpenAi, OpenAiCompatibility = true },
+                new()
+                {
+                    Id = Constants.ProviderOpenAi,
+                    KeyStoreHandle = Constants.ProviderOpenAi,
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
                 new()
                 {
                     Id = Constants.ProviderAnthropic,
                     KeyStoreHandle = Constants.ProviderAnthropic,
                     Endpoint = "https://api.anthropic.com/v1",
+                    Modalities = ["llm"],
                 },
                 new()
                 {
                     Id = Constants.ProviderGoogle,
                     KeyStoreHandle = Constants.ProviderGoogle,
                     Endpoint = "https://generativelanguage.googleapis.com",
+                    Modalities = ["llm", "image", "audio"],
                 },
                 new()
                 {
@@ -89,6 +97,7 @@ public static class ConfigurationRegistryService
                     KeyStoreHandle = Constants.ProviderDeepSeek,
                     Endpoint = "https://api.deepseek.com/v1",
                     OpenAiCompatibility = true,
+                    Modalities = ["llm"],
                 },
                 new()
                 {
@@ -96,20 +105,30 @@ public static class ConfigurationRegistryService
                     KeyStoreHandle = Constants.ProviderOpenRouter,
                     Endpoint = "https://openrouter.ai/api/v1",
                     OpenAiCompatibility = true,
+                    Modalities = ["llm"],
                 },
                 new()
                 {
                     Id = Constants.ProviderHuggingFace,
                     KeyStoreHandle = Constants.ProviderHuggingFace,
                     Endpoint = "https://api-inference.huggingface.co",
+                    Modalities = ["llm", "image", "audio"],
                 },
-                new() { Id = Constants.ProviderOllama, KeyStoreHandle = "ollama", Endpoint = "http://localhost:11434/v1", OpenAiCompatibility = true },
+                new()
+                {
+                    Id = Constants.ProviderOllama,
+                    KeyStoreHandle = "ollama",
+                    Endpoint = "http://localhost:11434/v1",
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
                 new()
                 {
                     Id = Constants.ProviderGroq,
                     KeyStoreHandle = Constants.ProviderGroq,
                     Endpoint = "https://api.groq.com/openai/v1",
                     OpenAiCompatibility = true,
+                    Modalities = ["llm"],
                 },
                 new()
                 {
@@ -124,30 +143,35 @@ public static class ConfigurationRegistryService
                     Id = Constants.ProviderStability,
                     KeyStoreHandle = Constants.ProviderStability,
                     Endpoint = "https://api.stability.ai",
+                    Modalities = ["image", "sprites"],
                 },
                 new()
                 {
                     Id = Constants.ProviderFlux,
                     KeyStoreHandle = "flux",
                     Endpoint = "https://api.bfl.ai/v1",
+                    Modalities = ["image"],
                 },
                 new()
                 {
                     Id = Constants.ProviderElevenLabs,
                     KeyStoreHandle = Constants.ProviderElevenLabs,
                     Endpoint = "https://api.elevenlabs.io",
+                    Modalities = ["audio"],
                 },
                 new()
                 {
                     Id = Constants.ProviderPlayHt,
                     KeyStoreHandle = Constants.ProviderPlayHt,
                     Endpoint = "https://api.play.ht/api/v2",
+                    Modalities = ["audio"],
                 },
                 new()
                 {
                     Id = Constants.ProviderVertexAi,
                     KeyStoreHandle = Constants.ProviderVertexAi,
                     Endpoint = "https://aiplatform.googleapis.com",
+                    Modalities = ["llm", "image", "audio", "video"],
                 },
             ]
         };
@@ -182,6 +206,13 @@ public static class ConfigurationRegistryService
             {
                 // Keep user-defined endpoint overrides; only backfill missing endpoint values.
                 existing.Endpoint = defaultEntry.Endpoint;
+            }
+
+            if ((existing.Modalities is null || existing.Modalities.Count == 0) &&
+                defaultEntry.Modalities is { Count: > 0 })
+            {
+                // Backfill missing modality tags so provider lists can be filtered correctly.
+                existing.Modalities = [.. defaultEntry.Modalities];
             }
         }
     }
