@@ -1,4 +1,5 @@
 #nullable enable
+using System.Text.Json;
 using GodotGenerator.Application.Orchestration;
 using Xunit;
 
@@ -88,6 +89,40 @@ public sealed class ModalityTurnComposerTests
         Assert.Contains(@"C:\demo\game", turn.SystemPrompt, StringComparison.Ordinal);
         Assert.Contains("Demo", turn.SystemPrompt, StringComparison.Ordinal);
         Assert.Contains("Godot project root path", turn.SystemPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compose_includes_godot_file_name_hint_when_option_set()
+    {
+        var sut = new ModalityTurnComposer();
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [ModalityTurnComposer.GodotProjectPathOptionKey] = @"C:\demo\game",
+            [ModalityTurnComposer.GodotTargetFileNameOptionKey] = "scenes/Main.tscn",
+        };
+
+        var turn = sut.Compose("godot-nodes", "add node", null, null, null, options);
+
+        Assert.Contains("scenes/Main.tscn", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("fileName", turn.SystemPrompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Compose_includes_godot_tool_hints_when_options_are_json_elements()
+    {
+        var sut = new ModalityTurnComposer();
+        var pathElement = JsonDocument.Parse("\"C:\\\\demo\\\\ipc\"").RootElement;
+        var nameElement = JsonDocument.Parse("\"IpcGame\"").RootElement;
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [ModalityTurnComposer.GodotProjectPathOptionKey] = pathElement,
+            [ModalityTurnComposer.ProjectNameOptionKey] = nameElement,
+        };
+
+        var turn = sut.Compose("godot-nodes", "add node", null, null, null, options);
+
+        Assert.Contains(@"C:\demo\ipc", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("IpcGame", turn.SystemPrompt, StringComparison.Ordinal);
     }
 
     /// <summary>

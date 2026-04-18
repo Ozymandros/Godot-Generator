@@ -1,6 +1,7 @@
 #nullable enable
 using System.Text;
 using GodotGenerator.Application.Dtos;
+using GodotGenerator.Application.Serialization;
 
 namespace GodotGenerator.Application.Orchestration;
 
@@ -20,6 +21,9 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
 
     /// <summary>Option key for the active project label (mirrors <c>GenerateRequest.ProjectName</c> for SK tool injection).</summary>
     public const string ProjectNameOptionKey = "project_name";
+
+    /// <summary>Option key for default MCP 1.5 <c>fileName</c> (project-relative, POSIX-style) merged into tool calls when empty.</summary>
+    public const string GodotTargetFileNameOptionKey = "godot_file_name";
 
     /// <inheritdoc />
     public AgentTurnRequest Compose(
@@ -108,7 +112,8 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
     {
         var path = ExtractOptionString(options, GodotProjectPathOptionKey);
         var name = ExtractOptionString(options, ProjectNameOptionKey);
-        if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(name))
+        var fileName = ExtractOptionString(options, GodotTargetFileNameOptionKey);
+        if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(fileName))
         {
             return;
         }
@@ -130,7 +135,19 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
 
             sb.Append("Godot project root path on disk: ");
             sb.Append(path);
-            sb.Append(". When calling Godot tools that take a project or project-root path parameter, use this exact path.");
+            sb.Append(". When calling Godot MCP 1.5 tools, pass this value as projectPath where required.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(fileName))
+        {
+            if (!string.IsNullOrWhiteSpace(name) || !string.IsNullOrWhiteSpace(path))
+            {
+                sb.AppendLine();
+            }
+
+            sb.Append("Default project-relative fileName for scene/resource tools (POSIX-style under the project): ");
+            sb.Append(fileName);
+            sb.Append('.');
         }
     }
 
@@ -144,11 +161,7 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             return null;
         }
 
-        return value switch
-        {
-            string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
-            _ => value.ToString()?.Trim(),
-        };
+        return JsonOptionValue.AsTrimmedString(value);
     }
 
     /// <inheritdoc />

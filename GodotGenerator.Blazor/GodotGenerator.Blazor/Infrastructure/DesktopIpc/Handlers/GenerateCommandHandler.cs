@@ -4,6 +4,7 @@ using GodotGenerator.Api.Dtos;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
+using GodotGenerator.Application.Serialization;
 using GodotGenerator.Desktop.Contracts.Serialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -120,6 +121,7 @@ internal sealed class GenerateCommandHandler : ICommandHandler
                     Prompt: request.Prompt,
                     ProjectName: request.ProjectName,
                     GodotProjectPath: GetOptionString(request.Options, "godot_project_path"),
+                    GodotTargetFileName: GetOptionString(request.Options, "godot_file_name"),
                     Provider: request.Provider,
                     PreferredModelId: request.PreferredModelId,
                     SystemPromptOverride: request.SystemPrompt),
@@ -137,11 +139,7 @@ internal sealed class GenerateCommandHandler : ICommandHandler
             return null;
         }
 
-        return raw switch
-        {
-            string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
-            _        => raw.ToString()?.Trim(),
-        };
+        return JsonOptionValue.AsTrimmedString(raw);
     }
 
     private static ResponseEnvelope Failure(string correlationId, string errorCode, string? message) =>

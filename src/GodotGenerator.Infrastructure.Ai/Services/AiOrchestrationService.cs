@@ -3,6 +3,7 @@ using System.Text.Json;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Application.Orchestration;
+using GodotGenerator.Application.Serialization;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
 using Microsoft.Extensions.Logging;
@@ -48,8 +49,8 @@ public sealed class AiOrchestrationService(
                 return new AgentTurnResult(false, reason ?? "Unsupported provider/modality combination.");
             }
 
-            ExtractProjectContextFromOptions(request, out var turnProjectRoot, out var turnProjectName);
-            using var _turnContext = GodotSkTurnContext.Enter(turnProjectRoot, turnProjectName);
+            ExtractProjectContextFromOptions(request, out var turnProjectRoot, out var turnProjectName, out var turnDefaultFileName);
+            using var _turnContext = GodotSkTurnContext.Enter(turnProjectRoot, turnProjectName, turnDefaultFileName);
 
             var kernel = await kernelFactory
                 .GetOrCreateKernelAsync(
@@ -133,10 +134,12 @@ public sealed class AiOrchestrationService(
     private static void ExtractProjectContextFromOptions(
         AgentTurnRequest request,
         out string? godotProjectRoot,
-        out string? projectName)
+        out string? projectName,
+        out string? defaultFileName)
     {
         godotProjectRoot = null;
         projectName = null;
+        defaultFileName = null;
         if (request.Options is null)
         {
             return;
@@ -145,21 +148,19 @@ public sealed class AiOrchestrationService(
         if (request.Options.TryGetValue(ModalityTurnComposer.GodotProjectPathOptionKey, out var pathRaw) &&
             pathRaw is not null)
         {
-            godotProjectRoot = pathRaw switch
-            {
-                string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
-                _ => pathRaw.ToString()?.Trim(),
-            };
+            godotProjectRoot = JsonOptionValue.AsTrimmedString(pathRaw);
         }
 
         if (request.Options.TryGetValue(ModalityTurnComposer.ProjectNameOptionKey, out var nameRaw) &&
             nameRaw is not null)
         {
-            projectName = nameRaw switch
-            {
-                string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
-                _ => nameRaw.ToString()?.Trim(),
-            };
+            projectName = JsonOptionValue.AsTrimmedString(nameRaw);
+        }
+
+        if (request.Options.TryGetValue(ModalityTurnComposer.GodotTargetFileNameOptionKey, out var fileRaw) &&
+            fileRaw is not null)
+        {
+            defaultFileName = JsonOptionValue.AsTrimmedString(fileRaw);
         }
     }
 
@@ -291,7 +292,12 @@ public sealed class AiOrchestrationService(
                 var turn = GodotSkTurnContext.Snapshot;
                 if (turn is not null)
                 {
-                    GodotSkToolArgumentInjection.Apply(context, turn);
+                    GodotKernelToolArgumentInjection.ApplyProjectDefaults(
+                        context,
+                        turn.GodotProjectRoot,
+                        turn.ProjectName,
+                        turn.DefaultFileName,
+                        logger);
                 }
 
                 CoerceBoolArgument(context, "enabled", invocationId, logger);

@@ -5,6 +5,7 @@ using GodotMcp.Plugin;
 using GodotMcp.Plugin.Extensions;
 using GodotGenerator.Infrastructure.Ai.Options;
 using GodotGenerator.Infrastructure.Ai.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,7 @@ namespace GodotGenerator.Infrastructure.Ai.KernelFactory;
 /// </summary>
 public sealed class GodotKernelFactory(
     IServiceProvider rootServices,
+    IConfiguration configuration,
     IOptions<OrchestrationOptions> orchestrationOptions,
     IProviderConnectionResolver providerConnectionResolver,
     ILoggerFactory loggerFactory,
@@ -26,6 +28,7 @@ public sealed class GodotKernelFactory(
     private readonly Dictionary<string, Kernel> _kernelsByCacheKey = new(StringComparer.Ordinal);
     private bool _pluginInitialized;
     private bool _pluginInitializationSkipped;
+    private bool _loggedEmptyGodotMcpProjectPath;
 
     /// <inheritdoc />
     public async Task<Kernel> GetOrCreateKernelAsync(
@@ -115,6 +118,14 @@ public sealed class GodotKernelFactory(
             logger.LogInformation("Initializing Godot MCP plugin for Semantic Kernel...");
             await godotPlugin.InitializeAsync(cancellationToken).ConfigureAwait(false);
             _pluginInitialized = true;
+            if (!_loggedEmptyGodotMcpProjectPath
+                && string.IsNullOrWhiteSpace(configuration["GodotMcp:ProjectPath"]))
+            {
+                _loggedEmptyGodotMcpProjectPath = true;
+                logger.LogWarning(
+                    "GodotMcp:ProjectPath is empty. For Godot MCP Server 1.5+, set this to your Godot project root " +
+                    "so the MCP stdio host working directory matches tool projectPath validation.");
+            }
         }
         catch (OperationCanceledException)
         {

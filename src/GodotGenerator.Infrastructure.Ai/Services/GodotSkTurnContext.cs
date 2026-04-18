@@ -11,15 +11,16 @@ internal static class GodotSkTurnContext
     private static readonly AsyncLocal<TurnState?> Current = new();
 
     /// <summary>
-    /// Captures optional project root and name for the current agent turn.
+    /// Captures optional project root, project display name (create-project only), and default <c>fileName</c> for MCP 1.5.
     /// </summary>
-    internal sealed record TurnState(string? GodotProjectRoot, string? ProjectName);
+    internal sealed record TurnState(string? GodotProjectRoot, string? ProjectName, string? DefaultFileName);
 
-    internal static IDisposable Enter(string? godotProjectRoot, string? projectName)
+    internal static IDisposable Enter(string? godotProjectRoot, string? projectName, string? defaultFileName = null)
     {
         Current.Value = new TurnState(
             string.IsNullOrWhiteSpace(godotProjectRoot) ? null : godotProjectRoot.Trim(),
-            string.IsNullOrWhiteSpace(projectName) ? null : projectName.Trim());
+            string.IsNullOrWhiteSpace(projectName) ? null : projectName.Trim(),
+            string.IsNullOrWhiteSpace(defaultFileName) ? null : defaultFileName.Trim());
         return new ClearScope();
     }
 

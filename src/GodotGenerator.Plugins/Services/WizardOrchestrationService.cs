@@ -8,6 +8,7 @@ using GodotGenerator.Application.Dtos;
 using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
+using GodotGenerator.Infrastructure.Ai.Services;
 using GodotGenerator.Plugins.Plugins;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -78,7 +79,7 @@ public sealed class WizardOrchestrationService(
             };
 
             var toolsInvoked = new List<string>();
-            kernel.FunctionInvocationFilters.Add(new ToolTrackingFilter(toolsInvoked));
+            kernel.FunctionInvocationFilters.Add(new ToolTrackingFilter(toolsInvoked, request, logger));
 
             WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("LLM processing request…"));
 
@@ -206,6 +207,12 @@ public sealed class WizardOrchestrationService(
             sb.Append($"Project path: {request.GodotProjectPath.Trim()}.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.GodotTargetFileName))
+        {
+            sb.AppendLine();
+            sb.Append($"Default MCP fileName (project-relative): {request.GodotTargetFileName.Trim()}.");
+        }
+
         if (!string.IsNullOrWhiteSpace(request.SystemPromptOverride))
         {
             sb.AppendLine();
@@ -236,10 +243,14 @@ public sealed class WizardOrchestrationService(
     /// Tracks plugin function invocations performed during a wizard turn and coerces
     /// boolean-like string arguments for Godot MCP tools that expect a real bool.
     /// </summary>
-    private sealed class ToolTrackingFilter(List<string> invoked) : IFunctionInvocationFilter
+    private sealed class ToolTrackingFilter(
+        List<string> invoked,
+        WizardRequest request,
+        ILogger logger) : IFunctionInvocationFilter
     {
         /// <summary>
-        /// Records the invoked function and continues filter execution.
+        /// Records the invoked function, applies Godot project-context injection with debug
+        /// logging, and continues filter execution.
         /// </summary>
         /// <param name="context">Invocation context for the current function call.</param>
         /// <param name="next">Next filter delegate.</param>
@@ -249,6 +260,15 @@ public sealed class WizardOrchestrationService(
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
             invoked.Add(invocationId);
+
+            // Fill project path / name on known MCP parameter names when the model omitted them.
+            // Parity with AiOrchestrationService.GodotToolDebugFilter; logger enables debug tracing.
+            GodotKernelToolArgumentInjection.ApplyProjectDefaults(
+                context,
+                request.GodotProjectPath,
+                request.ProjectName,
+                request.GodotTargetFileName,
+                logger);
 
             // Emit a structured progress frame before the tool executes so the user sees
             // live activity in the Wizard panel. Plugin and function names are safe to forward.

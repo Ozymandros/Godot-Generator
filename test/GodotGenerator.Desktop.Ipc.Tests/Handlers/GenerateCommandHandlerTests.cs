@@ -140,4 +140,101 @@ public sealed class GenerateCommandHandlerTests
         Assert.False(result.Success);
         Assert.Equal(DesktopErrorCode.HandlerFaulted, result.ErrorCode);
     }
+
+    [Fact]
+    public async Task HandleAsync_Wizard_MapsProjectFields_FromJsonElementOptions()
+    {
+        var api = new Mock<IGodotGeneratorApiService>();
+        api.Setup(a => a.RunWizardAsync(
+                It.Is<WizardRequest>(r =>
+                    r.Prompt == "wizard prompt"
+                    && r.ProjectName == "MyGame"
+                    && r.GodotProjectPath == @"C:\Games\MyGame"
+                    && r.Provider == "openai"
+                    && r.PreferredModelId == "gpt-4o-mini"),
+                It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+
+        var h = Build(api.Object);
+        var payload = new GenerateCommandRequest(
+            Prompt: "wizard prompt",
+            Provider: "openai",
+            Options: new Dictionary<string, object?>
+            {
+                ["godot_project_path"] = System.Text.Json.JsonDocument.Parse("\"C:\\\\Games\\\\MyGame\"").RootElement,
+            },
+            ApiKey: null,
+            SystemPrompt: null,
+            ProjectName: "MyGame",
+            PreferredModelId: "gpt-4o-mini");
+        var env = new CommandEnvelope("id", GenerateCommandNames.Wizard, Json(payload));
+
+        var result = await h.HandleAsync(env, CancellationToken.None);
+
+        Assert.True(result.Success);
+        api.VerifyAll();
+    }
+
+    [Fact]
+    public async Task HandleAsync_Wizard_MapsNullProjectPath_WhenOptionMissingOrEmpty()
+    {
+        var api = new Mock<IGodotGeneratorApiService>();
+        api.Setup(a => a.RunWizardAsync(
+                It.Is<WizardRequest>(r =>
+                    r.Prompt == "wizard prompt"
+                    && r.ProjectName == "MyGame"
+                    && r.GodotProjectPath == null),
+                It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+
+        var h = Build(api.Object);
+        var payload = new GenerateCommandRequest(
+            Prompt: "wizard prompt",
+            Provider: null,
+            Options: new Dictionary<string, object?>
+            {
+                ["godot_project_path"] = System.Text.Json.JsonDocument.Parse("\"   \"").RootElement,
+            },
+            ApiKey: null,
+            SystemPrompt: null,
+            ProjectName: "MyGame",
+            PreferredModelId: null);
+        var env = new CommandEnvelope("id", GenerateCommandNames.Wizard, Json(payload));
+
+        var result = await h.HandleAsync(env, CancellationToken.None);
+
+        Assert.True(result.Success);
+        api.VerifyAll();
+    }
+
+    [Fact]
+    public async Task HandleAsync_Wizard_MapsGodotFileName_FromOptions()
+    {
+        var api = new Mock<IGodotGeneratorApiService>();
+        api.Setup(a => a.RunWizardAsync(
+                It.Is<WizardRequest>(r =>
+                    r.Prompt == "wizard prompt"
+                    && r.GodotTargetFileName == "scenes/Main.tscn"),
+                It.IsAny<CancellationToken>()))
+           .ReturnsAsync(OkResult());
+
+        var h = Build(api.Object);
+        var payload = new GenerateCommandRequest(
+            Prompt: "wizard prompt",
+            Provider: null,
+            Options: new Dictionary<string, object?>
+            {
+                ["godot_file_name"] = "scenes/Main.tscn",
+            },
+            ApiKey: null,
+            SystemPrompt: null,
+            ProjectName: null,
+            PreferredModelId: null);
+        var env = new CommandEnvelope("id", GenerateCommandNames.Wizard, Json(payload));
+
+        var result = await h.HandleAsync(env, CancellationToken.None);
+
+        Assert.True(result.Success);
+        api.VerifyAll();
+    }
 }

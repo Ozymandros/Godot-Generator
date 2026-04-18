@@ -406,6 +406,15 @@
             opts[GenerationOptionKeys.PreferredScriptLanguage] = _advanced.PreferredScriptLanguage.Trim();
         }
 
+        // MCP 1.5+: tool argument injection and server validation need an explicit project root. The Text/Code/etc.
+        // panels only set ProjectName on GenerateRequest; merge the persisted active folder when the user has not
+        // supplied godot_project_path in options (e.g. custom CreateRequest).
+        if (!opts.ContainsKey(GenerationOptionKeys.GodotProjectPath) &&
+            !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+        {
+            opts[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+        }
+
         var apiKey = string.IsNullOrWhiteSpace(_advanced.ApiKeyOverride) ? r.ApiKey : _advanced.ApiKeyOverride.Trim();
         var sys = r.SystemPrompt;
         if (!string.IsNullOrWhiteSpace(_advanced.SystemPromptOverride))

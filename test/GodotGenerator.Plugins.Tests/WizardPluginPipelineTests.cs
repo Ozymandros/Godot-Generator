@@ -6,6 +6,7 @@ using GodotGenerator.Mcp.Api.Services;
 using GodotGenerator.Plugins.Plugins;
 using GodotGenerator.Wizard.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
 using Moq;
 using Xunit;
 
@@ -175,5 +176,38 @@ public sealed class WizardPluginPipelineTests
 
         Assert.StartsWith("[Tool call error:", result, StringComparison.Ordinal);
         Assert.Contains("service unavailable", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void WizardMcpPlugin_metadata_contract_exposes_expected_functions_and_descriptions()
+    {
+        var gateway = new Mock<IWizardGenerationGateway>();
+        gateway.Setup(x => x.GetConfigurationAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("ok");
+        gateway.Setup(x => x.SetPreferenceAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("ok");
+
+        var services = new ServiceCollection();
+        services.AddScoped(_ => gateway.Object);
+        var provider = services.BuildServiceProvider();
+        var pluginObject = new WizardMcpPlugin(provider.GetRequiredService<IServiceScopeFactory>());
+
+        var plugin = KernelPluginFactory.CreateFromObject(pluginObject, pluginName: "GodotGeneratorWizard");
+        var funcs = plugin.Select(f => f.Metadata).ToArray();
+
+        Assert.Contains(funcs, f => string.Equals(f.Name, "get_configuration", StringComparison.Ordinal));
+        Assert.Contains(funcs, f => string.Equals(f.Name, "set_preference", StringComparison.Ordinal));
+
+        var getConfig = funcs.Single(f => string.Equals(f.Name, "get_configuration", StringComparison.Ordinal));
+        var setPref = funcs.Single(f => string.Equals(f.Name, "set_preference", StringComparison.Ordinal));
+
+        Assert.False(string.IsNullOrWhiteSpace(getConfig.Description));
+        Assert.False(string.IsNullOrWhiteSpace(setPref.Description));
+
+        Assert.Contains(setPref.Parameters, p => string.Equals(p.Name, "key", StringComparison.Ordinal));
+        Assert.Contains(setPref.Parameters, p => string.Equals(p.Name, "value", StringComparison.Ordinal));
+
+        var keyParam = setPref.Parameters.Single(p => string.Equals(p.Name, "key", StringComparison.Ordinal));
+        Assert.False(string.IsNullOrWhiteSpace(keyParam.Description));
     }
 }
