@@ -29,9 +29,6 @@ public sealed class ModalityTurnComposerTests
     }
 
     /// <summary>
-    /// Verifies project name is prefixed on the user prompt.
-    /// </summary>
-    /// <summary>
     /// Verifies preferred script language hint is merged into the system prompt.
     /// </summary>
     [Fact]
@@ -57,6 +54,40 @@ public sealed class ModalityTurnComposerTests
 
         Assert.Contains("MyGame", turn.Prompt, StringComparison.Ordinal);
         Assert.StartsWith("[Project:", turn.Prompt, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Verifies project name is copied into options so downstream orchestration can inject Godot tool parameters.
+    /// </summary>
+    [Fact]
+    public void Compose_merges_project_name_into_options()
+    {
+        var sut = new ModalityTurnComposer();
+        var turn = sut.Compose("code", "ping", null, "MyGame", null, null);
+
+        Assert.NotNull(turn.Options);
+        Assert.True(turn.Options!.TryGetValue(ModalityTurnComposer.ProjectNameOptionKey, out var v));
+        Assert.Equal("MyGame", v?.ToString());
+    }
+
+    /// <summary>
+    /// Verifies Godot project path and name appear in the system prompt as tool hints.
+    /// </summary>
+    [Fact]
+    public void Compose_includes_godot_tool_hints_when_path_and_name_in_options()
+    {
+        var sut = new ModalityTurnComposer();
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [ModalityTurnComposer.GodotProjectPathOptionKey] = @"C:\demo\game",
+            [ModalityTurnComposer.ProjectNameOptionKey] = "Demo",
+        };
+
+        var turn = sut.Compose("godot-nodes", "add node", null, null, null, options);
+
+        Assert.Contains(@"C:\demo\game", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("Demo", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("Godot project root path", turn.SystemPrompt, StringComparison.Ordinal);
     }
 
     /// <summary>

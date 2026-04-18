@@ -17,4 +17,7 @@ public static class GenerationOptionKeys
 
     /// <summary>Optional Godot project root; when set, the orchestrator validates <c>project.godot</c> before the LLM runs.</summary>
     public const string GodotProjectPath = "godot_project_path";
+
+    /// <summary>Optional project label; merged by the server into options as <c>project_name</c> for Godot tool defaults.</summary>
+    public const string ProjectName = "project_name";
 }

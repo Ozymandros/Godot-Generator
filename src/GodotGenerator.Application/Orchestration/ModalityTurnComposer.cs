@@ -18,6 +18,9 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
     /// <summary>Option key for optional Godot project root path (triggers validation before LLM).</summary>
     public const string GodotProjectPathOptionKey = "godot_project_path";
 
+    /// <summary>Option key for the active project label (mirrors <c>GenerateRequest.ProjectName</c> for SK tool injection).</summary>
+    public const string ProjectNameOptionKey = "project_name";
+
     /// <inheritdoc />
     public AgentTurnRequest Compose(
         string modalityKey,
@@ -27,14 +30,31 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
         string? preferredModelId,
         IReadOnlyDictionary<string, object?>? options)
     {
+        var mergedOptions = MergeOptionsWithProjectName(projectName, options);
         var effectivePrompt = BuildPromptWithProjectContext(prompt, projectName);
-        var system = BuildSystemPrompt(modalityKey, userSystemPrompt, options);
+        var system = BuildSystemPrompt(modalityKey, userSystemPrompt, mergedOptions);
         return new AgentTurnRequest(
             Prompt: effectivePrompt,
             SystemPrompt: system,
             PreferredModelId: preferredModelId,
             Modality: modalityKey,
-            Options: options);
+            Options: mergedOptions);
+    }
+
+    private static IReadOnlyDictionary<string, object?>? MergeOptionsWithProjectName(
+        string? projectName,
+        IReadOnlyDictionary<string, object?>? options)
+    {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return options;
+        }
+
+        var dict = options is null
+            ? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, object?>(options, StringComparer.OrdinalIgnoreCase);
+        dict.TryAdd(ProjectNameOptionKey, projectName.Trim());
+        return dict;
     }
 
     private static string BuildPromptWithProjectContext(string prompt, string? projectName)
@@ -79,7 +99,39 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             sb.Append(" unless the user specifies otherwise.");
         }
 
+        AppendGodotToolHints(sb, options);
+
         return sb.ToString().Trim();
+    }
+
+    private static void AppendGodotToolHints(StringBuilder sb, IReadOnlyDictionary<string, object?>? options)
+    {
+        var path = ExtractOptionString(options, GodotProjectPathOptionKey);
+        var name = ExtractOptionString(options, ProjectNameOptionKey);
+        if (string.IsNullOrWhiteSpace(path) && string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        sb.AppendLine();
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            sb.Append("Active Godot project name: ");
+            sb.Append(name);
+            sb.Append('.');
+        }
+
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                sb.AppendLine();
+            }
+
+            sb.Append("Godot project root path on disk: ");
+            sb.Append(path);
+            sb.Append(". When calling Godot tools that take a project or project-root path parameter, use this exact path.");
+        }
     }
 
     private static string? ExtractPreferredLanguage(IReadOnlyDictionary<string, object?>? options) =>

@@ -48,6 +48,9 @@ public sealed class AiOrchestrationService(
                 return new AgentTurnResult(false, reason ?? "Unsupported provider/modality combination.");
             }
 
+            ExtractProjectContextFromOptions(request, out var turnProjectRoot, out var turnProjectName);
+            using var _turnContext = GodotSkTurnContext.Enter(turnProjectRoot, turnProjectName);
+
             var kernel = await kernelFactory
                 .GetOrCreateKernelAsync(
                     request.Provider,
@@ -55,7 +58,7 @@ public sealed class AiOrchestrationService(
                     request.Modality,
                     effectiveCancellationToken)
                 .ConfigureAwait(false);
-            kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger));
+            EnsureGodotToolFilters(kernel);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
 
             var history = new ChatHistory();
@@ -114,6 +117,51 @@ public sealed class AiOrchestrationService(
     }
 
     private const string TemperatureOptionKey = "temperature";
+
+    private const string GodotToolFiltersAttachedKey = "__GodotGenerator.GodotToolFiltersAttached";
+
+    private void EnsureGodotToolFilters(Kernel kernel)
+    {
+        if (!kernel.Data.TryAdd(GodotToolFiltersAttachedKey, true))
+        {
+            return;
+        }
+
+        kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger));
+    }
+
+    private static void ExtractProjectContextFromOptions(
+        AgentTurnRequest request,
+        out string? godotProjectRoot,
+        out string? projectName)
+    {
+        godotProjectRoot = null;
+        projectName = null;
+        if (request.Options is null)
+        {
+            return;
+        }
+
+        if (request.Options.TryGetValue(ModalityTurnComposer.GodotProjectPathOptionKey, out var pathRaw) &&
+            pathRaw is not null)
+        {
+            godotProjectRoot = pathRaw switch
+            {
+                string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
+                _ => pathRaw.ToString()?.Trim(),
+            };
+        }
+
+        if (request.Options.TryGetValue(ModalityTurnComposer.ProjectNameOptionKey, out var nameRaw) &&
+            nameRaw is not null)
+        {
+            projectName = nameRaw switch
+            {
+                string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
+                _ => nameRaw.ToString()?.Trim(),
+            };
+        }
+    }
 
     private static bool TryGetTemperature(IReadOnlyDictionary<string, object?>? options, out double temperature)
     {
@@ -240,6 +288,12 @@ public sealed class AiOrchestrationService(
                 invocationId.Contains("godot.godot_", StringComparison.OrdinalIgnoreCase);
             if (isGodotTool)
             {
+                var turn = GodotSkTurnContext.Snapshot;
+                if (turn is not null)
+                {
+                    GodotSkToolArgumentInjection.Apply(context, turn);
+                }
+
                 CoerceBoolArgument(context, "enabled", invocationId, logger);
                 CoerceBoolArgument(context, "isCSharp", invocationId, logger);
                 CoerceBoolArgument(context, "is_c_sharp", invocationId, logger);
