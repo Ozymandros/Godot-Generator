@@ -5,6 +5,7 @@ using System.Text.Json;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Configuration;
 using GodotGenerator.Application.Dtos;
+using GodotGenerator.Application.Orchestration;
 using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
 using GodotGenerator.Plugins.Plugins;
@@ -65,6 +66,8 @@ public sealed class WizardOrchestrationService(
                 effectiveCt = timeoutCts.Token;
             }
 
+            WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("Wizard turn starting…"));
+
             var kernel = await BuildKernelAsync(request.Provider, request.PreferredModelId, effectiveCt).ConfigureAwait(false);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
             var history = BuildHistory(request);
@@ -77,6 +80,8 @@ public sealed class WizardOrchestrationService(
             var toolsInvoked = new List<string>();
             kernel.FunctionInvocationFilters.Add(new ToolTrackingFilter(toolsInvoked));
 
+            WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("LLM processing request…"));
+
             var contents = await chat
                 .GetChatMessageContentsAsync(history, settings, kernel, cancellationToken: effectiveCt)
                 .ConfigureAwait(false);
@@ -87,6 +92,7 @@ public sealed class WizardOrchestrationService(
                 message = "(The Wizard completed the requested tasks but returned no summary.)";
             }
 
+            WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("Wizard turn complete."));
             logger.LogInformation("Wizard turn completed; tools invoked: [{Tools}]", string.Join(", ", toolsInvoked));
             return WizardResult.Ok(message, toolsInvoked);
         }
@@ -243,6 +249,13 @@ public sealed class WizardOrchestrationService(
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
             invoked.Add(invocationId);
+
+            // Emit a structured progress frame before the tool executes so the user sees
+            // live activity in the Wizard panel. Plugin and function names are safe to forward.
+            WizardIpcProgressContext.EmitIfActive(
+                WizardProgressFrame.Tool(
+                    context.Function.PluginName ?? "unknown",
+                    context.Function.Name));
 
             if (invocationId.Contains("configure", StringComparison.OrdinalIgnoreCase)
                 || invocationId.Contains("autoload", StringComparison.OrdinalIgnoreCase))

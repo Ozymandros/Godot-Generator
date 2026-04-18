@@ -236,6 +236,61 @@ window.godotElectronInterop = {
     _allUnsubs.length = 0;
   },
 
+  // ── Wizard progress (scoped, per-component) ───────────────────────────────
+  //
+  // Unlike the global _allUnsubs pool, wizard progress subscriptions are keyed
+  // by a caller-supplied string so each WizardPanel instance can clean up only
+  // its own listener when it disposes, without affecting other subscribers.
+
+  /** @type {Map<string, () => void>} */
+  _wizardProgressUnsubs: new Map(),
+
+  /**
+   * Subscribes to wizard progress frames and routes each to the given DotNet
+   * reference's [JSInvokable] method:
+   *   OnWizardProgress(string phase, string message, string? toolPlugin, string? toolName)
+   *
+   * The `key` parameter scopes the subscription; call `unsubscribeWizardProgress(key)`
+   * from the component's DisposeAsync to remove only this listener.
+   * Replaces any existing subscription registered under the same key.
+   *
+   * @param {DotNetObjectReference} dotNetRef
+   * @param {string} key  Caller-defined identifier, e.g. "wizard-panel".
+   */
+  subscribeWizardProgress: function (dotNetRef, key) {
+    if (!_hasEvents()) return;
+
+    // Remove any previous subscription for this key before re-subscribing.
+    const existing = this._wizardProgressUnsubs.get(key);
+    if (existing) { existing(); this._wizardProgressUnsubs.delete(key); }
+
+    const unsub = window.godotElectronEvents.wizardProgress((frame) => {
+      dotNetRef.invokeMethodAsync(
+        'OnWizardProgress',
+        frame?.phase      ?? 'status',
+        frame?.message    ?? '',
+        frame?.toolPlugin ?? null,
+        frame?.toolName   ?? null,
+      ).catch(console.error);
+    });
+
+    this._wizardProgressUnsubs.set(key, unsub);
+  },
+
+  /**
+   * Removes the wizard progress subscription registered under `key`.
+   * Safe to call when no subscription exists for that key.
+   *
+   * @param {string} key  Same key passed to `subscribeWizardProgress`.
+   */
+  unsubscribeWizardProgress: function (key) {
+    const unsub = this._wizardProgressUnsubs.get(key);
+    if (unsub) {
+      unsub();
+      this._wizardProgressUnsubs.delete(key);
+    }
+  },
+
   // ── Speech-to-text helpers (Whisper.cpp via electron-message-bridge-plugin-speech-whisper) ──
 
   /**

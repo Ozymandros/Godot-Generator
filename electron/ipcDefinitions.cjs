@@ -41,6 +41,13 @@ const EVENT_CHANNELS = Object.freeze([
    * Payload: `{ stream: 'stdout'|'stderr', message: string, timestamp: string }`.
    */
   'backendLog',
+  /**
+   * A wizard-turn progress frame emitted by the .NET backend before the final
+   * response envelope.  Forwarded in real time so the Wizard panel can display
+   * live tool-call activity without polling.
+   * Payload: `{ phase: string, message: string, toolPlugin?: string, toolName?: string, utcTimestamp?: string }`.
+   */
+  'wizardProgress',
 ]);
 
 module.exports = { API_CHANNELS, EVENT_CHANNELS };

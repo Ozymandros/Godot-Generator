@@ -3,6 +3,8 @@
    and returns a consolidated summary. Functionally similar to Code panel but
    backed by a separate SK kernel that exposes the full GodotGeneratorApi plugin. *@
 @inject ProjectStateService ProjectState
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 
 <GenerationWorkspace Modality="GenerationModality.Wizard"
                      Title="Wizard"
@@ -20,13 +22,95 @@
                         Placeholder="e.g. C:\Projects\MyGame or /home/user/MyGame"
                         Help="When set, MCP-aware tools can validate node paths and scene references."
                         @bind-Value="_godotProjectPath" />
+
+            @if (_progressLines.Count > 0)
+            {
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+                    <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">
+                        Live activity
+                    </FluentLabel>
+                    <textarea class="wizard-progress-log"
+                              rows="6"
+                              readonly
+                              aria-label="Wizard live activity log"
+                              aria-live="polite">@string.Join("\n", _progressLines)</textarea>
+                </FluentStack>
+            }
         </FluentStack>
     </AdditionalFields>
 </GenerationWorkspace>
 
 @code {
-    private string _godotProjectPath = string.Empty;
+    /// <summary>Fixed key used to scope the wizard progress JS subscription.</summary>
+    private const string ProgressSubscriptionKey = "wizard-panel";
 
+    private string _godotProjectPath = string.Empty;
+    private readonly List<string> _progressLines = [];
+    private DotNetObjectReference<WizardPanel>? _dotNetRef;
+
+    /// <inheritdoc/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync(
+            "godotElectronInterop.subscribeWizardProgress",
+            _dotNetRef,
+            ProgressSubscriptionKey);
+    }
+
+    /// <summary>
+    /// Invoked by JS when a wizard progress frame arrives over the IPC pipe.
+    /// Clears the log on turn-start and appends each frame's human-readable message.
+    /// </summary>
+    /// <param name="phase">One of <c>status</c>, <c>tool</c>, or <c>llm</c>.</param>
+    /// <param name="message">Human-readable description of the current activity.</param>
+    /// <param name="toolPlugin">Plugin name when <paramref name="phase"/> is <c>tool</c>; otherwise <c>null</c>.</param>
+    /// <param name="toolName">Function name when <paramref name="phase"/> is <c>tool</c>; otherwise <c>null</c>.</param>
+    [JSInvokable]
+    public void OnWizardProgress(string phase, string message, string? toolPlugin, string? toolName)
+    {
+        // A "starting" status frame signals a new wizard turn — clear stale progress.
+        if (string.Equals(phase, "status", StringComparison.OrdinalIgnoreCase) &&
+            message.Contains("starting", StringComparison.OrdinalIgnoreCase))
+        {
+            _progressLines.Clear();
+        }
+
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            _progressLines.Add(message);
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    /// <inheritdoc/>
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "godotElectronInterop.unsubscribeWizardProgress",
+                ProgressSubscriptionKey);
+        }
+        catch (JSDisconnectedException)
+        {
+            // JS runtime has already disconnected (e.g. navigation or app close); safe to swallow.
+        }
+        catch (TaskCanceledException)
+        {
+            // Page tearing down — swallow.
+        }
+
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+
+    /// <summary>Builds the wizard generation request from the current panel state.</summary>
+    /// <param name="prompt">The user-supplied prompt.</param>
+    /// <returns>A <see cref="GenerateRequest"/> ready for dispatch.</returns>
     private GenerateRequest BuildRequest(string prompt)
     {
         var options = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);

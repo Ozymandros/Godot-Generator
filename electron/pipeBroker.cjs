@@ -7,23 +7,32 @@
  *
  * Wire protocol (matches NamedPipeCommandHost.cs):
  *   Request:  [4-byte LE uint32 length][UTF-8 JSON CommandEnvelope]
- *   Response: [4-byte LE uint32 length][UTF-8 JSON ResponseEnvelope]
+ *   Response: [4-byte LE uint32 length][UTF-8 JSON ResponseEnvelope]    (legacy)
+ *           | [4-byte LE uint32 length][UTF-8 JSON WizardWireFrame] ... (wizard streaming)
  *
- * Each call opens a fresh pipe connection, performs one request/response cycle,
- * then closes the socket — keeping the implementation stateless.
+ * Wizard streaming frames use a discriminated wrapper:
+ *   Progress : { "t": "p", "p": { ...WizardProgressFrame } }
+ *   Final    : { "t": "f", "e": { ...ResponseEnvelope      } }
+ *
+ * Backward compatibility: if the first parsed object lacks the "t" discriminator field
+ * it is treated as a legacy single-frame ResponseEnvelope (non-wizard commands).
+ *
+ * Each call opens a fresh pipe connection, performs one request/response cycle
+ * (possibly preceded by N progress frames for wizard commands), then closes the
+ * socket — keeping the implementation stateless.
  */
 
 const net = require('net');
 
-const PIPE_NAME      = '\\\\.\\pipe\\godot-generator-ipc';
+const PIPE_NAME       = '\\\\.\\pipe\\godot-generator-ipc';
 const DEFAULT_TIMEOUT = 30_000; // ms per individual command call
 
 let _callCounter = 0;
 const deps = {
-  netModule: net,
-  setTimeoutFn: setTimeout,
+  netModule:      net,
+  setTimeoutFn:   setTimeout,
   clearTimeoutFn: clearTimeout,
-  nowFn: () => Date.now(),
+  nowFn:          () => Date.now(),
 };
 
 /**
@@ -51,10 +60,15 @@ function buildFrame(envelope) {
 }
 
 /**
- * Reads a length-prefixed JSON response from the socket stream.
- * Buffers incoming chunks until a complete frame has been received.
- * @param {net.Socket} socket
- * @returns {Promise<object>} Parsed ResponseEnvelope.
+ * Reads a single length-prefixed JSON frame from the socket stream.
+ * Buffers incoming chunks until a complete `[uint32 length][payload]` frame
+ * has been received, then resolves with the parsed object.
+ *
+ * Used internally by {@link readFrames} and exported for legacy unit-test
+ * compatibility (the existing `readResponse` tests call this directly).
+ *
+ * @param {import('net').Socket} socket
+ * @returns {Promise<object>} Parsed JSON object (caller interprets type).
  */
 function readResponse(socket) {
   return new Promise((resolve, reject) => {
@@ -62,7 +76,7 @@ function readResponse(socket) {
     let expectedLength = -1;
     let received = 0;
 
-    socket.on('data', (chunk) => {
+    function onData(chunk) {
       chunks.push(chunk);
       received += chunk.length;
 
@@ -72,6 +86,10 @@ function readResponse(socket) {
       }
 
       if (expectedLength !== -1 && received >= 4 + expectedLength) {
+        socket.removeListener('data', onData);
+        socket.removeListener('error', onError);
+        socket.removeListener('end', onEnd);
+
         const all     = Buffer.concat(chunks);
         const payload = all.slice(4, 4 + expectedLength);
         try {
@@ -80,13 +98,68 @@ function readResponse(socket) {
           reject(new Error('Failed to parse backend response: ' + err.message));
         }
       }
-    });
+    }
 
-    socket.on('error', reject);
-    socket.on('end', () => {
-      reject(new Error('Pipe closed before full response was received.'));
-    });
+    function onError(err) { reject(err); }
+    function onEnd()      { reject(new Error('Pipe closed before full response was received.')); }
+
+    socket.on('data',  onData);
+    socket.on('error', onError);
+    socket.on('end',   onEnd);
   });
+}
+
+/**
+ * Reads all wire frames from the socket for a wizard streaming connection.
+ *
+ * Repeatedly calls {@link readResponse} (which reads exactly one length-prefixed
+ * JSON frame at a time by removing its listeners after each frame) until a frame
+ * with `{ "t": "f" }` (final) is received, at which point the loop stops and the
+ * inner `ResponseEnvelope` (`frame.e`) is returned.
+ *
+ * Each intermediate `{ "t": "p" }` (progress) frame causes `onProgress` to be
+ * called synchronously with the inner `WizardProgressFrame` payload (`frame.p`).
+ *
+ * **Backward compatibility**: if the very first frame has no `"t"` property the
+ * connection is treated as a legacy single-frame response and that object is
+ * returned directly without calling `onProgress`.
+ *
+ * @param {import('net').Socket} socket
+ * @param {(frame: object) => void} [onProgress] Optional progress callback.
+ * @returns {Promise<object>} Final ResponseEnvelope.
+ */
+async function readFrames(socket, onProgress) {
+  let firstFrame = true;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const frame = await readResponse(socket);
+
+    // Backward compat: legacy single-frame response (no discriminator field).
+    if (firstFrame && typeof frame.t === 'undefined') {
+      return frame;
+    }
+    firstFrame = false;
+
+    if (frame.t === 'p') {
+      // Progress frame — forward payload to caller, continue looping.
+      if (typeof onProgress === 'function' && frame.p != null) {
+        onProgress(frame.p);
+      }
+      continue;
+    }
+
+    if (frame.t === 'f') {
+      // Final frame — return the inner ResponseEnvelope.
+      if (frame.e == null) {
+        throw new Error('Wizard final frame received but envelope ("e") field is missing.');
+      }
+      return frame.e;
+    }
+
+    // Unknown discriminator — treat as a protocol error rather than silently ignoring.
+    throw new Error(`Unknown wizard wire frame type: "${frame.t}"`);
+  }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -94,9 +167,17 @@ function readResponse(socket) {
 /**
  * Sends a versioned IPC command to the .NET backend and returns the response envelope.
  *
- * @param {string} command    Versioned command name, e.g. `Config.GetAll/v1`.
+ * For wizard commands the server may emit zero or more progress frames before the
+ * final `ResponseEnvelope`; these are forwarded to `options.onProgress` as they
+ * arrive. Non-wizard commands use the legacy single-frame path automatically.
+ *
+ * @param {string}   command   Versioned command name, e.g. `Config.GetAll/v1`.
  * @param {object|null} payload  Command-specific payload (will be JSON-stringified).
- * @param {{ timeoutMs?: number }|null} options Optional invocation options.
+ * @param {{ timeoutMs?: number, onProgress?: (frame: object) => void }|null} options
+ *   Optional invocation options.
+ *   - `timeoutMs`  – Override the default per-call timeout (ms).
+ *   - `onProgress` – Callback invoked for each `WizardProgressFrame` received
+ *                    before the final response. No-op for non-wizard commands.
  * @returns {Promise<{success: boolean, payloadJson: string|null, errorCode: string|null, errorMessage: string|null}>}
  */
 async function invoke(command, payload = null, options = null) {
@@ -104,7 +185,6 @@ async function invoke(command, payload = null, options = null) {
   const timeoutMs = Number.isFinite(options?.timeoutMs) && options.timeoutMs > 0
     ? options.timeoutMs
     : DEFAULT_TIMEOUT;
-  const startedAt = deps.nowFn();
 
   const envelope = {
     correlationId,
@@ -117,7 +197,7 @@ async function invoke(command, payload = null, options = null) {
     const socket = deps.netModule.createConnection(PIPE_NAME, async () => {
       try {
         socket.write(buildFrame(envelope));
-        const response = await readResponse(socket);
+        const response = await readFrames(socket, options?.onProgress);
         deps.clearTimeoutFn(timer);
         socket.destroy();
 
@@ -133,7 +213,7 @@ async function invoke(command, payload = null, options = null) {
       }
     });
 
-    const timer  = deps.setTimeoutFn(
+    const timer = deps.setTimeoutFn(
       () => {
         socket.destroy();
         reject(new Error(`IPC call '${command}' timed out after ${timeoutMs}ms.`));
@@ -150,24 +230,25 @@ async function invoke(command, payload = null, options = null) {
 
 function __setTestDeps(partial) {
   if (!partial || typeof partial !== 'object') return;
-  if (partial.netModule) deps.netModule = partial.netModule;
-  if (partial.setTimeoutFn) deps.setTimeoutFn = partial.setTimeoutFn;
+  if (partial.netModule)      deps.netModule      = partial.netModule;
+  if (partial.setTimeoutFn)   deps.setTimeoutFn   = partial.setTimeoutFn;
   if (partial.clearTimeoutFn) deps.clearTimeoutFn = partial.clearTimeoutFn;
-  if (partial.nowFn) deps.nowFn = partial.nowFn;
+  if (partial.nowFn)          deps.nowFn          = partial.nowFn;
 }
 
 function __resetTestDeps() {
-  deps.netModule = net;
-  deps.setTimeoutFn = setTimeout;
+  deps.netModule      = net;
+  deps.setTimeoutFn   = setTimeout;
   deps.clearTimeoutFn = clearTimeout;
-  deps.nowFn = () => Date.now();
-  _callCounter = 0;
+  deps.nowFn          = () => Date.now();
+  _callCounter        = 0;
 }
 
 module.exports = {
   invoke,
   buildFrame,
   readResponse,
+  readFrames,
   newCorrelationId,
   __setTestDeps,
   __resetTestDeps,

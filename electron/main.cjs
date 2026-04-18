@@ -193,7 +193,15 @@ const ipcApi = defineIpcApi({
         typeof command === 'string' &&
         command.toLowerCase() === 'generate.wizard/v1';
       const timeoutMs = isWizardCommand ? 150_000 : undefined;
-      return await pipeBroker.invoke(command, payload, { timeoutMs });
+
+      /** @param {object} frame WizardProgressFrame forwarded to all open windows. */
+      const onProgress = isWizardCommand
+        ? (frame) => {
+            BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'wizardProgress', frame));
+          }
+        : undefined;
+
+      return await pipeBroker.invoke(command, payload, { timeoutMs, onProgress });
     } catch (err) {
       return {
         success: false,
@@ -221,6 +229,16 @@ const ipcEvents = defineIpcEvents({
   backendCrashed: (_detail) => { },
   /** Backend exceeded max restart attempts; no further supervision. */
   backendFailed: () => { },
+  /**
+   * A single line of backend stdout/stderr output.
+   * Payload: `{ stream: 'stdout'|'stderr', message: string, timestamp: string }`.
+   */
+  backendLog: (_entry) => { },
+  /**
+   * A wizard-turn progress frame from the .NET backend (before the final response).
+   * Payload: `{ phase: string, message: string, toolPlugin?: string, toolName?: string, utcTimestamp?: string }`.
+   */
+  wizardProgress: (_frame) => { },
 });
 
 // ── Window factory ────────────────────────────────────────────────────────────
@@ -514,6 +532,11 @@ app.whenReady().then(async () => {
 
   backendLifecycle.on('failed', () => {
     BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendFailed'));
+  });
+
+  // Stream backend stdout/stderr lines to all renderer windows.
+  backendLifecycle.on('log', (entry) => {
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendLog', entry));
   });
 });
 
