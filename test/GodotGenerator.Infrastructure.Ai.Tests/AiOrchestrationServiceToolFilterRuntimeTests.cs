@@ -52,7 +52,7 @@ public sealed class AiOrchestrationServiceToolFilterRuntimeTests
         kernel.Plugins.Add(plugin);
 
         var kernelFactory = new Mock<IKernelFactory>();
-        kernelFactory.Setup(x => x.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        kernelFactory.Setup(x => x.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(kernel);
 
         var validator = new Mock<IGodotProjectPathValidator>();

@@ -5,7 +5,6 @@ using GodotMcp.Plugin;
 using GodotMcp.Plugin.Extensions;
 using GodotGenerator.Infrastructure.Ai.Options;
 using GodotGenerator.Infrastructure.Ai.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -18,7 +17,6 @@ namespace GodotGenerator.Infrastructure.Ai.KernelFactory;
 /// </summary>
 public sealed class GodotKernelFactory(
     IServiceProvider rootServices,
-    IConfiguration configuration,
     IOptions<OrchestrationOptions> orchestrationOptions,
     IProviderConnectionResolver providerConnectionResolver,
     ILoggerFactory loggerFactory,
@@ -28,13 +26,13 @@ public sealed class GodotKernelFactory(
     private readonly Dictionary<string, Kernel> _kernelsByCacheKey = new(StringComparer.Ordinal);
     private bool _pluginInitialized;
     private bool _pluginInitializationSkipped;
-    private bool _loggedEmptyGodotMcpProjectPath;
 
     /// <inheritdoc />
     public async Task<Kernel> GetOrCreateKernelAsync(
         string? provider = null,
         string? preferredModelId = null,
         string? modalityKeyForToolFiltering = null,
+        string projectRoot = "",
         CancellationToken cancellationToken = default)
     {
         var connection = await providerConnectionResolver
@@ -46,20 +44,26 @@ public sealed class GodotKernelFactory(
             ? EffectiveSelectionPolicy.NormalizeModality(modalityKeyForToolFiltering!.Trim())
             : "full";
         var cacheKey = BuildCacheKey(connection.Provider, connection.ModelId, filterSegment);
-        if (_kernelsByCacheKey.TryGetValue(cacheKey, out var cached))
-        {
-            return cached;
-        }
 
         await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_kernelsByCacheKey.TryGetValue(cacheKey, out cached))
+            await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            // GodotMCP.Server 1.5+ validates projectPath against the server's working directory.
+            // Apply the per-request project root before returning the kernel so the godot-mcp
+            // process is always scoped to the correct project directory. This is a no-op when
+            // projectRoot is null/empty or identical to the currently configured path.
+            if (!string.IsNullOrWhiteSpace(projectRoot) && !_pluginInitializationSkipped)
+            {
+                await ApplyProjectRootToPluginAsync(projectRoot.Trim(), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            if (_kernelsByCacheKey.TryGetValue(cacheKey, out var cached))
             {
                 return cached;
             }
-
-            await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
 
             var kernel = BuildKernel(
                 connection.Provider,
@@ -92,6 +96,33 @@ public sealed class GodotKernelFactory(
     }
 
     /// <summary>
+    /// Delegates the per-request project root update to <see cref="GodotPlugin"/> so the
+    /// underlying <c>godot-mcp</c> process is restarted with the correct working directory
+    /// when the path has changed.
+    /// </summary>
+    private async Task ApplyProjectRootToPluginAsync(string projectRoot, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var godotPlugin = rootServices.GetRequiredService<GodotPlugin>();
+            await godotPlugin.ApplyProjectRootAsync(projectRoot, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // A reconnect failure is non-fatal for kernel lookup; log and continue so the
+            // cached kernel is still returned and the tool-injection path can attempt the call.
+            logger.LogWarning(
+                ex,
+                "Failed to apply project root '{ProjectRoot}' to Godot MCP plugin; proceeding with current server state.",
+                projectRoot);
+        }
+    }
+
+    /// <summary>
     /// Builds a cache key for the kernel creation, applying optional request-level overrides.
     /// </summary>
     /// <param name="provider">Provider identifier used for the cache key.</param>
@@ -118,14 +149,6 @@ public sealed class GodotKernelFactory(
             logger.LogInformation("Initializing Godot MCP plugin for Semantic Kernel...");
             await godotPlugin.InitializeAsync(cancellationToken).ConfigureAwait(false);
             _pluginInitialized = true;
-            if (!_loggedEmptyGodotMcpProjectPath
-                && string.IsNullOrWhiteSpace(configuration["GodotMcp:ProjectPath"]))
-            {
-                _loggedEmptyGodotMcpProjectPath = true;
-                logger.LogWarning(
-                    "GodotMcp:ProjectPath is empty. For Godot MCP Server 1.5+, set this to your Godot project root " +
-                    "so the MCP stdio host working directory matches tool projectPath validation.");
-            }
         }
         catch (OperationCanceledException)
         {
@@ -189,8 +212,22 @@ public sealed class GodotKernelFactory(
             }
             else
             {
-                kernel.RegisterGodotTools(rootServices);
-                logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+                try
+                {
+                    kernel.RegisterGodotTools(rootServices);
+                    logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+                }
+                catch (ArgumentException ex) when (IsInvalidMcpFunctionName(ex))
+                {
+                    // MCP 1.5+ exposes dotted tool names (e.g. camera.create); SK requires [A-Za-z0-9_]. Recovery path is expected.
+                    logger.LogDebug(ex, "RegisterGodotTools skipped for model {ModelId} (invalid SK function name from MCP).", modelId);
+                    logger.LogInformation(
+                        "Using typed Godot MCP skills for model {ModelId} (dynamic MCP tools use dotted names incompatible with SK identifiers).",
+                        modelId);
+
+                    kernel.AddGodotMcpSkills(rootServices);
+                }
+
                 if (applyToolFiltering && !string.IsNullOrWhiteSpace(modalityKeyForToolFiltering))
                 {
                     ModalityGodotToolFilter.Apply(kernel, modalityKeyForToolFiltering, logger);
@@ -225,4 +262,8 @@ public sealed class GodotKernelFactory(
             && !string.IsNullOrWhiteSpace(stack)
             && stack.Contains("GodotMcpToolDefinitionMapper.ParseInputSchema", StringComparison.Ordinal);
     }
+
+    private static bool IsInvalidMcpFunctionName(ArgumentException ex) =>
+        ex.Message.Contains("A function name can contain only ASCII letters, digits, and underscores", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("is not a valid name", StringComparison.OrdinalIgnoreCase);
 }

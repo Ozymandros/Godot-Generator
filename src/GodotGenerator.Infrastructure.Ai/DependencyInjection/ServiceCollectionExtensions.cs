@@ -11,9 +11,8 @@ namespace GodotGenerator.Infrastructure.Ai.DependencyInjection;
 
     /// <summary>
     /// Registers Semantic Kernel, Godot MCP plugin, and AI orchestration.
-    /// For Godot MCP Server / SK plugin 1.5+, configure <c>GodotMcp:ProjectPath</c> to the active Godot project root
-    /// so the MCP host working directory matches strict <c>projectPath</c> validation; tool calls also receive
-    /// explicit <c>projectPath</c> and <c>fileName</c> from orchestration.
+    /// The active game folder for generation is chosen in the app UI and sent per request; MCP connection options
+    /// may still use the <c>GodotMcp</c> configuration section for the stdio executable and timeouts.
     /// </summary>
 public static class ServiceCollectionExtensions
 {

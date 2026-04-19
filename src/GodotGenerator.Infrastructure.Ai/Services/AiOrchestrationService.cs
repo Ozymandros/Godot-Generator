@@ -57,6 +57,7 @@ public sealed class AiOrchestrationService(
                     request.Provider,
                     request.PreferredModelId,
                     request.Modality,
+                    turnProjectRoot ?? string.Empty,
                     effectiveCancellationToken)
                 .ConfigureAwait(false);
             EnsureGodotToolFilters(kernel);
@@ -275,6 +276,20 @@ public sealed class AiOrchestrationService(
         return message.Length > 500 ? message[..500] + "..." : message;
     }
 
+    /// <summary>
+    /// Typed-skill plugin names registered by <c>AddGodotMcpSkills</c> when the primary
+    /// <c>RegisterGodotTools</c> path fails due to dotted MCP tool names (GodotMCP.Server 1.5+).
+    /// Kept in sync with <c>GodotMcpKernelExtensions.AddGodotMcpSkills</c>.
+    /// </summary>
+    private static readonly HashSet<string> TypedSkillPluginNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "scene", "project", "resource", "script", "import",
+        "camera", "ui", "light", "physics", "nav", "lint", "preset", "docs"
+    };
+
+    private static bool IsTypedSkillPlugin(string? pluginName) =>
+        pluginName is not null && TypedSkillPluginNames.Contains(pluginName);
+
     private sealed class GodotToolDebugFilter(ILogger logger) : IFunctionInvocationFilter
     {
         public async Task OnFunctionInvocationAsync(
@@ -286,7 +301,9 @@ public sealed class AiOrchestrationService(
             var isGodotTool =
                 string.Equals(context.Function.PluginName, "godot", StringComparison.OrdinalIgnoreCase) ||
                 context.Function.Name.StartsWith("godot_", StringComparison.OrdinalIgnoreCase) ||
-                invocationId.Contains("godot.godot_", StringComparison.OrdinalIgnoreCase);
+                invocationId.Contains("godot.godot_", StringComparison.OrdinalIgnoreCase) ||
+                // Typed-skill plugin names used by AddGodotMcpSkills fallback path (dotted MCP tool names):
+                IsTypedSkillPlugin(context.Function.PluginName);
             if (isGodotTool)
             {
                 var turn = GodotSkTurnContext.Snapshot;

@@ -6,6 +6,7 @@ using GodotGenerator.Desktop.Contracts.Commands;
 using GodotGenerator.Desktop.Contracts.Envelope;
 using GodotGenerator.Desktop.Contracts.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 
@@ -18,7 +19,10 @@ public sealed class GenerateCommandHandlerTests
         var services = new ServiceCollection();
         services.AddSingleton(api);
         var scopeFactory = services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
-        return new(scopeFactory, NullLogger<GenerateCommandHandler>.Instance);
+        var hostEnv = new Mock<IHostEnvironment>();
+        hostEnv.Setup(e => e.EnvironmentName).Returns(Environments.Production);
+        hostEnv.Setup(e => e.ContentRootPath).Returns(System.IO.Directory.GetCurrentDirectory());
+        return new(scopeFactory, NullLogger<GenerateCommandHandler>.Instance, hostEnv.Object);
     }
 
     private static string Json<T>(T obj) =>

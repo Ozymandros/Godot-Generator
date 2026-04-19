@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO;
 using GodotGenerator.Api.Abstractions;
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Application.Dtos;
@@ -7,6 +8,7 @@ using GodotGenerator.Desktop.Contracts.Envelope;
 using GodotGenerator.Application.Serialization;
 using GodotGenerator.Desktop.Contracts.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
@@ -15,18 +17,26 @@ namespace GodotGenerator.Blazor.Infrastructure.DesktopIpc.Handlers;
 /// Handles all <c>Generate.*</c> IPC commands by mapping the versioned command name to the
 /// appropriate <see cref="IGodotGeneratorApiService"/> method and returning the result.
 /// </summary>
+/// <remarks>
+/// Active Godot game folder and name come from the client (project header / options), not from host configuration files.
+/// </remarks>
 internal sealed class GenerateCommandHandler : ICommandHandler
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<GenerateCommandHandler> _logger;
+    private readonly IHostEnvironment _hostEnvironment;
 
     /// <summary>
     /// Initialises the handler with the API service and logger.
     /// </summary>
-    public GenerateCommandHandler(IServiceScopeFactory scopeFactory, ILogger<GenerateCommandHandler> logger)
+    public GenerateCommandHandler(
+        IServiceScopeFactory scopeFactory,
+        ILogger<GenerateCommandHandler> logger,
+        IHostEnvironment hostEnvironment)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _hostEnvironment = hostEnvironment;
     }
 
     /// <inheritdoc/>
@@ -58,13 +68,23 @@ internal sealed class GenerateCommandHandler : ICommandHandler
             ? new Dictionary<string, object?>(cmdRequest.Options, StringComparer.OrdinalIgnoreCase)
             : null;
 
+        var resolvedProjectPathRoot = ResolveProjectPathRoot(options);
+        var resolvedProjectName = ResolveProjectName(cmdRequest.ProjectName, options);
+        var resolvedProjectPath = ComposeMcpProjectPath(resolvedProjectPathRoot, resolvedProjectName);
+        if (options is not null
+            && !options.ContainsKey("godot_project_path")
+            && !string.IsNullOrWhiteSpace(resolvedProjectPath))
+        {
+            options["godot_project_path"] = resolvedProjectPath;
+        }
+
         var apiRequest = new GenerateRequest(
             cmdRequest.Prompt,
             cmdRequest.Provider,
             options,
             cmdRequest.ApiKey,
             cmdRequest.SystemPrompt,
-            cmdRequest.ProjectName,
+            resolvedProjectName,
             cmdRequest.PreferredModelId);
 
         using var scope = _scopeFactory.CreateScope();
@@ -140,6 +160,72 @@ internal sealed class GenerateCommandHandler : ICommandHandler
         }
 
         return JsonOptionValue.AsTrimmedString(raw);
+    }
+
+    /// <summary>Project root from the client request only (<c>godot_project_path</c>); optional relative paths resolve against content root.</summary>
+    private string? ResolveProjectPathRoot(IReadOnlyDictionary<string, object?>? options)
+    {
+        var fromOptions = GetOptionString(options, "godot_project_path");
+        if (string.IsNullOrWhiteSpace(fromOptions))
+        {
+            return null;
+        }
+
+        return NormalizeProjectPathRoot(fromOptions.Trim());
+    }
+
+    /// <summary>Makes a relative path from the client absolute against the host content root.</summary>
+    private string? NormalizeProjectPathRoot(string path)
+    {
+        if (Path.IsPathRooted(path))
+        {
+            return path;
+        }
+
+        try
+        {
+            return Path.GetFullPath(Path.Combine(_hostEnvironment.ContentRootPath, path));
+        }
+        catch
+        {
+            return path;
+        }
+    }
+
+    private static string? ComposeMcpProjectPath(string? projectPathRoot, string? projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectPathRoot))
+        {
+            return null;
+        }
+
+        var root = projectPathRoot.Trim();
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return root;
+        }
+
+        var name = projectName.Trim();
+        var rootLeaf = Path.GetFileName(root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (string.Equals(rootLeaf, name, StringComparison.OrdinalIgnoreCase))
+        {
+            return root;
+        }
+
+        return Path.Combine(root, name);
+    }
+
+    private string? ResolveProjectName(
+        string? explicitProjectName,
+        IReadOnlyDictionary<string, object?>? options)
+    {
+        if (!string.IsNullOrWhiteSpace(explicitProjectName))
+        {
+            return explicitProjectName.Trim();
+        }
+
+        var fromOptions = GetOptionString(options, "project_name");
+        return string.IsNullOrWhiteSpace(fromOptions) ? null : fromOptions.Trim();
     }
 
     private static ResponseEnvelope Failure(string correlationId, string errorCode, string? message) =>

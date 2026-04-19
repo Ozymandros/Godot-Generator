@@ -47,6 +47,12 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
     public event Action<string>? FolderSelected;
 
     /// <summary>
+    /// Raised when the Electron File menu triggers "New Project".
+    /// Subscribers should reset all in-memory project state.
+    /// </summary>
+    public event Action? NewProject;
+
+    /// <summary>
     /// Raised when the local .NET backend IPC pipe becomes ready (first start or after restart).
     /// UI that depends on <c>Config.GetAll</c> can retry loading if the first attempt failed.
     /// </summary>
@@ -71,6 +77,10 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
 
             await _js.InvokeVoidAsync(
                 "godotElectronInterop.subscribeFolderSelected",
+                _dotNetRef).ConfigureAwait(false);
+
+            await _js.InvokeVoidAsync(
+                "godotElectronInterop.subscribeNewProject",
                 _dotNetRef).ConfigureAwait(false);
 
             await _js.InvokeVoidAsync(
@@ -135,6 +145,15 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
     [JSInvokable]
     public void OnFolderSelected(string path) =>
         FolderSelected?.Invoke(path);
+
+    /// <summary>
+    /// Invoked by <c>electronBridge.js</c> when the Electron File menu's
+    /// "New Project" item is activated. Raises <see cref="NewProject"/> so
+    /// subscribers can reset all in-memory project state.
+    /// </summary>
+    [JSInvokable]
+    public void OnNewProject() =>
+        NewProject?.Invoke();
 
     /// <summary>
     /// Invoked by <c>electronBridge.js</c> for each individual line emitted by

@@ -69,7 +69,7 @@ public sealed class WizardOrchestrationService(
 
             WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("Wizard turn starting…"));
 
-            var kernel = await BuildKernelAsync(request.Provider, request.PreferredModelId, effectiveCt).ConfigureAwait(false);
+            var kernel = await BuildKernelAsync(request.Provider, request.PreferredModelId, request.GodotProjectPath, effectiveCt).ConfigureAwait(false);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
             var history = BuildHistory(request);
             var settings = new OpenAIPromptExecutionSettings
@@ -139,12 +139,18 @@ public sealed class WizardOrchestrationService(
     private async Task<Kernel> BuildKernelAsync(
         string? provider,
         string? preferredModelId,
+        string? projectRoot,
         CancellationToken cancellationToken)
     {
         // Obtain the shared base kernel (with GodotMcp tools) and clone it so that adding
         // wizard-specific plugins does not mutate the shared cached instance.
-        var baseKernel = await kernelFactory
-            .GetOrCreateKernelAsync(provider, preferredModelId, modalityKeyForToolFiltering: null, cancellationToken)
+            var baseKernel = await kernelFactory
+            .GetOrCreateKernelAsync(
+                provider,
+                preferredModelId,
+                modalityKeyForToolFiltering: null,
+                projectRoot: projectRoot ?? string.Empty,
+                cancellationToken)
             .ConfigureAwait(false);
 
         var kernel = baseKernel.Clone();
@@ -205,6 +211,10 @@ public sealed class WizardOrchestrationService(
         {
             sb.AppendLine();
             sb.Append($"Project path: {request.GodotProjectPath.Trim()}.");
+            sb.AppendLine();
+            sb.Append(
+                "For every file-creating or file-modifying Godot MCP call, you must pass this exact value as projectPath. " +
+                "Do not substitute cwd or any other host path.");
         }
 
         if (!string.IsNullOrWhiteSpace(request.GodotTargetFileName))
@@ -212,6 +222,19 @@ public sealed class WizardOrchestrationService(
             sb.AppendLine();
             sb.Append($"Default MCP fileName (project-relative): {request.GodotTargetFileName.Trim()}.");
         }
+
+        if (!string.IsNullOrWhiteSpace(request.ProjectName))
+        {
+            sb.AppendLine();
+            sb.Append(
+                "Use this project name only for create_godot_project calls (projectName/name aliases). " +
+                "Do not overwrite non-create tools with projectName parameters.");
+        }
+
+        sb.AppendLine();
+        sb.Append(
+            "You must orchestrate tool calls that result in at least one concrete file creation or modification " +
+            "for the user's request before returning your summary.");
 
         if (!string.IsNullOrWhiteSpace(request.SystemPromptOverride))
         {

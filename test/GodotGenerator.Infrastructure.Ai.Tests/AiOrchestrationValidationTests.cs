@@ -47,7 +47,7 @@ public sealed class AiOrchestrationValidationTests
 
         Assert.False(result.Success);
         factory.Verify(
-            f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -59,7 +59,7 @@ public sealed class AiOrchestrationValidationTests
     {
         var factory = new Mock<IKernelFactory>();
         factory
-            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("kernel unavailable"));
 
         var validator = new Mock<IGodotProjectPathValidator>();
@@ -85,7 +85,7 @@ public sealed class AiOrchestrationValidationTests
 
         Assert.False(result.Success);
         factory.Verify(
-            f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()),
+            f => f.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

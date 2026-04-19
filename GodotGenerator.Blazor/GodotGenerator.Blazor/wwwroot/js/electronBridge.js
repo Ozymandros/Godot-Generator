@@ -203,6 +203,23 @@ window.godotElectronInterop = {
   },
 
   /**
+   * Subscribes to the new-project push event (File → New Project menu item)
+   * and routes it to the given DotNet reference's [JSInvokable] method:
+   *   OnNewProject()
+   *
+   * @param {DotNetObjectReference} dotNetRef
+   */
+  subscribeNewProject: function (dotNetRef) {
+    if (!_hasEvents() || typeof window.godotElectronEvents.newProject !== 'function') return;
+
+    _allUnsubs.push(
+      window.godotElectronEvents.newProject(() => {
+        dotNetRef.invokeMethodAsync('OnNewProject').catch(console.error);
+      }),
+    );
+  },
+
+  /**
    * Subscribes to backend log lines and routes each to the given DotNet
    * reference's [JSInvokable] method:
    *   OnBackendLog(string stream, string message, string timestamp)

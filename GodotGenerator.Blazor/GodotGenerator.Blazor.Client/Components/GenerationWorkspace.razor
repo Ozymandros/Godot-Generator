@@ -177,6 +177,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Retry after first paint: OnInitializedAsync may run before JS storage interop is ready (WASM/Electron).
+        if (firstRender)
+        {
+            await ProjectState.LoadAsync();
+        }
+
         if (!firstRender || _registryReady)
         {
             return;
@@ -358,6 +364,40 @@
         };
     }
 
+    /// <summary>
+    /// Combines a project path root and an optional project name into the final MCP <c>projectPath</c> value.
+    /// If the last segment of <paramref name="projectPathRoot"/> already equals <paramref name="projectName"/>
+    /// (case-insensitive), the root is returned as-is to avoid double-appending the name.
+    /// Mirrors the same logic in <c>GenerateCommandHandler.ComposeMcpProjectPath</c>.
+    /// </summary>
+    /// <param name="projectPathRoot">The base directory (e.g. <c>C:\Projects</c> or <c>C:\Projects\MyGame</c>).</param>
+    /// <param name="projectName">The project name (e.g. <c>MyGame</c>). May be null or empty.</param>
+    /// <returns>The resolved project path, or <c>null</c> when <paramref name="projectPathRoot"/> is empty.</returns>
+    private static string? ComposeMcpProjectPath(string? projectPathRoot, string? projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectPathRoot))
+        {
+            return null;
+        }
+
+        var root = projectPathRoot.Trim();
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return root;
+        }
+
+        var name = projectName.Trim();
+        var rootLeaf = System.IO.Path.GetFileName(
+            root.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+
+        if (string.Equals(rootLeaf, name, StringComparison.OrdinalIgnoreCase))
+        {
+            return root;
+        }
+
+        return System.IO.Path.Combine(root, name);
+    }
+
     private static string? FindRegisteredCase(IReadOnlyList<string> registered, string candidate)
     {
         foreach (var x in registered)
@@ -406,13 +446,22 @@
             opts[GenerationOptionKeys.PreferredScriptLanguage] = _advanced.PreferredScriptLanguage.Trim();
         }
 
-        // MCP 1.5+: tool argument injection and server validation need an explicit project root. The Text/Code/etc.
-        // panels only set ProjectName on GenerateRequest; merge the persisted active folder when the user has not
-        // supplied godot_project_path in options (e.g. custom CreateRequest).
-        if (!opts.ContainsKey(GenerationOptionKeys.GodotProjectPath) &&
-            !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectPath))
+        // MCP 1.5+: tool argument injection and server validation need an explicit project root. Combine the
+        // persisted ActiveProjectPath root and ActiveProjectName into the final projectPath value, deduplicating
+        // the last path segment when it already equals the name (mirrors GenerateCommandHandler.ComposeMcpProjectPath).
+        if (!opts.ContainsKey(GenerationOptionKeys.GodotProjectPath))
         {
-            opts[GenerationOptionKeys.GodotProjectPath] = ProjectState.ActiveProjectPath.Trim();
+            var composed = ComposeMcpProjectPath(ProjectState.ActiveProjectPath, ProjectState.ActiveProjectName);
+            if (!string.IsNullOrWhiteSpace(composed))
+            {
+                opts[GenerationOptionKeys.GodotProjectPath] = composed;
+            }
+        }
+
+        if (!opts.ContainsKey(GenerationOptionKeys.ProjectName) &&
+            !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName))
+        {
+            opts[GenerationOptionKeys.ProjectName] = ProjectState.ActiveProjectName.Trim();
         }
 
         var apiKey = string.IsNullOrWhiteSpace(_advanced.ApiKeyOverride) ? r.ApiKey : _advanced.ApiKeyOverride.Trim();

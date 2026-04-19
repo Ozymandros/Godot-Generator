@@ -35,7 +35,7 @@ public sealed class PromptAssistService(
         try
         {
             var kernel = await kernelFactory
-                .GetOrCreateKernelAsync(request.Provider, request.PreferredModelId, null, cancellationToken)
+                .GetOrCreateKernelAsync(request.Provider, request.PreferredModelId, null, string.Empty, cancellationToken)
                 .ConfigureAwait(false);
 
             var chat = kernel.GetRequiredService<IChatCompletionService>();

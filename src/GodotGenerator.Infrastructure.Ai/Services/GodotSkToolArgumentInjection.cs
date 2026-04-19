@@ -1,5 +1,6 @@
 #nullable enable
 using System.IO;
+using System.Text.Json;
 using GodotGenerator.Application.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;

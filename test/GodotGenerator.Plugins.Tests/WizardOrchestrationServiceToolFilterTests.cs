@@ -52,7 +52,7 @@ public sealed class WizardOrchestrationServiceToolFilterTests
 
         var kernelFactory = new Mock<IKernelFactory>();
         kernelFactory
-            .Setup(x => x.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetOrCreateKernelAsync(It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(baseKernel);
 
         var gateway = new Mock<IWizardGenerationGateway>();

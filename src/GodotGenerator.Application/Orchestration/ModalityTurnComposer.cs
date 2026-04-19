@@ -149,6 +149,15 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             sb.Append(fileName);
             sb.Append('.');
         }
+
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            sb.AppendLine();
+            sb.Append(
+                "When tools are available, do not answer with text only. " +
+                "Call Godot MCP tools to create or modify at least one project file for the request, " +
+                "always passing projectPath, and include fileName for scene/resource/script-oriented tools.");
+        }
     }
 
     private static string? ExtractPreferredLanguage(IReadOnlyDictionary<string, object?>? options) =>

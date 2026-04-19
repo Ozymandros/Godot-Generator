@@ -50,6 +50,7 @@
         SyncFromState();
         ProjectState.Changed += OnProjectChanged;
         Bridge.FolderSelected += OnFolderSelectedFromMenu;
+        Bridge.NewProject += OnNewProjectFromMenu;
     }
 
     private void OnProjectChanged()
@@ -59,22 +60,57 @@
     }
 
     /// <summary>
-    /// Handles a folder path pushed from the Electron File menu
-    /// ("Open Project Folder…"). Persists the path immediately so the user
-    /// does not have to press Save after a menu-driven folder selection.
+    /// Handles a folder path pushed from the Electron File menu ("Open Project Folder…").
+    /// Derives the project name from the selected folder's leaf segment and persists both
+    /// name and path immediately, so the user does not have to press Save.
     /// </summary>
     private async void OnFolderSelectedFromMenu(string path)
     {
         try
         {
-            await ProjectState.SetActiveProjectPathAsync(path).ConfigureAwait(false);
-            // SetActiveProjectPathAsync fires ProjectState.Changed, which calls
+            var inferredName = InferProjectNameFromPath(path);
+            await ProjectState.SetActiveProjectAsync(inferredName, path).ConfigureAwait(false);
+            // SetActiveProjectAsync fires ProjectState.Changed, which calls
             // OnProjectChanged → SyncFromState → StateHasChanged automatically.
         }
         catch
         {
             // Ignore JS interop errors during menu-driven folder selection.
         }
+    }
+
+    /// <summary>
+    /// Handles the "New Project" event pushed from the Electron File menu.
+    /// Resets all persisted project state so the user starts with a clean slate.
+    /// </summary>
+    private async void OnNewProjectFromMenu()
+    {
+        try
+        {
+            await ProjectState.ResetAsync().ConfigureAwait(false);
+            // ResetAsync fires ProjectState.Changed → OnProjectChanged → SyncFromState.
+        }
+        catch
+        {
+            // Ignore JS interop errors during menu-driven new-project action.
+        }
+    }
+
+    /// <summary>
+    /// Derives a project name from a folder path by returning the last path segment.
+    /// Falls back to an empty string when the path is blank or cannot be parsed.
+    /// </summary>
+    private static string InferProjectNameFromPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return string.Empty;
+        }
+
+        var leaf = System.IO.Path.GetFileName(
+            path.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+
+        return string.IsNullOrWhiteSpace(leaf) ? string.Empty : leaf;
     }
 
     private void SyncFromState()
@@ -143,6 +179,7 @@
     {
         ProjectState.Changed -= OnProjectChanged;
         Bridge.FolderSelected -= OnFolderSelectedFromMenu;
+        Bridge.NewProject -= OnNewProjectFromMenu;
     }
 }
 
