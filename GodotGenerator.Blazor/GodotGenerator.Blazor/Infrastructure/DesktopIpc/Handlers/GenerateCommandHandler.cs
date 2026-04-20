@@ -71,11 +71,38 @@ internal sealed class GenerateCommandHandler : ICommandHandler
         var resolvedProjectPathRoot = ResolveProjectPathRoot(options);
         var resolvedProjectName = ResolveProjectName(cmdRequest.ProjectName, options);
         var resolvedProjectPath = ComposeMcpProjectPath(resolvedProjectPathRoot, resolvedProjectName);
-        if (options is not null
-            && !options.ContainsKey("godot_project_path")
-            && !string.IsNullOrWhiteSpace(resolvedProjectPath))
+        if (options is not null && !string.IsNullOrWhiteSpace(resolvedProjectPath))
         {
-            options["godot_project_path"] = resolvedProjectPath;
+            var existing = GetOptionString(options, "godot_project_path");
+            if (string.IsNullOrWhiteSpace(existing))
+            {
+                options["godot_project_path"] = resolvedProjectPath;
+            }
+            else
+            {
+                try
+                {
+                    var existingNormalized = NormalizeProjectPathRoot(existing.Trim());
+                    if (string.IsNullOrWhiteSpace(existingNormalized))
+                    {
+                        options["godot_project_path"] = resolvedProjectPath;
+                    }
+                    else
+                    {
+                        var existingLeaf = Path.GetFileName(existingNormalized.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                        if (string.IsNullOrWhiteSpace(resolvedProjectName) || !string.Equals(existingLeaf, resolvedProjectName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Existing path does not appear to include the project folder — replace with combined path.
+                            options["godot_project_path"] = resolvedProjectPath;
+                        }
+                    }
+                }
+                catch
+                {
+                    // If normalization fails for any reason, conservatively set the combined path.
+                    options["godot_project_path"] = resolvedProjectPath;
+                }
+            }
         }
 
         var apiRequest = new GenerateRequest(
@@ -136,7 +163,7 @@ internal sealed class GenerateCommandHandler : ICommandHandler
             GenerateCommandNames.GodotShaders => apiService.GenerateGodotShadersAsync(request, ct),
             GenerateCommandNames.GodotSignals => apiService.GenerateGodotSignalsAsync(request, ct),
             GenerateCommandNames.GodotNodes => apiService.GenerateGodotNodesAsync(request, ct),
-            GenerateCommandNames.Wizard     => apiService.RunWizardAsync(
+            GenerateCommandNames.Wizard => apiService.RunWizardAsync(
                 new WizardRequest(
                     Prompt: request.Prompt,
                     ProjectName: request.ProjectName,

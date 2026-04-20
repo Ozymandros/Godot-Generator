@@ -43,7 +43,7 @@ public sealed class GodotKernelFactory(
         var filterSegment = applyFiltering
             ? EffectiveSelectionPolicy.NormalizeModality(modalityKeyForToolFiltering!.Trim())
             : "full";
-        var cacheKey = BuildCacheKey(connection.Provider, connection.ModelId, filterSegment);
+            var cacheKey = BuildCacheKey(connection.Provider, connection.ModelId, filterSegment, projectRoot);
 
         await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -129,8 +129,11 @@ public sealed class GodotKernelFactory(
     /// <param name="modelId">Model id used for the cache key.</param>
     /// <param name="toolFilterSegment">Normalized modality segment or <c>full</c> when no tool filtering applies.</param>
     /// <returns>The effective cache key to use for the kernel.</returns>
-    private static string BuildCacheKey(string provider, string modelId, string toolFilterSegment) =>
-        $"{provider}::{modelId}::{toolFilterSegment}";
+    private static string BuildCacheKey(string provider, string modelId, string toolFilterSegment, string? projectRoot) =>
+        $"{provider}::{modelId}::{toolFilterSegment}::{NormalizeProjectRootForCache(projectRoot)}";
+
+    private static string NormalizeProjectRootForCache(string? projectRoot) =>
+        string.IsNullOrWhiteSpace(projectRoot) ? string.Empty : projectRoot.Trim().ToLowerInvariant();
 
     /// <summary>
     /// Initializes the Godot MCP plugin once for the process lifetime.

@@ -192,7 +192,7 @@ const ipcApi = defineIpcApi({
       const isWizardCommand =
         typeof command === 'string' &&
         command.toLowerCase() === 'generate.wizard/v1';
-      const timeoutMs = isWizardCommand ? 300_000 : undefined;
+      const timeoutMs = isWizardCommand ? 600_000 : undefined;
 
       /** @param {object} frame WizardProgressFrame forwarded to all open windows. */
       const onProgress = isWizardCommand

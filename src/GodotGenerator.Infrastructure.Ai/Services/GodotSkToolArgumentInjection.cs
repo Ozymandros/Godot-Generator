@@ -20,6 +20,44 @@ namespace GodotGenerator.Infrastructure.Ai.Services;
 internal static class GodotSkToolArgumentInjection
 {
     /// <summary>
+    /// Combines <paramref name="godotProjectRoot"/> and <paramref name="projectName"/> into the
+    /// composite project directory for non-create-project tool calls, deduplicating the last
+    /// path segment when it already equals the name (handles the case where the user navigated
+    /// into the project root directly, whose folder name matches the project name).
+    /// </summary>
+    private static string GetCombinedProjectPath(string godotProjectRoot, string projectName)
+    {
+        var root = godotProjectRoot.Trim();
+        var name = projectName.Trim();
+        try
+        {
+            var rootLeaf = Path.GetFileName(root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (!string.IsNullOrWhiteSpace(rootLeaf) && string.Equals(rootLeaf, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return root;
+            }
+        }
+        catch
+        {
+            // Fall through and return a combined path using Path.Combine.
+        }
+
+        return Path.Combine(root, name);
+    }
+
+    /// <summary>
+    /// Builds the target directory for a <em>create-project</em> tool call by unconditionally
+    /// appending <paramref name="projectName"/> to <paramref name="godotProjectRoot"/>.
+    /// Unlike <see cref="GetCombinedProjectPath"/>, this method never deduplicates, because
+    /// the project is always a new subfolder regardless of whether the root's name already
+    /// matches the project name.
+    /// </summary>
+    private static string GetCreateProjectDirectory(string godotProjectRoot, string projectName) =>
+        Path.Combine(
+            godotProjectRoot.Trim().TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+            projectName.Trim());
+
+    /// <summary>
     /// Applies project-context injection to all parameters and arguments of the current
     /// function invocation, emitting debug-level log entries for every decision made.
     /// </summary>
@@ -51,7 +89,24 @@ internal static class GodotSkToolArgumentInjection
             switch (policy)
             {
                 case ParameterPolicy.ForceProject:
-                    if (TryForceProjectRoot(name, state, out var forcedRoot))
+                    // Special-case: for the create-project flow, directory/target params should
+                    // point to the composite project directory (projectRoot + projectName) when
+                    // both values are available.
+                    if (GodotToolContractRegistry.IsCreateGodotProject(functionName)
+                        && (IsCreateProjectDirectoryParameter(name) || IsProjectRootParameter(name)))
+                    {
+                        if (!string.IsNullOrWhiteSpace(state.GodotProjectRoot))
+                        {
+                            var combined = string.IsNullOrWhiteSpace(state.ProjectName)
+                                ? state.GodotProjectRoot
+                                : GetCreateProjectDirectory(state.GodotProjectRoot!, state.ProjectName!);
+                            logger?.LogDebug(
+                                "[Injection] Force-set {Param}={Value} ({Tool}) via contract (create project composite).",
+                                name, combined, functionName);
+                            context.Arguments[name] = combined;
+                        }
+                    }
+                    else if (TryForceProjectRoot(name, state, out var forcedRoot))
                     {
                         logger?.LogDebug(
                             "[Injection] Force-set {Param}={Value} ({Tool}) via contract.",
@@ -157,7 +212,22 @@ internal static class GodotSkToolArgumentInjection
 
             if (policy == ParameterPolicy.ForceProject)
             {
-                if (TryForceProjectRoot(kvp.Key, state, out var forced))
+                // Create-project composite directory handling (projectRoot + projectName).
+                if (GodotToolContractRegistry.IsCreateGodotProject(functionName)
+                    && (IsCreateProjectDirectoryParameter(kvp.Key) || IsProjectRootParameter(kvp.Key)))
+                {
+                    if (!string.IsNullOrWhiteSpace(state.GodotProjectRoot))
+                    {
+                        var combined = string.IsNullOrWhiteSpace(state.ProjectName)
+                            ? state.GodotProjectRoot
+                            : GetCreateProjectDirectory(state.GodotProjectRoot!, state.ProjectName!);
+                        logger?.LogDebug(
+                            "[Injection] Force-set (arg) {Param}={Value} ({Tool}) via contract (create project composite).",
+                            kvp.Key, combined, functionName);
+                        context.Arguments[kvp.Key] = combined!;
+                    }
+                }
+                else if (TryForceProjectRoot(kvp.Key, state, out var forced))
                 {
                     logger?.LogDebug(
                         "[Injection] Force-set (arg) {Param}={Value} ({Tool}) via contract.",
@@ -211,6 +281,33 @@ internal static class GodotSkToolArgumentInjection
         if (string.IsNullOrWhiteSpace(state.GodotProjectRoot))
         {
             return;
+        }
+
+        // Defensive: when creating a project, treat explicit '.' or '/' directory values
+        // (and empty-like values) as intent to create the project in a subfolder named
+        // after the project display name. This covers models that supply '.' as the
+        // directory value which would otherwise resolve to the root.
+        if (GodotToolContractRegistry.IsCreateGodotProject(functionName)
+            && !string.IsNullOrWhiteSpace(state.ProjectName))
+        {
+            var combined = GetCreateProjectDirectory(state.GodotProjectRoot!, state.ProjectName!);
+            var keys = context.Arguments.Keys.ToList();
+            foreach (var key in keys)
+            {
+                if (!(IsCreateProjectDirectoryParameter(key) || IsProjectRootParameter(key)))
+                {
+                    continue;
+                }
+
+                var raw = JsonOptionValue.AsTrimmedString(context.Arguments[key]);
+                if (raw is null || raw == "." || raw == "./" || raw == "/")
+                {
+                    logger?.LogDebug(
+                        "[Injection] Overriding ambiguous create-project param {Param}: '{Old}' → '{New}' ({Tool}).",
+                        key, context.Arguments[key], combined, functionName);
+                    context.Arguments[key] = combined;
+                }
+            }
         }
 
         foreach (var kvp in context.Arguments)
@@ -353,6 +450,12 @@ internal static class GodotSkToolArgumentInjection
         || name.Equals("godotProjectName", StringComparison.OrdinalIgnoreCase)
         || name.Equals("name", StringComparison.OrdinalIgnoreCase)
         || name.Equals("project", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCreateProjectDirectoryParameter(string name) =>
+        name.Equals("directory", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("dir", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("targetDirectory", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("targetPath", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsProjectRootParameter(string name) =>
         name.Equals("projectPath", StringComparison.OrdinalIgnoreCase)

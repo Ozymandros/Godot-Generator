@@ -2,6 +2,7 @@
 
 using System.Text;
 using System.Text.Json;
+using System.IO;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Configuration;
 using GodotGenerator.Application.Dtos;
@@ -10,6 +11,7 @@ using GodotGenerator.Infrastructure.Ai.KernelFactory;
 using GodotGenerator.Infrastructure.Ai.Options;
 using GodotGenerator.Infrastructure.Ai.Services;
 using GodotGenerator.Plugins.Plugins;
+using GodotMcp.Plugin;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
@@ -40,7 +42,8 @@ public sealed class WizardOrchestrationService(
     WizardMcpPlugin wizardPlugin,
     IKernelFactory kernelFactory,
     IOptions<OrchestrationOptions> orchestrationOptions,
-    ILogger<WizardOrchestrationService> logger) : IWizardOrchestrationService
+    ILogger<WizardOrchestrationService> logger,
+    GodotPlugin? godotPlugin = null) : IWizardOrchestrationService
 {
     /// <summary>
     /// Executes a single wizard turn using the four-plugin SK kernel.
@@ -79,7 +82,7 @@ public sealed class WizardOrchestrationService(
             };
 
             var toolsInvoked = new List<string>();
-            kernel.FunctionInvocationFilters.Add(new ToolTrackingFilter(toolsInvoked, request, logger));
+            kernel.FunctionInvocationFilters.Add(new ToolTrackingFilter(toolsInvoked, request, logger, godotPlugin));
 
             WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("LLM processing request…"));
 
@@ -269,7 +272,8 @@ public sealed class WizardOrchestrationService(
     private sealed class ToolTrackingFilter(
         List<string> invoked,
         WizardRequest request,
-        ILogger logger) : IFunctionInvocationFilter
+        ILogger logger,
+        GodotPlugin? godotPlugin) : IFunctionInvocationFilter
     {
         /// <summary>
         /// Records the invoked function, applies Godot project-context injection with debug
@@ -277,9 +281,9 @@ public sealed class WizardOrchestrationService(
         /// </summary>
         /// <param name="context">Invocation context for the current function call.</param>
         /// <param name="next">Next filter delegate.</param>
-        public async Task OnFunctionInvocationAsync(
-            FunctionInvocationContext context,
-            Func<FunctionInvocationContext, Task> next)
+            public async Task OnFunctionInvocationAsync(
+                FunctionInvocationContext context,
+                Func<FunctionInvocationContext, Task> next)
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
             invoked.Add(invocationId);
@@ -292,6 +296,88 @@ public sealed class WizardOrchestrationService(
                 request.ProjectName,
                 request.GodotTargetFileName,
                 logger);
+
+            // If this is a create-project invocation, proactively set the Godot MCP
+            // server working directory to the composite project path (projectRoot + projectName)
+            // so the server creates files in the intended subfolder rather than the plain root.
+            try
+            {
+                var funcName = context.Function.Name ?? string.Empty;
+                if (godotPlugin is not null
+                    && !string.IsNullOrWhiteSpace(request.GodotProjectPath)
+                    && !string.IsNullOrWhiteSpace(request.ProjectName)
+                    && funcName.IndexOf("create", StringComparison.OrdinalIgnoreCase) >= 0
+                    && funcName.IndexOf("project", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var godotPathTrim = request.GodotProjectPath.Trim();
+                    var projectNameTrim = request.ProjectName.Trim();
+                    string combinedRoot;
+                    try
+                    {
+                        var rootLeaf = Path.GetFileName(godotPathTrim.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                        if (!string.IsNullOrWhiteSpace(rootLeaf) && string.Equals(rootLeaf, projectNameTrim, StringComparison.OrdinalIgnoreCase))
+                        {
+                            combinedRoot = godotPathTrim;
+                        }
+                        else
+                        {
+                            combinedRoot = Path.Combine(godotPathTrim, projectNameTrim);
+                        }
+                    }
+                    catch
+                    {
+                        combinedRoot = Path.Combine(godotPathTrim, projectNameTrim);
+                    }
+
+                    // Ensure the target composite directory exists before starting the MCP server
+                    // with that working directory. Starting a process with a non-existent
+                    // working directory causes a Win32Exception (invalid directory name).
+                    var applyPath = combinedRoot;
+                    try
+                    {
+                        if (!Directory.Exists(combinedRoot))
+                        {
+                            Directory.CreateDirectory(combinedRoot);
+                            logger.LogDebug("Created composite project directory for create-project: {Path}", combinedRoot);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // If we cannot create the composite folder, fall back to the plain
+                        // project root so the MCP process can still start. The create-project
+                        // tool should then create the subfolder as part of its operation.
+                        logger.LogDebug(ex, "Could not create composite project directory; falling back to project root.");
+                        applyPath = godotPathTrim;
+                    }
+
+                    await godotPlugin.ApplyProjectRootAsync(applyPath).ConfigureAwait(false);
+                    logger.LogDebug("Applied composite project root for create-project: {Path}", applyPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to apply composite project root before tool invocation; continuing.");
+            }
+
+            // Debug: log invocation arguments for create-project and create-like tool calls
+            try
+            {
+                var funcName = context.Function.Name ?? string.Empty;
+                if (funcName.IndexOf("create_godot_project", StringComparison.OrdinalIgnoreCase) >= 0
+                    || funcName.IndexOf("create", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var args = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var kvp in context.Arguments)
+                    {
+                        args[kvp.Key] = kvp.Value;
+                    }
+                    logger.LogInformation("Invoking {Plugin}.{Function} with args: {@Args}", context.Function.PluginName, funcName, args);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to log function invocation args for debugging.");
+            }
 
             // Emit a structured progress frame before the tool executes so the user sees
             // live activity in the Wizard panel. Plugin and function names are safe to forward.

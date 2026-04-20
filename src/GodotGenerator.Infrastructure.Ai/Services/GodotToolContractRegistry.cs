@@ -118,7 +118,13 @@ internal static class GodotToolContractRegistry
         (functionName?.StartsWith("godot_", StringComparison.OrdinalIgnoreCase) ?? false);
 
     internal static bool IsCreateGodotProject(string? functionName) =>
-        string.Equals(functionName, "godot_create_godot_project", StringComparison.OrdinalIgnoreCase);
+        // Primary canonical name
+        string.Equals(functionName, "godot_create_godot_project", StringComparison.OrdinalIgnoreCase)
+        // Also accept common variants that include both 'create' and 'project' to
+        // handle different naming schemes or prefixes exposed by tool mappers.
+        || (!string.IsNullOrWhiteSpace(functionName)
+            && functionName.IndexOf("create", StringComparison.OrdinalIgnoreCase) >= 0
+            && functionName.IndexOf("project", StringComparison.OrdinalIgnoreCase) >= 0);
 
     /// <summary>
     /// Resolves the injection policy for a single parameter of a tool invocation.

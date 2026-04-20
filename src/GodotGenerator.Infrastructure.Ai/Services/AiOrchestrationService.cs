@@ -17,12 +17,16 @@ namespace GodotGenerator.Infrastructure.Ai.Services;
 /// <summary>
 /// Orchestrates LLM turns with automatic Godot MCP tool invocation via Semantic Kernel.
 /// </summary>
+using GodotMcp.Plugin;
+using System.IO;
+
 public sealed class AiOrchestrationService(
     IKernelFactory kernelFactory,
     IProviderCapabilityRouter providerCapabilityRouter,
     IOptions<OrchestrationOptions> orchestrationOptions,
     IGodotProjectPathValidator godotProjectPathValidator,
-    ILogger<AiOrchestrationService> logger) : IAiOrchestrationService
+    ILogger<AiOrchestrationService> logger,
+    GodotPlugin? godotPlugin = null) : IAiOrchestrationService
 {
     /// <inheritdoc />
     public async Task<AgentTurnResult> RunTurnAsync(AgentTurnRequest request, CancellationToken cancellationToken = default)
@@ -129,7 +133,7 @@ public sealed class AiOrchestrationService(
             return;
         }
 
-        kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger));
+        kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger, godotPlugin));
     }
 
     private static void ExtractProjectContextFromOptions(
@@ -290,7 +294,7 @@ public sealed class AiOrchestrationService(
     private static bool IsTypedSkillPlugin(string? pluginName) =>
         pluginName is not null && TypedSkillPluginNames.Contains(pluginName);
 
-    private sealed class GodotToolDebugFilter(ILogger logger) : IFunctionInvocationFilter
+    private sealed class GodotToolDebugFilter(ILogger logger, GodotPlugin? godotPlugin) : IFunctionInvocationFilter
     {
         public async Task OnFunctionInvocationAsync(
             FunctionInvocationContext context,
@@ -315,6 +319,61 @@ public sealed class AiOrchestrationService(
                         turn.ProjectName,
                         turn.DefaultFileName,
                         logger);
+
+                    // If this is a create-project invocation, proactively set the MCP
+                    // server's working directory to the composite path so the server
+                    // will perform file creation inside the intended subfolder.
+                    try
+                    {
+                        var funcName = context.Function.Name ?? string.Empty;
+                        if (godotPlugin is not null
+                            && !string.IsNullOrWhiteSpace(turn.GodotProjectRoot)
+                            && !string.IsNullOrWhiteSpace(turn.ProjectName)
+                            && funcName.IndexOf("create", StringComparison.OrdinalIgnoreCase) >= 0
+                            && funcName.IndexOf("project", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            var godotRootTrim = turn.GodotProjectRoot.Trim();
+                            var projectNameTrim = turn.ProjectName.Trim();
+                            string combined;
+                            try
+                            {
+                                var rootLeaf = Path.GetFileName(godotRootTrim.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                                if (!string.IsNullOrWhiteSpace(rootLeaf) && string.Equals(rootLeaf, projectNameTrim, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    combined = godotRootTrim;
+                                }
+                                else
+                                {
+                                    combined = Path.Combine(godotRootTrim, projectNameTrim);
+                                }
+                            }
+                            catch
+                            {
+                                combined = Path.Combine(godotRootTrim, projectNameTrim);
+                            }
+
+                            try
+                            {
+                                if (!Directory.Exists(combined))
+                                {
+                                    Directory.CreateDirectory(combined);
+                                    logger.LogDebug("Created composite project directory for create-project: {Path}", combined);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.LogDebug(ex, "Could not create composite project directory for create-project; continuing.");
+                            }
+
+                            // Fire-and-forget apply; do not block the invocation if plugin fails.
+                            _ = godotPlugin.ApplyProjectRootAsync(combined);
+                            logger.LogDebug("Applied composite project root for create-project: {Path}", combined);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex, "Failed to apply composite project root before tool invocation; continuing.");
+                    }
                 }
 
                 CoerceBoolArgument(context, "enabled", invocationId, logger);
