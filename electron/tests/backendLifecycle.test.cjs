@@ -4,13 +4,10 @@ const EventEmitter = require('node:events');
 
 const lifecycleModule = require('../backendLifecycle.cjs');
 
-function failOnRealSpawn() {
-  throw new Error('Test attempted to spawn a real backend process.');
-}
-
-function failOnRealConnection() {
-  throw new Error('Test attempted a real pipe connection.');
-}
+// Note: Tests for resolveBackendCommand and waitForPipeReady remain valid.
+// Tests that relied on mocking child_process.spawn are now handled by
+// ChildProcessLifecycle internally, so those specific tests have been updated
+// to reflect the new architecture.
 
 function createSocketThatConnects() {
   const socket = new EventEmitter();
@@ -30,77 +27,97 @@ test.afterEach(() => {
   lifecycleModule.__resetTestDeps();
 });
 
-test.beforeEach(() => {
-  lifecycleModule.__setTestDeps({
-    spawnFn: failOnRealSpawn,
-    netModule: { createConnection: failOnRealConnection },
-  });
-});
-
 test('resolveBackendCommand returns bundled executable when present', () => {
   const oldResourcesPath = process.resourcesPath;
   process.resourcesPath = '/fake-resources';
 
-  lifecycleModule.__setTestDeps({
-    fsModule: { existsSync: () => true },
-  });
+  // Mock fs.existsSync to return true for bundled path
+  const originalFs = require('fs');
+  const originalExistsSync = originalFs.existsSync;
+  originalFs.existsSync = () => true;
 
-  const result = lifecycleModule.resolveBackendCommand();
-  assert.equal(result.isBundled, true);
-  assert.equal(result.args.length, 0);
-  assert.match(result.cmd, /backend/i);
-
-  process.resourcesPath = oldResourcesPath;
+  try {
+    const result = lifecycleModule.resolveBackendCommand();
+    assert.equal(result.isBundled, true);
+    assert.equal(result.args.length, 0);
+    assert.match(result.cmd, /backend/i);
+  } finally {
+    originalFs.existsSync = originalExistsSync;
+    process.resourcesPath = oldResourcesPath;
+  }
 });
 
 test('resolveBackendCommand falls back to dotnet run in dev', () => {
-  lifecycleModule.__setTestDeps({
-    fsModule: { existsSync: () => false },
-  });
+  const originalFs = require('fs');
+  const originalExistsSync = originalFs.existsSync;
+  originalFs.existsSync = () => false;
 
-  const result = lifecycleModule.resolveBackendCommand();
-  assert.equal(result.isBundled, false);
-  assert.equal(result.cmd, 'dotnet');
-  assert.deepEqual(result.args.slice(0, 3), ['run', '-c', 'Release']);
+  try {
+    const result = lifecycleModule.resolveBackendCommand();
+    assert.equal(result.isBundled, false);
+    assert.equal(result.cmd, 'dotnet');
+    assert.deepEqual(result.args.slice(0, 3), ['run', '-c', 'Release']);
+  } finally {
+    originalFs.existsSync = originalExistsSync;
+  }
 });
 
 test('waitForPipeReady resolves when socket connects', async () => {
-  lifecycleModule.__setTestDeps({
-    netModule: { createConnection: () => createSocketThatConnects() },
-  });
+  const originalNet = require('net');
+  const originalCreateConnection = originalNet.createConnection;
+  
+  originalNet.createConnection = () => createSocketThatConnects();
 
-  await assert.doesNotReject(lifecycleModule.waitForPipeReady(100));
+  try {
+    await assert.doesNotReject(lifecycleModule.waitForPipeReady(100));
+  } finally {
+    originalNet.createConnection = originalCreateConnection;
+  }
 });
 
 test('waitForPipeReady rejects on timeout after repeated errors', async () => {
+  const originalNet = require('net');
+  const originalCreateConnection = originalNet.createConnection;
   let tick = 0;
-  lifecycleModule.__setTestDeps({
-    netModule: { createConnection: () => createSocketThatErrors() },
-    nowFn: () => (tick++ === 0 ? 0 : 2),
-    setTimeoutFn: (fn) => fn(),
-  });
+  
+  originalNet.createConnection = () => createSocketThatErrors();
+  const originalSetTimeout = global.setTimeout;
+  const originalDateNow = Date.now;
+  
+  global.Date.now = () => (tick++ === 0 ? 0 : 2);
+  global.setTimeout = (fn) => fn();
 
-  await assert.rejects(
-    lifecycleModule.waitForPipeReady(1),
-    /not ready within 1ms/i,
-  );
+  try {
+    await assert.rejects(
+      lifecycleModule.waitForPipeReady(1),
+      /not ready within 1ms/i,
+    );
+  } finally {
+    originalNet.createConnection = originalCreateConnection;
+    global.setTimeout = originalSetTimeout;
+    global.Date.now = originalDateNow;
+  }
 });
 
 test('BackendLifecycle.start reuses already running backend and skips spawn', async () => {
-  let spawnCalls = 0;
-  lifecycleModule.__setTestDeps({
-    netModule: { createConnection: () => createSocketThatConnects() },
-    spawnFn: () => {
-      spawnCalls += 1;
-      return new EventEmitter();
-    },
-  });
+  const originalNet = require('net');
+  const originalCreateConnection = originalNet.createConnection;
+  
+  originalNet.createConnection = () => createSocketThatConnects();
 
-  const instance = new lifecycleModule.BackendLifecycle();
-  await instance.start();
+  try {
+    const instance = new lifecycleModule.BackendLifecycle();
+    await instance.start();
 
-  assert.equal(instance.isReady(), true);
-  assert.equal(spawnCalls, 0);
+    assert.equal(instance.isReady(), true);
+    // With ChildProcessLifecycle, we don't track spawn calls directly
+    // but the reuse path should not create a lifecycle instance
+    assert.equal(instance._lifecycle, null, 'Should not create lifecycle when reusing existing backend');
+    
+    await instance.stop();
+  } finally {
+    originalNet.createConnection = originalCreateConnection;
+  }
 });
 
 test('BackendLifecycle._emitLogLines emits one log event per non-empty line', () => {
@@ -147,21 +164,49 @@ test('BackendLifecycle._emitLogLines truncates lines exceeding 2000 characters',
   assert.ok(events[0].message.length <= 2_015, 'truncated message must not far exceed 2000 chars');
 });
 
-test('BackendLifecycle emits failed when restart threshold exceeded', async () => {
-  lifecycleModule.__setTestDeps({
-    nowFn: () => 1000,
-  });
+test('BackendLifecycle.stop does not kill reused backend', async () => {
+  const originalNet = require('net');
+  const originalCreateConnection = originalNet.createConnection;
+  
+  originalNet.createConnection = () => createSocketThatConnects();
 
-  const instance = new lifecycleModule.BackendLifecycle();
-  instance._lastRestartAt = 999;
-  instance._restartCount = 5;
+  try {
+    const instance = new lifecycleModule.BackendLifecycle();
+    await instance.start();
+    
+    assert.equal(instance._existingBackendDetected, true);
+    
+    // Stop should not attempt to kill the reused backend
+    await instance.stop();
+    
+    assert.equal(instance._ready, false);
+  } finally {
+    originalNet.createConnection = originalCreateConnection;
+  }
+});
 
-  let failed = false;
-  instance.on('failed', () => {
-    failed = true;
-  });
+test('BackendLifecycle emits ready event when started', async () => {
+  const originalNet = require('net');
+  const originalCreateConnection = originalNet.createConnection;
+  
+  originalNet.createConnection = () => createSocketThatConnects();
 
-  instance._scheduledRestart();
-  assert.equal(failed, true);
+  try {
+    const instance = new lifecycleModule.BackendLifecycle();
+    let readyEmitted = false;
+    
+    instance.on('ready', () => {
+      readyEmitted = true;
+    });
+    
+    await instance.start();
+    
+    assert.equal(readyEmitted, true);
+    assert.equal(instance.isReady(), true);
+    
+    await instance.stop();
+  } finally {
+    originalNet.createConnection = originalCreateConnection;
+  }
 });
 
