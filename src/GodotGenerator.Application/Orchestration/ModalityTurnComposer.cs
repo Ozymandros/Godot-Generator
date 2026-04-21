@@ -157,6 +157,11 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
                 "When tools are available, do not answer with text only. " +
                 "Call Godot MCP tools to create or modify at least one project file for the request, " +
                 "always passing projectPath, and include fileName for scene/resource/script-oriented tools.");
+
+            // Inject implicit instruction to always call get_project_info before any generation
+            sb.AppendLine();
+            sb.Append(
+                "Before generating or modifying any files, always call the MCP tool 'get_project_info' to retrieve the current project configuration from project.godot. This call should be the first tool invocation in every generation session.");
         }
     }
 

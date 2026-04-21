@@ -14,14 +14,29 @@ console.log('[Electron] PATH:', process.env.PATH);
 
 'use strict';
 
+
 const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
 const { defineIpcApi, defineIpcEvents } = require('@ozymandros/electron-message-bridge');
-const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
-  require('@ozymandros/electron-message-bridge/menus');
-const { registerSpeechWhisperMain } =
-  require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
+const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } = require('@ozymandros/electron-message-bridge/menus');
+const { registerSpeechWhisperMain } = require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
 const backendLifecycle = require('./backendLifecycle.cjs');
 const pipeBroker = require('./pipeBroker.cjs');
+
+// Utility: Ensure destination directory exists before any generation/SK call
+function ensureDestinationDir(payload) {
+  // Try to find a destination path in the payload (common keys: dest, destination, outputPath, etc.)
+  if (!payload || typeof payload !== 'object') return;
+  const keys = ['dest', 'destination', 'destinationPath', 'outputPath', 'outputDir', 'targetDir', 'targetPath', 'folder', 'dir'];
+  for (const key of keys) {
+    if (typeof payload[key] === 'string' && payload[key].length > 0) {
+      const destPath = payload[key];
+      const dir = fs.lstatSync(destPath).isDirectory ? destPath : path.dirname(destPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
+  }
+}
 
 /** Must match backendLifecycle default (override with GODOT_BLAZOR_URL). */
 const defaultDevUrl = 'http://127.0.0.1:5044';
@@ -186,6 +201,11 @@ const ipcApi = defineIpcApi({
           errorMessage: 'payloadJson is not valid JSON.',
         };
       }
+    }
+
+    // Ensure destination directory exists for any generation/SK endpoint
+    if (typeof command === 'string' && /generate|sk|wizard|create|code|file|project|endpoint/i.test(command)) {
+      ensureDestinationDir(payload);
     }
 
     try {

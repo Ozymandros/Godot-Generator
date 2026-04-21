@@ -25,7 +25,7 @@
 const net = require('net');
 
 const PIPE_NAME       = '\\\\.\\pipe\\godot-generator-ipc';
-const DEFAULT_TIMEOUT = 30_000; // ms per individual command call
+const DEFAULT_TIMEOUT = 60_000; // ms per individual command call
 
 let _callCounter = 0;
 const deps = {

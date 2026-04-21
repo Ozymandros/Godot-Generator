@@ -50,16 +50,6 @@ public sealed class GodotKernelFactory(
         {
             await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
 
-            // GodotMCP.Server 1.5+ validates projectPath against the server's working directory.
-            // Apply the per-request project root before returning the kernel so the godot-mcp
-            // process is always scoped to the correct project directory. This is a no-op when
-            // projectRoot is null/empty or identical to the currently configured path.
-            if (!string.IsNullOrWhiteSpace(projectRoot) && !_pluginInitializationSkipped)
-            {
-                await ApplyProjectRootToPluginAsync(projectRoot.Trim(), cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
             if (_kernelsByCacheKey.TryGetValue(cacheKey, out var cached))
             {
                 return cached;
@@ -92,33 +82,6 @@ public sealed class GodotKernelFactory(
         finally
         {
             _initLock.Release();
-        }
-    }
-
-    /// <summary>
-    /// Delegates the per-request project root update to <see cref="GodotPlugin"/> so the
-    /// underlying <c>godot-mcp</c> process is restarted with the correct working directory
-    /// when the path has changed.
-    /// </summary>
-    private async Task ApplyProjectRootToPluginAsync(string projectRoot, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var godotPlugin = rootServices.GetRequiredService<GodotPlugin>();
-            await godotPlugin.ApplyProjectRootAsync(projectRoot, cancellationToken).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            // A reconnect failure is non-fatal for kernel lookup; log and continue so the
-            // cached kernel is still returned and the tool-injection path can attempt the call.
-            logger.LogWarning(
-                ex,
-                "Failed to apply project root '{ProjectRoot}' to Godot MCP plugin; proceeding with current server state.",
-                projectRoot);
         }
     }
 

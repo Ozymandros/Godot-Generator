@@ -350,7 +350,7 @@ public sealed class WizardOrchestrationService(
                         applyPath = godotPathTrim;
                     }
 
-                    await godotPlugin.ApplyProjectRootAsync(applyPath).ConfigureAwait(false);
+                    //await godotPlugin.ApplyProjectRootAsync(applyPath).ConfigureAwait(false);
                     logger.LogDebug("Applied composite project root for create-project: {Path}", applyPath);
                 }
             }

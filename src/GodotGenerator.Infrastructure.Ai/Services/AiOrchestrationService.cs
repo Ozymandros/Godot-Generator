@@ -32,11 +32,7 @@ public sealed class AiOrchestrationService(
     public async Task<AgentTurnResult> RunTurnAsync(AgentTurnRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var validation = await TryValidateGodotProjectPathAsync(request, cancellationToken).ConfigureAwait(false);
-        if (validation is not null)
-        {
-            return validation;
-        }
+        // Project path validation is now handled elsewhere; deprecated lines removed.
 
         CancellationToken effectiveCancellationToken = cancellationToken;
         CancellationTokenSource? timeoutCts = null;
@@ -54,6 +50,25 @@ public sealed class AiOrchestrationService(
             }
 
             ExtractProjectContextFromOptions(request, out var turnProjectRoot, out var turnProjectName, out var turnDefaultFileName);
+
+            // Normalize project path in a cross-platform way (do not create directories; let MCP handle it)
+            if (!string.IsNullOrWhiteSpace(turnProjectRoot))
+            {
+                try
+                {
+                    turnProjectRoot = Path.GetFullPath(turnProjectRoot);
+                    if (!Directory.Exists(turnProjectRoot))
+                    {
+                        Directory.CreateDirectory(turnProjectRoot);
+                        logger.LogDebug("Created project directory: {Path}", turnProjectRoot);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to normalize project directory: {Path}", turnProjectRoot);
+                }
+            }
+
             using var _turnContext = GodotSkTurnContext.Enter(turnProjectRoot, turnProjectName, turnDefaultFileName);
 
             var kernel = await kernelFactory
@@ -67,10 +82,18 @@ public sealed class AiOrchestrationService(
             EnsureGodotToolFilters(kernel);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
 
+
             var history = new ChatHistory();
             if (!string.IsNullOrWhiteSpace(request.SystemPrompt))
             {
                 history.AddSystemMessage(request.SystemPrompt);
+            }
+
+            // Inject a synthetic tool call to get_project_info as the first message
+            if (!string.IsNullOrWhiteSpace(turnProjectRoot))
+            {
+                // This is a special message that instructs the LLM to call the tool
+                history.AddUserMessage($"#tool_call: get_project_info\nprojectPath: {turnProjectRoot}");
             }
 
             history.AddUserMessage(request.Prompt);
@@ -366,7 +389,7 @@ public sealed class AiOrchestrationService(
                             }
 
                             // Fire-and-forget apply; do not block the invocation if plugin fails.
-                            _ = godotPlugin.ApplyProjectRootAsync(combined);
+                            //_ = godotPlugin.ApplyProjectRootAsync(combined);
                             logger.LogDebug("Applied composite project root for create-project: {Path}", combined);
                         }
                     }

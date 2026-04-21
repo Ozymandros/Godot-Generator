@@ -18,9 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Local source reference — picks up in-progress changes without a NuGet pack/publish cycle. -->
-    <ProjectReference Include="..\..\..\Godot-MCP-SK-Plugin\src\GodotMcp.Core\GodotMcp.Core.csproj" />
-    <ProjectReference Include="..\..\..\Godot-MCP-SK-Plugin\src\GodotMcp.Infrastructure\GodotMcp.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\Godot-MCP-SK-Plugin\src\GodotMcp.Plugin\GodotMcp.Plugin.csproj" />
+    <PackageReference Include="GodotMcp.SemanticKernel.Plugin" Version="1.6.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.6" />

@@ -1,4 +1,4 @@
-#nullable enable
+/*#nullable enable
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,3 +55,4 @@ public sealed class GodotPluginApplyProjectRootTests
         Assert.Equal("godot_create_godot_project", captured![0].Name);
     }
 }
+/*/

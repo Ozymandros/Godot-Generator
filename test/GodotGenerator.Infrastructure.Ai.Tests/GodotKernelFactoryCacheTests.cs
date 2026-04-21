@@ -35,7 +35,7 @@ public sealed class GodotKernelFactoryCacheTests
             new McpToolDefinition("godot_create_godot_project", "desc", new Dictionary<string, McpParameterDefinition>())
         };
         mockMcpClient.Setup(c => c.ListToolsAsync(It.IsAny<CancellationToken>())).ReturnsAsync((IReadOnlyList<McpToolDefinition>)tools);
-        mockMcpClient.Setup(c => c.ApplyProjectRootAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        ///*mockMcpClient.Setup(c => c.ApplyProjectRootAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).Returns*/(Task.CompletedTask);
 
         var functionMapper = new FunctionMapper(NullLogger<FunctionMapper>.Instance);
         var parameterConverter = new Mock<IParameterConverter>();
