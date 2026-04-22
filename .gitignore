@@ -17,3 +17,11 @@ package-lock.json
 .env.local
 *.env.*
 ```
+.vs/
+coverage/
+obj/
+bin/
+TestResults/
+models/
+*,bin
+*.exe

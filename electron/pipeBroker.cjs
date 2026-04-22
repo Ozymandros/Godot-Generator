@@ -25,7 +25,7 @@
 const net = require('net');
 
 const PIPE_NAME       = '\\\\.\\pipe\\godot-generator-ipc';
-const DEFAULT_TIMEOUT = 60_000; // ms per individual command call
+const DEFAULT_TIMEOUT = 180_000; // 3 minutes per individual command call, plus a bit of leeway for startup/shutdown sequences. Wizard commands that expect multiple progress
 
 let _callCounter = 0;
 const deps = {
