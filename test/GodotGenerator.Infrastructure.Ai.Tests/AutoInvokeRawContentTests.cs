@@ -15,17 +15,17 @@ using Xunit;
 
 namespace GodotGenerator.Infrastructure.Ai.Tests;
 
-public sealed class AutoInvokeTests
+public sealed class AutoInvokeRawContentTests
 {
     [Fact]
-    public async Task RunTurn_auto_invokes_discovered_function_with_script_content()
+    public async Task RunTurn_auto_invokes_discovered_function_with_rawContent_param()
     {
         string? captured = null;
 
         var tool = KernelFunctionFactory.CreateFromMethod(
-            (string content) =>
+            (string rawContent) =>
             {
-                captured = content;
+                captured = rawContent;
                 return "ok";
             },
             functionName: "godot_create_script");
@@ -40,7 +40,6 @@ public sealed class AutoInvokeTests
                 It.IsAny<CancellationToken>()))
             .Returns<ChatHistory, PromptExecutionSettings, Kernel, CancellationToken>(async (_, _, kernel, ct) =>
             {
-                // Return assistant text containing a fenced GDScript block
                 return [new ChatMessageContent(AuthorRole.Assistant, "```gdscript\nextends Node\nfunc _ready():\n    pass\n```")];
             });
 

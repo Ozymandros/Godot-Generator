@@ -375,7 +375,7 @@ public sealed class AiOrchestrationService(
         }
 
         var args = new KernelArguments();
-        var candidateKeys = new[] { "content", "script", "code", "fileContents", "contents", "source", "scriptText" };
+        var candidateKeys = new[] { "content", "script", "code", "fileContents", "contents", "source", "scriptText", "rawContent", "raw_content", "raw" };
         foreach (var k in candidateKeys)
         {
             args[k] = script;

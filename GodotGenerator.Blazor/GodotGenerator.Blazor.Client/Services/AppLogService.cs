@@ -64,7 +64,7 @@ public sealed class AppLogService
         return copy
             .Where(e =>
                 (minLevel is null || e.Level >= minLevel.Value) &&
-                (kind is null    || e.Kind == kind.Value) &&
+                (kind is null || e.Kind == kind.Value) &&
                 (string.IsNullOrEmpty(normalizedSearch) ||
                  e.Category.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
                  e.Message.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase) ||
@@ -244,7 +244,7 @@ public sealed class AppLogService
         }
 
         var category = withoutVersion[..dotIndex];
-        var label    = withoutVersion[(dotIndex + 1)..];
+        var label = withoutVersion[(dotIndex + 1)..];
         return (category, label);
     }
 }

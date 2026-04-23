@@ -43,7 +43,7 @@ public sealed class GodotKernelFactory(
         var filterSegment = applyFiltering
             ? EffectiveSelectionPolicy.NormalizeModality(modalityKeyForToolFiltering!.Trim())
             : "full";
-            var cacheKey = BuildCacheKey(connection.Provider, connection.ModelId, filterSegment, projectRoot);
+        var cacheKey = BuildCacheKey(connection.Provider, connection.ModelId, filterSegment, projectRoot);
 
         await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try

@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using System.Text.Json;
+using System;
 using System.IO.Pipes;
 using System.Threading.Channels;
 using GodotGenerator.Application.Orchestration;
@@ -68,6 +70,9 @@ internal sealed class NamedPipeCommandHost : BackgroundService
 
     private readonly CommandDispatcher _dispatcher;
     private readonly ILogger<NamedPipeCommandHost> _logger;
+
+    private static bool RawPayloadLoggingEnabled =>
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("GODOT_MCP_RAW_LOG"));
 
     /// <summary>
     /// Initialises the host with the required dispatcher and logger.
@@ -147,7 +152,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
 
         try
         {
-            envelope = await ReadEnvelopeAsync(server, hostCt).ConfigureAwait(false);
+            envelope = await ReadEnvelopeAsync(server, _logger, hostCt).ConfigureAwait(false);
             if (envelope is null)
             {
                 return;
@@ -191,7 +196,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
 
         using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt);
         writeCts.CancelAfter(ResponseWriteGraceTimeout);
-        await WriteResponseAsync(server, response, writeCts.Token).ConfigureAwait(false);
+        await WriteResponseAsync(server, response, _logger, writeCts.Token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -239,7 +244,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
             using (WizardIpcProgressContext.Enter(frame => frameChannel.Writer.TryWrite(frame)))
             {
                 var dispatchTask = _dispatcher.DispatchAsync(envelope, executionCts.Token);
-                var drainTask = DrainProgressFramesAsync(server, frameChannel.Reader, executionCts.Token);
+                var drainTask = DrainProgressFramesAsync(server, frameChannel.Reader, _logger, executionCts.Token);
 
                 try
                 {
@@ -271,7 +276,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
 
         using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt);
         writeCts.CancelAfter(ResponseWriteGraceTimeout);
-        await WriteWizardFinalFrameAsync(server, response, writeCts.Token).ConfigureAwait(false);
+        await WriteWizardFinalFrameAsync(server, response, _logger, writeCts.Token).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -282,6 +287,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     private static async Task DrainProgressFramesAsync(
         PipeStream stream,
         ChannelReader<WizardProgressFrame> reader,
+        ILogger logger,
         CancellationToken ct)
     {
         var written = 0;
@@ -289,7 +295,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
         {
             if (written < MaxProgressFrames)
             {
-                await WriteProgressFrameAsync(stream, frame, ct).ConfigureAwait(false);
+                await WriteProgressFrameAsync(stream, frame, logger, ct).ConfigureAwait(false);
                 written++;
             }
             // Continue consuming even when the cap is hit so the channel never stalls dispatch.
@@ -303,7 +309,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     /// <see cref="CommandEnvelope"/>. Returns <c>null</c> if the payload is invalid or
     /// exceeds <see cref="MaxPayloadBytes"/>.
     /// </summary>
-    private static async Task<CommandEnvelope?> ReadEnvelopeAsync(PipeStream stream, CancellationToken ct)
+    private static async Task<CommandEnvelope?> ReadEnvelopeAsync(PipeStream stream, ILogger logger, CancellationToken ct)
     {
         // 4-byte little-endian length prefix
         var lenBuf = new byte[4];
@@ -322,6 +328,19 @@ internal sealed class NamedPipeCommandHost : BackgroundService
         var payload = new byte[length];
         await stream.ReadExactlyAsync(payload, ct).ConfigureAwait(false);
 
+        if (RawPayloadLoggingEnabled)
+        {
+            try
+            {
+                var text = Encoding.UTF8.GetString(payload);
+                logger.LogDebug("MCP IN: {Payload}", text.Length > 10000 ? text[..10000] + "...[truncated]" : text);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to decode MCP incoming payload for logging.");
+            }
+        }
+
         return JsonSerializer.Deserialize<CommandEnvelope>(payload, ContractJsonOptions.Default);
     }
 
@@ -329,9 +348,23 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     /// Serialises <paramref name="response"/> to a plain (legacy) length-prefixed JSON frame
     /// and writes it to the stream.  Used for all non-wizard commands.
     /// </summary>
-    private static async Task WriteResponseAsync(PipeStream stream, ResponseEnvelope response, CancellationToken ct)
+    private static async Task WriteResponseAsync(PipeStream stream, ResponseEnvelope response, ILogger logger, CancellationToken ct)
     {
         var payload = JsonSerializer.SerializeToUtf8Bytes(response, ContractJsonOptions.Default);
+
+        if (RawPayloadLoggingEnabled)
+        {
+            try
+            {
+                var text = Encoding.UTF8.GetString(payload);
+                logger.LogDebug("MCP OUT (response): {Payload}", text.Length > 10000 ? text[..10000] + "...[truncated]" : text);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to decode outgoing response payload for logging.");
+            }
+        }
+
         var lenBuf = BitConverter.GetBytes(payload.Length);
 
         await stream.WriteAsync(lenBuf, ct).ConfigureAwait(false);
@@ -345,10 +378,25 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     private static async Task WriteProgressFrameAsync(
         PipeStream stream,
         WizardProgressFrame frame,
+        ILogger logger,
         CancellationToken ct)
     {
         var wrapper = new WizardProgressWireFrame("p", Progress: frame, Envelope: null);
         var payload = JsonSerializer.SerializeToUtf8Bytes(wrapper, ContractJsonOptions.Default);
+
+        if (RawPayloadLoggingEnabled)
+        {
+            try
+            {
+                var text = Encoding.UTF8.GetString(payload);
+                logger.LogDebug("MCP OUT (progress): {Payload}", text.Length > 10000 ? text[..10000] + "...[truncated]" : text);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to decode outgoing progress payload for logging.");
+            }
+        }
+
         var lenBuf = BitConverter.GetBytes(payload.Length);
 
         await stream.WriteAsync(lenBuf, ct).ConfigureAwait(false);
@@ -362,10 +410,25 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     private static async Task WriteWizardFinalFrameAsync(
         PipeStream stream,
         ResponseEnvelope envelope,
+        ILogger logger,
         CancellationToken ct)
     {
         var wrapper = new WizardProgressWireFrame("f", Progress: null, Envelope: envelope);
         var payload = JsonSerializer.SerializeToUtf8Bytes(wrapper, ContractJsonOptions.Default);
+
+        if (RawPayloadLoggingEnabled)
+        {
+            try
+            {
+                var text = Encoding.UTF8.GetString(payload);
+                logger.LogDebug("MCP OUT (final): {Payload}", text.Length > 10000 ? text[..10000] + "...[truncated]" : text);
+            }
+            catch (Exception ex)
+            {
+                logger.LogDebug(ex, "Failed to decode outgoing final payload for logging.");
+            }
+        }
+
         var lenBuf = BitConverter.GetBytes(payload.Length);
 
         await stream.WriteAsync(lenBuf, ct).ConfigureAwait(false);
