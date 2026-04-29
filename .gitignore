@@ -22,8 +22,8 @@ coverage/
 obj/
 bin/
 TestResults/
-models/
-*,bin
+
+*.bin
 *.exe
 
 .fake
