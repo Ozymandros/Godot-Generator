@@ -1,6 +1,5 @@
 #nullable enable
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using GodotGenerator.Application.Abstractions;
 using GodotGenerator.Application.Dtos;
 using GodotGenerator.Application.Orchestration;
@@ -12,15 +11,20 @@ using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using GodotMcp.Plugin;
+using System.IO;
 
 namespace GodotGenerator.Infrastructure.Ai.Services;
 
 /// <summary>
 /// Orchestrates LLM turns with automatic Godot MCP tool invocation via Semantic Kernel.
 /// </summary>
-using GodotMcp.Plugin;
-using System.IO;
-
+/// <param name="kernelFactory">Factory to create or reuse Semantic Kernel instances.</param>
+/// <param name="providerCapabilityRouter">Router to determine provider/modality capabilities.</param>
+/// <param name="orchestrationOptions">Orchestration options (feature flags, timeouts).</param>
+/// <param name="godotProjectPathValidator">Validates provided Godot project root paths.</param>
+/// <param name="logger">Logger for diagnostic messages.</param>
+/// <param name="godotPlugin">Optional Godot MCP plugin instance.</param>
 public sealed class AiOrchestrationService(
     IKernelFactory kernelFactory,
     IProviderCapabilityRouter providerCapabilityRouter,
@@ -115,21 +119,6 @@ public sealed class AiOrchestrationService(
                 .GetChatMessageContentsAsync(history, settings, kernel, cancellationToken: effectiveCancellationToken)
                 .ConfigureAwait(false);
 
-            // Try to detect assistant-generated code and proactively invoke Godot MCP tools
-            // so generated code is passed as tool arguments when the LLM returns code but
-            // the tool schema or SK auto-invoke didn't wire it through.
-            if (orchestrationOptions.Value.EnableAutoToolInvocation)
-            {
-                try
-                {
-                    await TryAutoInvokeGeneratedCodeAsync(kernel, contents, effectiveCancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogDebug(ex, "Automatic MCP invocation failed; continuing without blocking the response.");
-                }
-            }
-
             var text = NormalizeResponseText(contents);
             return new AgentTurnResult(true, text);
         }
@@ -173,6 +162,11 @@ public sealed class AiOrchestrationService(
         }
 
         kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger, godotPlugin));
+
+        // Native SK lifecycle filter: detects GDScript blocks in assistant messages and
+        // auto-invokes the appropriate Godot file-creation function inside the completion
+        // loop so the tool result is visible to the model before the final response is returned.
+        kernel.AutoFunctionInvocationFilters.Add(new GodotAutoInvokeFilter(logger));
     }
 
     private static void ExtractProjectContextFromOptions(
@@ -320,246 +314,6 @@ public sealed class AiOrchestrationService(
     }
 
     /// <summary>
-    /// Attempts to detect generated code in assistant output and invoke Godot MCP tools
-    /// by passing the detected code as likely tool arguments. This is best-effort and
-    /// intentionally swallows failures so it does not impact the user-visible response.
-    /// </summary>
-    private async Task TryAutoInvokeGeneratedCodeAsync(Kernel kernel, IReadOnlyList<ChatMessageContent> contents, CancellationToken ct)
-    {
-        if (kernel is null || contents is null || contents.Count == 0)
-        {
-            return;
-        }
-
-        // Combine assistant text for analysis
-        var combined = contents
-            .Select(c => c.Content)
-            .Where(c => !string.IsNullOrWhiteSpace(c))
-            .Select(c => c!.Trim())
-            .ToArray();
-
-        if (combined.Length == 0)
-        {
-            return;
-        }
-
-        var text = string.Join(Environment.NewLine, combined);
-
-        // Prefer fenced code blocks (```lang\n...\n```) and fall back to heuristics for GDScript
-        string? script = null;
-        try
-        {
-            var m = Regex.Match(text, "```(?:[\\w+-]*)\\r?\\n([\\s\\S]*?)\\r?\\n```", RegexOptions.Singleline);
-            if (m.Success && m.Groups.Count > 1)
-            {
-                script = m.Groups[1].Value;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "Fenced-code regex failed; falling back to heuristics.");
-        }
-
-        if (string.IsNullOrWhiteSpace(script))
-        {
-            var lowered = text.ToLowerInvariant();
-            if (lowered.Contains("extends ") || lowered.Contains("func ") || lowered.Contains("class_name ") || lowered.Contains("signal "))
-            {
-                script = text;
-            }
-        }
-
-        if (string.IsNullOrWhiteSpace(script))
-        {
-            return;
-        }
-
-        var args = new KernelArguments();
-        var candidateKeys = new[] { "content", "script", "code", "fileContents", "contents", "source", "scriptText", "rawContent", "raw_content", "raw" };
-        foreach (var k in candidateKeys)
-        {
-            args[k] = script;
-        }
-
-        // Provide a default file name if available in the turn context
-        try
-        {
-            var turn = GodotSkTurnContext.Snapshot;
-            if (turn is not null && !string.IsNullOrWhiteSpace(turn.DefaultFileName))
-            {
-                if (!args.ContainsKey("fileName") && !args.ContainsKey("filename") && !args.ContainsKey("file_name"))
-                {
-                    args["fileName"] = turn.DefaultFileName;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "Could not read turn defaults while preparing auto-invoke args.");
-        }
-
-        // Dynamic discovery: enumerate kernel plugins and functions to find best candidates
-        var discovered = new List<(string plugin, string function, string? parameter, int score)>();
-        try
-        {
-            foreach (var pluginObj in kernel.Plugins)
-            {
-                var pluginName = pluginObj?.Name ?? string.Empty;
-                foreach (var fn in pluginObj)
-                {
-                    var functionName = fn?.Name ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(functionName))
-                    {
-                        continue;
-                    }
-
-                    string? chosenParam = null;
-                    try
-                    {
-                        var parameters = fn?.Metadata?.Parameters;
-                        if (parameters is not null)
-                        {
-                            // Prefer exact candidate keys
-                            foreach (var p in parameters)
-                            {
-                                var pn = p?.Name;
-                                if (pn is null) continue;
-                                if (candidateKeys.Any(k => string.Equals(k, pn, StringComparison.OrdinalIgnoreCase)))
-                                {
-                                    chosenParam = pn;
-                                    break;
-                                }
-                            }
-
-                            // Fallback: look for param names containing script/code/content/file/source
-                            if (chosenParam is null)
-                            {
-                                foreach (var p in parameters)
-                                {
-                                    var pn = p?.Name;
-                                    if (pn is null) continue;
-                                    var lower = pn.ToLowerInvariant();
-                                    if (lower.Contains("script") || lower.Contains("code") || lower.Contains("content") || lower.Contains("source") || lower.Contains("file"))
-                                    {
-                                        chosenParam = pn;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogDebug(ex, "Failed inspecting parameters for {Plugin}.{Function}", pluginName, functionName);
-                    }
-
-                    // Heuristics scoring
-                    var score = 0;
-                    if (string.Equals(pluginName, "godot", StringComparison.OrdinalIgnoreCase)) score += 50;
-                    if (string.Equals(pluginName, "script", StringComparison.OrdinalIgnoreCase)) score += 40;
-                    if (functionName.IndexOf("create", StringComparison.OrdinalIgnoreCase) >= 0) score += 20;
-                    if (functionName.IndexOf("attach", StringComparison.OrdinalIgnoreCase) >= 0) score += 20;
-                    if (functionName.IndexOf("script", StringComparison.OrdinalIgnoreCase) >= 0) score += 30;
-                    if (chosenParam is not null) score += 30;
-                    if (functionName.StartsWith("get_", StringComparison.OrdinalIgnoreCase) || functionName.IndexOf("info", StringComparison.OrdinalIgnoreCase) >= 0) score -= 25;
-
-                    if (score > 0)
-                    {
-                        discovered.Add((pluginName, functionName, chosenParam, score));
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "Dynamic candidate discovery failed; will fall back to static candidates.");
-            discovered.Clear();
-        }
-
-        // Debug payload + discovered candidates
-        try
-        {
-            var payloadDict = new Dictionary<string, object?>();
-            foreach (var k in candidateKeys)
-            {
-                if (args.TryGetValue(k, out var v))
-                {
-                    payloadDict[k] = v is JsonElement je ? je.GetRawText() : v;
-                }
-            }
-            var payloadJson = JsonSerializer.Serialize(payloadDict);
-            logger.LogDebug("Prepared auto-invoke payload: {PayloadJson}", payloadJson);
-
-            if (discovered.Count > 0)
-            {
-                var discoveredJson = JsonSerializer.Serialize(discovered.OrderByDescending(d => d.score).Select(d => new { d.plugin, d.function, d.parameter, d.score }));
-                logger.LogDebug("Discovered auto-invoke candidates: {Candidates}", discoveredJson);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "Failed to serialize discovery/payload info for debug logging.");
-        }
-
-        // Attempt discovered candidates ordered by score
-        var ordered = discovered.OrderByDescending(d => d.score).ThenBy(d => d.plugin).ThenBy(d => d.function).ToArray();
-        foreach (var (plugin, function, parameter, score) in ordered)
-        {
-            try
-            {
-                var invocationArgs = new KernelArguments();
-                foreach (var k in candidateKeys) invocationArgs[k] = script;
-
-                if (args.TryGetValue("fileName", out var fn)) invocationArgs["fileName"] = fn;
-                else if (args.TryGetValue("filename", out fn)) invocationArgs["filename"] = fn;
-                else if (args.TryGetValue("file_name", out fn)) invocationArgs["file_name"] = fn;
-
-                if (!string.IsNullOrWhiteSpace(parameter)) invocationArgs[parameter] = script;
-
-                await kernel.InvokeAsync(plugin, function, invocationArgs, ct).ConfigureAwait(false);
-                logger.LogInformation("Auto-invoked {Plugin}.{Function} (discovered) with generated code (param: {Param}; keys: {Keys})", plugin, function, parameter ?? "<none>", string.Join(',', candidateKeys));
-                return;
-            }
-            catch (Exception ex)
-            {
-                logger.LogDebug(ex, "Auto-invocation failed for discovered {Plugin}.{Function}; trying next.", plugin, function);
-            }
-        }
-
-        if (ordered.Length > 0)
-        {
-            logger.LogDebug("Discovered candidates attempted but none succeeded; falling back to legacy static candidates.");
-        }
-
-        // Fallback static list
-        var fallbackCandidates = new (string plugin, string function)[]
-        {
-            ("godot", "godot_attach_script"),
-            ("godot", "godot_create_script"),
-            ("script", "attach_script"),
-            ("script", "create_script"),
-            ("godot", "attach_script"),
-            ("godot", "create_script"),
-        };
-
-        foreach (var (plugin, function) in fallbackCandidates)
-        {
-            try
-            {
-                await kernel.InvokeAsync(plugin, function, args, ct).ConfigureAwait(false);
-                logger.LogInformation("Auto-invoked {Plugin}.{Function} with generated code (keys: {Keys})", plugin, function, string.Join(',', candidateKeys));
-                return;
-            }
-            catch (Exception ex)
-            {
-                logger.LogDebug(ex, "Auto-invocation failed for {Plugin}.{Function}; trying next.", plugin, function);
-            }
-        }
-
-        logger.LogDebug("Automatic MCP invocation attempted but no candidate succeeded.");
-    }
-
-    /// <summary>
     /// Typed-skill plugin names registered by <c>AddGodotMcpSkills</c> when the primary
     /// <c>RegisterGodotTools</c> path fails due to dotted MCP tool names (GodotMCP.Server 1.5+).
     /// Kept in sync with <c>GodotMcpKernelExtensions.AddGodotMcpSkills</c>.
@@ -575,11 +329,17 @@ public sealed class AiOrchestrationService(
 
     private sealed class GodotToolDebugFilter(ILogger logger, GodotPlugin? godotPlugin) : IFunctionInvocationFilter
     {
+        private const string DebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-5ae4bd.log";
+        private const string DebugSessionId = "5ae4bd";
+
         public async Task OnFunctionInvocationAsync(
             FunctionInvocationContext context,
             Func<FunctionInvocationContext, Task> next)
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
+            var runId = Guid.NewGuid().ToString("N")[..8];
+            var isSceneTool =
+                string.Equals(context.Function.PluginName, "scene", StringComparison.OrdinalIgnoreCase);
 
             var isGodotTool =
                 string.Equals(context.Function.PluginName, "godot", StringComparison.OrdinalIgnoreCase) ||
@@ -592,6 +352,54 @@ public sealed class AiOrchestrationService(
                 var turn = GodotSkTurnContext.Snapshot;
                 if (turn is not null)
                 {
+                    if (isSceneTool)
+                    {
+                        var declaredParams = context.Function.Metadata.Parameters
+                            .Select(p => p.Name)
+                            .Where(n => !string.IsNullOrWhiteSpace(n))
+                            .Cast<string>()
+                            .ToArray();
+                        var preArgs = SnapshotArguments(context.Arguments);
+                        var preProjectPath = preArgs.TryGetValue("projectPath", out var preProjectPathRaw)
+                            ? preProjectPathRaw?.ToString()
+                            : null;
+                        var preFileName = preArgs.TryGetValue("fileName", out var preFileNameRaw)
+                            ? preFileNameRaw?.ToString()
+                            : null;
+                        var preSceneAbsolutePath = TryBuildSceneAbsolutePath(preProjectPath, preFileName);
+                        var preSceneCandidates = TryListSceneCandidates(preProjectPath, 10);
+                        #region agent log
+                        WriteDebugLog(
+                            runId,
+                            "H1",
+                            "AiOrchestrationService.cs:351",
+                            "scene tool pre-injection snapshot",
+                            new
+                            {
+                                plugin = context.Function.PluginName,
+                                function = context.Function.Name,
+                                declaredParams,
+                                args = preArgs,
+                                undeclaredArgs = context.Arguments.Keys
+                                    .Where(k => !declaredParams.Contains(k, StringComparer.OrdinalIgnoreCase))
+                                    .ToArray(),
+                                turnRoot = turn.GodotProjectRoot,
+                                turnProjectName = turn.ProjectName,
+                                turnDefaultFile = turn.DefaultFileName,
+                                fs = new
+                                {
+                                    projectPath = preProjectPath,
+                                    fileName = preFileName,
+                                    projectGodotExists = TryFileExists(TryCombine(preProjectPath, "project.godot")),
+                                    sceneAbsolutePath = preSceneAbsolutePath,
+                                    sceneExists = TryFileExists(preSceneAbsolutePath),
+                                    sceneCandidateCount = preSceneCandidates.Count,
+                                    sceneCandidates = preSceneCandidates,
+                                },
+                            });
+                        #endregion
+                    }
+
                     GodotKernelToolArgumentInjection.ApplyProjectDefaults(
                         context,
                         turn.GodotProjectRoot,
@@ -599,21 +407,30 @@ public sealed class AiOrchestrationService(
                         turn.DefaultFileName,
                         logger);
 
-                    // Log the prepared invocation arguments (raw values or Json text) for diagnostics.
-                    try
+                    if (isSceneTool)
                     {
-                        var argSnapshot = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-                        foreach (var kvp in context.Arguments)
-                        {
-                            argSnapshot[kvp.Key] = kvp.Value is JsonElement je ? je.GetRawText() : kvp.Value;
-                        }
-
-                        var argsJson = JsonSerializer.Serialize(argSnapshot);
-                        logger.LogDebug("Prepared Godot tool invocation {InvocationId} args: {ArgsJson}", invocationId, argsJson);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogDebug(ex, "Failed to serialize invocation args for {InvocationId}", invocationId);
+                        var declaredParams = context.Function.Metadata.Parameters
+                            .Select(p => p.Name)
+                            .Where(n => !string.IsNullOrWhiteSpace(n))
+                            .Cast<string>()
+                            .ToArray();
+                        #region agent log
+                        WriteDebugLog(
+                            runId,
+                            "H2",
+                            "AiOrchestrationService.cs:377",
+                            "scene tool post-injection snapshot",
+                            new
+                            {
+                                plugin = context.Function.PluginName,
+                                function = context.Function.Name,
+                                declaredParams,
+                                args = SnapshotArguments(context.Arguments),
+                                undeclaredArgs = context.Arguments.Keys
+                                    .Where(k => !declaredParams.Contains(k, StringComparer.OrdinalIgnoreCase))
+                                    .ToArray(),
+                            });
+                        #endregion
                     }
 
                     // If this is a create-project invocation, proactively set the MCP
@@ -680,26 +497,228 @@ public sealed class AiOrchestrationService(
 
             try
             {
+                if (isSceneTool && TryBuildSceneInvocationError(context.Arguments, out var sceneValidationError))
+                {
+                    throw sceneValidationError;
+                }
+
                 await next(context).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                try
+                if (isSceneTool)
                 {
-                    var argSnapshot = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-                    foreach (var kvp in context.Arguments)
-                    {
-                        argSnapshot[kvp.Key] = kvp.Value is JsonElement je ? je.GetRawText() : kvp.Value;
-                    }
-                    var argsJson = JsonSerializer.Serialize(argSnapshot);
-                    logger.LogError(ex, "Godot tool invocation {InvocationId} failed. Args: {ArgsJson}", invocationId, argsJson);
-                }
-                catch
-                {
-                    logger.LogError(ex, "Godot tool invocation {InvocationId} failed (args snapshot unavailable).", invocationId);
+                    var postArgs = SnapshotArguments(context.Arguments);
+                    var postProjectPath = postArgs.TryGetValue("projectPath", out var postProjectPathRaw)
+                        ? postProjectPathRaw?.ToString()
+                        : null;
+                    var postFileName = postArgs.TryGetValue("fileName", out var postFileNameRaw)
+                        ? postFileNameRaw?.ToString()
+                        : null;
+                    var postSceneAbsolutePath = TryBuildSceneAbsolutePath(postProjectPath, postFileName);
+                    var postSceneCandidates = TryListSceneCandidates(postProjectPath, 10);
+                    #region agent log
+                    WriteDebugLog(
+                        runId,
+                        "H3",
+                        "AiOrchestrationService.cs:445",
+                        "scene tool invocation exception",
+                        new
+                        {
+                            plugin = context.Function.PluginName,
+                            function = context.Function.Name,
+                            args = postArgs,
+                            exceptionType = ex.GetType().FullName,
+                            exceptionMessage = ex.Message,
+                            innerExceptionType = ex.InnerException?.GetType().FullName,
+                            innerExceptionMessage = ex.InnerException?.Message,
+                            exception = ex.ToString(),
+                            fs = new
+                            {
+                                projectPath = postProjectPath,
+                                fileName = postFileName,
+                                projectGodotExists = TryFileExists(TryCombine(postProjectPath, "project.godot")),
+                                sceneAbsolutePath = postSceneAbsolutePath,
+                                sceneExists = TryFileExists(postSceneAbsolutePath),
+                                sceneCandidateCount = postSceneCandidates.Count,
+                                sceneCandidates = postSceneCandidates,
+                            },
+                        });
+                    #endregion
                 }
 
                 throw;
+            }
+        }
+
+        private static bool TryBuildSceneInvocationError(
+            KernelArguments arguments,
+            out Exception validationError)
+        {
+            validationError = null!;
+            var projectPath = TryGetArgumentString(arguments, "projectPath");
+            var fileName = TryGetArgumentString(arguments, "fileName");
+            if (string.IsNullOrWhiteSpace(projectPath) || string.IsNullOrWhiteSpace(fileName))
+            {
+                return false;
+            }
+
+            var sceneAbsolutePath = TryBuildSceneAbsolutePath(projectPath, fileName);
+            if (TryFileExists(sceneAbsolutePath))
+            {
+                return false;
+            }
+
+            var projectLooksValid = TryFileExists(TryCombine(projectPath, "project.godot"));
+            if (!projectLooksValid)
+            {
+                return false;
+            }
+
+            validationError = new InvalidOperationException(
+                $"Scene tool validation failed: fileName '{fileName}' does not exist under projectPath '{projectPath}'. " +
+                "Use an existing project-relative .tscn file or create one before invoking scene tools.");
+            return true;
+        }
+
+        private static string? TryGetArgumentString(KernelArguments arguments, string key)
+        {
+            if (!arguments.TryGetValue(key, out var raw) || raw is null)
+            {
+                return null;
+            }
+
+            return raw switch
+            {
+                JsonElement je => je.ValueKind == JsonValueKind.String ? je.GetString() : je.ToString(),
+                _ => raw.ToString(),
+            };
+        }
+
+        private static bool TryFileExists(string? path)
+        {
+            try
+            {
+                return !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string? TryCombine(string? left, string? right)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                {
+                    return null;
+                }
+
+                return Path.Combine(left, right);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string? TryBuildSceneAbsolutePath(string? projectPath, string? fileName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(projectPath) || string.IsNullOrWhiteSpace(fileName))
+                {
+                    return null;
+                }
+
+                if (Path.IsPathRooted(fileName))
+                {
+                    return fileName;
+                }
+
+                return Path.Combine(
+                    projectPath,
+                    fileName.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static List<string> TryListSceneCandidates(string? projectPath, int maxCount)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath))
+                {
+                    return [];
+                }
+
+                return Directory.EnumerateFiles(projectPath, "*.tscn", SearchOption.AllDirectories)
+                    .Select(path => Path.GetRelativePath(projectPath, path).Replace('\\', '/'))
+                    .Take(Math.Max(1, maxCount))
+                    .ToList();
+            }
+            catch
+            {
+                return [];
+            }
+        }
+
+        private static Dictionary<string, object?> SnapshotArguments(KernelArguments arguments)
+        {
+            var snapshot = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in arguments)
+            {
+                snapshot[kvp.Key] = kvp.Value switch
+                {
+                    JsonElement je => je.ValueKind switch
+                    {
+                        JsonValueKind.Object or JsonValueKind.Array => je.GetRawText(),
+                        JsonValueKind.String => je.GetString(),
+                        JsonValueKind.Number when je.TryGetInt64(out var l) => l,
+                        JsonValueKind.Number when je.TryGetDouble(out var d) => d,
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        JsonValueKind.Null => null,
+                        _ => je.ToString(),
+                    },
+                    _ => kvp.Value,
+                };
+            }
+
+            return snapshot;
+        }
+
+        private static void WriteDebugLog(
+            string runId,
+            string hypothesisId,
+            string location,
+            string message,
+            object data)
+        {
+            try
+            {
+                var payload = new
+                {
+                    sessionId = DebugSessionId,
+                    runId,
+                    hypothesisId,
+                    location,
+                    message,
+                    data,
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                };
+
+                var line = JsonSerializer.Serialize(payload);
+                File.AppendAllText(DebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // Never block tool execution for debug instrumentation failures.
             }
         }
 

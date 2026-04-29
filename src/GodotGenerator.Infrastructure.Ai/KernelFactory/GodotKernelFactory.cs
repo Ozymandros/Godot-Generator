@@ -91,6 +91,7 @@ public sealed class GodotKernelFactory(
     /// <param name="provider">Provider identifier used for the cache key.</param>
     /// <param name="modelId">Model id used for the cache key.</param>
     /// <param name="toolFilterSegment">Normalized modality segment or <c>full</c> when no tool filtering applies.</param>
+    /// <param name="projectRoot">Optional project root used to scope caches per workspace.</param>
     /// <returns>The effective cache key to use for the kernel.</returns>
     private static string BuildCacheKey(string provider, string modelId, string toolFilterSegment, string? projectRoot) =>
         $"{provider}::{modelId}::{toolFilterSegment}::{NormalizeProjectRootForCache(projectRoot)}";

@@ -137,6 +137,7 @@ public sealed class WizardOrchestrationService(
     /// </remarks>
     /// <param name="provider">Preferred provider id.</param>
     /// <param name="preferredModelId">Optional preferred model id.</param>
+    /// <param name="projectRoot">Optional project root path used by Godot MCP tools.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Configured kernel with all available wizard plugin tools registered.</returns>
     private async Task<Kernel> BuildKernelAsync(
@@ -384,7 +385,7 @@ public sealed class WizardOrchestrationService(
             WizardIpcProgressContext.EmitIfActive(
                 WizardProgressFrame.Tool(
                     context.Function.PluginName ?? "unknown",
-                    context.Function.Name));
+                    context.Function.Name ?? "unknown"));
 
             if (invocationId.Contains("configure", StringComparison.OrdinalIgnoreCase)
                 || invocationId.Contains("autoload", StringComparison.OrdinalIgnoreCase))

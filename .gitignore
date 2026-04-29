@@ -25,3 +25,5 @@ TestResults/
 models/
 *,bin
 *.exe
+
+.fake

@@ -13,7 +13,7 @@ namespace GodotGenerator.Mcp.Api.Services;
 /// Generation endpoints are no longer mediated through this gateway. The Wizard kernel
 /// now hosts dedicated generation plugins (GodotMcp, ElevenLabs, ImageGen) that the
 /// LLM orchestrates directly. This class handles only configuration inspection and
-/// preference management on behalf of <see cref="GodotGenerator.Plugins.Plugins.WizardMcpPlugin"/>.
+/// preference management on behalf of the wizard plugin (WizardMcpPlugin).
 /// </remarks>
 public sealed class ApiWizardGenerationGateway(IGodotGeneratorApiService apiService) : IWizardGenerationGateway
 {
