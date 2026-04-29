@@ -29,9 +29,9 @@ public sealed class LogBufferService
     /// Raised whenever a new entry is appended.
     /// Forwarded from <see cref="AppLogService.Changed"/>.
     /// </summary>
-    public event Action?  Changed
+    public event Action? Changed
     {
-        add    => _appLog.Changed += value;
+        add => _appLog.Changed += value;
         remove => _appLog.Changed -= value;
     }
 

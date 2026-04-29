@@ -23,6 +23,7 @@ public sealed class GodotMcpToolCatalog(
                     provider: null,
                     preferredModelId: null,
                     modalityKeyForToolFiltering: null,
+                    projectRoot: string.Empty,
                     cancellationToken)
                 .ConfigureAwait(false);
             return CollectFunctionNames(kernel);

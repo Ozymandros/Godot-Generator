@@ -1,4 +1,5 @@
 #nullable enable
+using System.Text.Json;
 using GodotGenerator.Application.Orchestration;
 using Xunit;
 
@@ -29,9 +30,6 @@ public sealed class ModalityTurnComposerTests
     }
 
     /// <summary>
-    /// Verifies project name is prefixed on the user prompt.
-    /// </summary>
-    /// <summary>
     /// Verifies preferred script language hint is merged into the system prompt.
     /// </summary>
     [Fact]
@@ -60,6 +58,74 @@ public sealed class ModalityTurnComposerTests
     }
 
     /// <summary>
+    /// Verifies project name is copied into options so downstream orchestration can inject Godot tool parameters.
+    /// </summary>
+    [Fact]
+    public void Compose_merges_project_name_into_options()
+    {
+        var sut = new ModalityTurnComposer();
+        var turn = sut.Compose("code", "ping", null, "MyGame", null, null);
+
+        Assert.NotNull(turn.Options);
+        Assert.True(turn.Options!.TryGetValue(ModalityTurnComposer.ProjectNameOptionKey, out var v));
+        Assert.Equal("MyGame", v?.ToString());
+    }
+
+    /// <summary>
+    /// Verifies Godot project path and name appear in the system prompt as tool hints.
+    /// </summary>
+    [Fact]
+    public void Compose_includes_godot_tool_hints_when_path_and_name_in_options()
+    {
+        var sut = new ModalityTurnComposer();
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [ModalityTurnComposer.GodotProjectPathOptionKey] = @"C:\demo\game",
+            [ModalityTurnComposer.ProjectNameOptionKey] = "Demo",
+        };
+
+        var turn = sut.Compose("godot-nodes", "add node", null, null, null, options);
+
+        Assert.Contains(@"C:\demo\game", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("Demo", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("Godot project root path", turn.SystemPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compose_includes_godot_file_name_hint_when_option_set()
+    {
+        var sut = new ModalityTurnComposer();
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [ModalityTurnComposer.GodotProjectPathOptionKey] = @"C:\demo\game",
+            [ModalityTurnComposer.GodotTargetFileNameOptionKey] = "scenes/Main.tscn",
+        };
+
+        var turn = sut.Compose("godot-nodes", "add node", null, null, null, options);
+
+        Assert.Contains("scenes/Main.tscn", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("fileName", turn.SystemPrompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Compose_includes_godot_tool_hints_when_options_are_json_elements()
+    {
+        var sut = new ModalityTurnComposer();
+        var pathElement = JsonDocument.Parse("\"C:\\\\demo\\\\ipc\"").RootElement;
+        var nameElement = JsonDocument.Parse("\"IpcGame\"").RootElement;
+        var options = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            [ModalityTurnComposer.GodotProjectPathOptionKey] = pathElement,
+            [ModalityTurnComposer.ProjectNameOptionKey] = nameElement,
+        };
+
+        var turn = sut.Compose("godot-nodes", "add node", null, null, null, options);
+
+        Assert.Contains(@"C:\demo\ipc", turn.SystemPrompt, StringComparison.Ordinal);
+        Assert.Contains("IpcGame", turn.SystemPrompt, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Every new Godot-specific modality must have a distinct, non-empty system instruction.
     /// </summary>
     [Theory]
@@ -68,6 +134,7 @@ public sealed class ModalityTurnComposerTests
     [InlineData("godot-shaders", "shader")]
     [InlineData("godot-signals", "signal")]
     [InlineData("godot-nodes", "node")]
+    [InlineData("wizard", "orchestrat")]
     public void GetSystemInstruction_returns_non_empty_for_new_modalities(string key, string keyword)
     {
         var sut = new ModalityTurnComposer();
@@ -85,7 +152,7 @@ public sealed class ModalityTurnComposerTests
     {
         var sut = new ModalityTurnComposer();
         var defaultInstruction = sut.GetSystemInstruction("__unknown__");
-        string[] newModalities = ["godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes"];
+        string[] newModalities = ["godot-lighting", "godot-camera", "godot-shaders", "godot-signals", "godot-nodes", "wizard"];
 
         foreach (var key in newModalities)
         {

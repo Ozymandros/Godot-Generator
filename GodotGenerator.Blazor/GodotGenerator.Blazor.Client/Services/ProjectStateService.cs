@@ -68,6 +68,13 @@ public sealed class ProjectStateService(IJSRuntime js)
     public Task SetActiveProjectPathAsync(string path, CancellationToken cancellationToken = default) =>
         SetActiveProjectAsync(ActiveProjectName, path, cancellationToken);
 
+    /// <summary>
+    /// Clears all persisted project state (name and path) and raises <see cref="Changed"/>.
+    /// Called when the user creates a new project via File → New Project.
+    /// </summary>
+    public Task ResetAsync(CancellationToken cancellationToken = default) =>
+        SetActiveProjectAsync(string.Empty, string.Empty, cancellationToken);
+
     /// <summary>Persists the active project name and path under <c>unity_generator_active_project</c>.</summary>
     public async Task SetActiveProjectAsync(string name, string path, CancellationToken cancellationToken = default)
     {

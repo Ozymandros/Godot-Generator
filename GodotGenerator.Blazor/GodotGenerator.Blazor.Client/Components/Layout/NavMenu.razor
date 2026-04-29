@@ -6,7 +6,12 @@
 
 <nav class="app-nav" aria-label="Main navigation">
 
-    @* ── Generate ──────────────────────────────────────────────────────── *@
+    @* ── Wizard (top-level, project-scoped orchestrator) ─────────────────── *@
+    <AppNavLink Href="/generate/wizard" Match="NavLinkMatch.Prefix" Text="Wizard" Icon="@AppIconFactory.Wizard" />
+
+    <div class="app-nav__divider" role="separator" aria-hidden="true"></div>
+
+    @* ── Settings ──────────────────────────────────────────────────────── *@
     <AppNavLink Href="/settings" Match="NavLinkMatch.Prefix" Text="Configuration" Icon="@AppIconFactory.Settings" />
 
     <div class="app-nav-group">

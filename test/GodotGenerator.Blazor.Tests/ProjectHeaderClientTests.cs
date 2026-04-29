@@ -61,7 +61,7 @@ public sealed class ProjectHeaderClientTests
     {
         using var ctx = CreateConfiguredContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.JSInterop.Setup<string?>("godotElectronInterop.pickFolder").SetResult(@"C:\Games\Demo");
+        ctx.JSInterop.Setup<string?>("godotElectronInterop.pickFolder").SetResult(@"/Games/Demo");
 
         RegisterProjectState(ctx);
 
@@ -72,13 +72,14 @@ public sealed class ProjectHeaderClientTests
             await cut.FindAll("fluent-button")[0].ClickAsync(new MouseEventArgs());
         });
 
-        cut.WaitForAssertion(() => Assert.Contains(@"C:\Games\Demo", cut.Markup, StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains(@"/Games/Demo", cut.Markup, StringComparison.Ordinal));
     }
 
     private static BunitContext CreateConfiguredContext()
     {
         var ctx = new BunitContext();
         ((IServiceCollection)ctx.Services).AddFluentUIComponents();
+        ((IServiceCollection)ctx.Services).AddSingleton<AppLogService>();
         ((IServiceCollection)ctx.Services).AddSingleton<StatusBannerService>();
         ((IServiceCollection)ctx.Services).AddScoped<ElectronBridgeService>();
         return ctx;

@@ -59,7 +59,7 @@
 
 .logs-list {
     flex: 1;
-    overflow-y: auto;
+    overflow: auto;
     background: var(--app-color-surface);
     border: 1px solid var(--app-color-border);
     border-radius: var(--app-field-radius, 4px);

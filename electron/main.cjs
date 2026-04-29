@@ -1,19 +1,42 @@
 'use strict';
 
+
+// ── Log PATH and check for whisper presence (for speech-to-text) ──
 const path = require('path');
 const fs = require('fs');
+const sep = process.platform === 'win32' ? ';' : ':';
+const whisperExe = process.platform === 'win32' ? 'whisper.exe' : 'whisper';
+const found = (process.env.PATH || '').split(sep).some(p => fs.existsSync(path.join(p, whisperExe)));
+if (!found) {
+  console.warn('[Electron] whisper not found in PATH!');
+}
+console.log('[Electron] PATH:', process.env.PATH);
 
-const { app, BrowserWindow, Menu, dialog, shell, systemPreferences, session } = require('electron');
-const childProcess = require('child_process');
-const os = require('os');
+'use strict';
+
+
+const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
 const { defineIpcApi, defineIpcEvents } = require('@ozymandros/electron-message-bridge');
-const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } =
-  require('@ozymandros/electron-message-bridge/menus');
-const { registerSpeechWhisperMain } =
-  require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
+const { commandAction, buildMenuTemplate, loadMenuSpecFromFile } = require('@ozymandros/electron-message-bridge/menus');
+const { registerSpeechWhisperMain } = require('@ozymandros/electron-message-bridge-plugin-speech-whisper');
 const backendLifecycle = require('./backendLifecycle.cjs');
 const pipeBroker = require('./pipeBroker.cjs');
-const { registerWhisperPlugin } = require('./speechWhisperSetup.cjs');
+
+// Utility: Ensure destination directory exists before any generation/SK call
+function ensureDestinationDir(payload) {
+  // Try to find a destination path in the payload (common keys: dest, destination, outputPath, etc.)
+  if (!payload || typeof payload !== 'object') return;
+  const keys = ['dest', 'destination', 'destinationPath', 'outputPath', 'outputDir', 'targetDir', 'targetPath', 'folder', 'dir'];
+  for (const key of keys) {
+    if (typeof payload[key] === 'string' && payload[key].length > 0) {
+      const destPath = payload[key];
+      const dir = fs.lstatSync(destPath).isDirectory ? destPath : path.dirname(destPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
+  }
+}
 
 /** Must match backendLifecycle default (override with GODOT_BLAZOR_URL). */
 const defaultDevUrl = 'http://127.0.0.1:5044';
@@ -21,289 +44,15 @@ const defaultDevUrl = 'http://127.0.0.1:5044';
 // ── Speech-to-text (Whisper.cpp via node-record-lpcm16) ───────────────────────
 // Configure paths for Whisper CLI and model; adjust to your local setup.
 // The plugin handles IPC registration under `stt:*` channels by default.
-const { stt, options: whisperOptions } = registerWhisperPlugin(registerSpeechWhisperMain, {
-  platform: process.platform,
-  env: process.env,
-  baseDir: __dirname,
-});
-const whisperBinPreferenceKey = 'app.whisper_bin_path';
-
-if (stt?.manager) {
-  const manager = stt.manager;
-  const originalStart = manager.start.bind(manager);
-  const originalStop = manager.stop.bind(manager);
-  const originalGetStatus = manager.getStatus.bind(manager);
-  const originalEnsureRecorder = typeof manager.ensureRecorder === 'function'
-    ? manager.ensureRecorder.bind(manager)
-    : null;
-  let _prevObservedState = manager.getState?.() ?? null;
-  let _stateValue = manager.state;
-  let _whisperBinAvailability = {
-    configured: false,
-    exists: false,
-    whisperBin: null,
-    reason: 'Whisper path is not configured.',
-  };
-
-  if (originalEnsureRecorder) {
-    manager.ensureRecorder = async (...args) => {
-      const recorderFactory = await originalEnsureRecorder(...args);
-      const explicitDevice = (process.env.SOX_AUDIO_DEVICE || process.env.AUDIODEV || '').trim();
-      if (!explicitDevice || typeof recorderFactory !== 'function') {
-        return recorderFactory;
-      }
-      return (options = {}) => recorderFactory({ ...options, device: explicitDevice });
-    };
-  }
-
-  Object.defineProperty(manager, 'state', {
-    configurable: true,
-    enumerable: true,
-    get() {
-      return _stateValue;
-    },
-    set(next) {
-      _stateValue = next;
-    },
-  });
-
-  function _toErrorMessage(err) {
-    if (err instanceof Error) return err.message || err.name || 'Unknown Error';
-    if (typeof err === 'string') return err;
-    try {
-      return JSON.stringify(err);
-    } catch {
-      return String(err);
-    }
-  }
-
-  async function _refreshWhisperBinFromPreference(origin) {
-    manager.options = manager.options || {};
-    const setAvailability = (configured, exists, whisperBin, reason) => {
-      _whisperBinAvailability = { configured, exists, whisperBin, reason };
-    };
-    if (!backendLifecycle.isReady()) {
-      manager.options.whisperBin = '';
-      setAvailability(false, false, null, 'Backend is not ready yet.');
-      return;
-    }
-    try {
-      const response = await pipeBroker.invoke('Preference.Get/v1', { key: whisperBinPreferenceKey });
-      const payload = response?.payloadJson ? JSON.parse(response.payloadJson) : null;
-      const value = (typeof payload?.value === 'string' && payload.value.trim().length > 0)
-        ? payload.value.trim()
-        : (typeof payload?.Value === 'string' && payload.Value.trim().length > 0 ? payload.Value.trim() : null);
-      let effectiveBin = value;
-      if (process.platform === 'win32' && typeof effectiveBin === 'string' && effectiveBin.length > 0) {
-        const normalized = effectiveBin.replace(/\//g, '\\').toLowerCase();
-        if (normalized.endsWith('\\main.exe')) {
-          const cliSibling = path.join(path.dirname(effectiveBin), 'whisper-cli.exe');
-          if (safeExistsSync(cliSibling)) {
-            effectiveBin = cliSibling;
-          }
-        }
-      }
-      const exists = !!effectiveBin && safeExistsSync(effectiveBin);
-      manager.options.whisperBin = exists ? effectiveBin : '';
-      if (!value) {
-        setAvailability(false, false, null, 'Whisper path is not configured in Settings > General.');
-      } else if (!exists) {
-        setAvailability(true, false, effectiveBin, `Whisper binary was not found at: ${effectiveBin}`);
-      } else {
-        setAvailability(true, true, effectiveBin, null);
-      }
-      void origin;
-    } catch (err) {
-      manager.options.whisperBin = '';
-      setAvailability(false, false, null, 'Failed to read Whisper path preference.');
-      void origin;
-      void err;
-    }
-  }
-
-  manager.start = async (...args) => {
-    try {
-      await _refreshWhisperBinFromPreference('start');
-      if (!_whisperBinAvailability.exists) {
-        const reason = _whisperBinAvailability.reason ?? 'Whisper path is not available.';
-        manager.lastError = reason;
-        throw new Error(reason);
-      }
-      const result = await originalStart(...args);
-      const session = manager.recordingSession ?? null;
-
-      if (session?.fileStream && typeof session.fileStream.on === 'function') {
-        session.fileStream.on('error', (err) => {
-          const message = _toErrorMessage(err);
-          manager.lastError = message;
-          void message;
-        });
-        session.fileStream.on('finish', () => {});
-        session.fileStream.on('close', () => {});
-      }
-
-      if (session?.recording) {
-        const recording = session.recording;
-        if (typeof recording.on === 'function') {
-          recording.on('error', (err) => {
-            const message = _toErrorMessage(err);
-            manager.lastError = message;
-            void message;
-          });
-        }
-        if (typeof recording.stream === 'function') {
-          try {
-            const recStream = recording.stream();
-            if (recStream && typeof recStream.on === 'function') {
-              recStream.on('error', (err) => {
-                const rawMessage = _toErrorMessage(err);
-                const currentState = manager.getState?.() ?? null;
-                const isBenignSoxCloseDuringProcessing = process.platform === 'win32'
-                  && rawMessage.includes('sox has exited with error code null')
-                  && (currentState === 'PROCESSING'
-                    || (currentState === 'ERROR' && !!manager.whisperChild));
-                if (isBenignSoxCloseDuringProcessing) {
-                  return;
-                }
-                const message = rawMessage.includes('no default audio device configured')
-                  ? `${rawMessage}\n\nSet a default microphone in Windows Sound settings and retry.`
-                  : rawMessage;
-                manager.lastError = message;
-                void err;
-              });
-              recStream.on('close', () => {});
-              recStream.on('end', () => {});
-              recStream.on('unpipe', () => {});
-            }
-          } catch (err) {
-            void err;
-          }
-        }
-      }
-      return result;
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  manager.stop = async (...args) => {
-    try {
-      await _refreshWhisperBinFromPreference('stop');
-      const currentOutPath = manager.recordingSession?.outPath;
-      if (typeof currentOutPath === 'string' && currentOutPath.length > 0 && safeExistsSync(currentOutPath)) {
-        try {
-          const backupOutPath = path.join(os.tmpdir(), `eiph-stt-safe-${Date.now()}-${Math.random().toString(16).slice(2)}.wav`);
-          fs.copyFileSync(currentOutPath, backupOutPath);
-          if (manager.recordingSession) {
-            manager.recordingSession.outPath = backupOutPath;
-          }
-        } catch (copyErr) {
-          void copyErr;
-        }
-      }
-      const result = await originalStop(...args);
-      manager.lastError = null;
-      return result;
-    } catch (err) {
-      const rawError = _toErrorMessage(err);
-      const normalizedError = (() => {
-        const text = (rawError || '').toLowerCase();
-        if (text.includes("no such option: -m")
-          || text.includes('usage: whisper [options] command [args]')) {
-          return [
-            'The detected "whisper" command is not whisper.cpp CLI.',
-            'Install whisper.cpp and set WHISPER_BIN to the whisper.cpp executable path.',
-          ].join('\n');
-        }
-        if (text.includes('spawn') && text.includes('whisper') && text.includes('enoent')) {
-          return [
-            'Whisper executable was not found in PATH.',
-            'Install whisper.cpp and/or set WHISPER_BIN to the whisper.cpp executable path.',
-          ].join('\n');
-        }
-        return rawError;
-      })();
-      manager.lastError = normalizedError;
-      throw new Error(normalizedError);
-    }
-  };
-
-  manager.getStatus = async (...args) => {
-    await _refreshWhisperBinFromPreference('getStatus');
-    const status = await originalGetStatus(...args);
-    const currentState = manager.getState?.() ?? null;
-    const effectiveStatus = (currentState === 'ERROR' && !status?.error && manager.lastError)
-      ? { ...status, error: manager.lastError }
-      : status;
-    const normalizedStatus = (() => {
-      if (!_whisperBinAvailability.exists) {
-        return {
-          ...effectiveStatus,
-          canRecord: false,
-          hasBinary: false,
-          error: _whisperBinAvailability.reason ?? 'Whisper path is not available.',
-        };
-      }
-      const errorText = typeof effectiveStatus?.error === 'string'
-        ? effectiveStatus.error.toLowerCase()
-        : '';
-      const looksLikeSoxInputDeviceFailure = errorText.includes('no default audio device configured')
-        || (process.platform === 'win32' && errorText.includes('sox has exited with error code 1'));
-      if (looksLikeSoxInputDeviceFailure) {
-        const actionableError = errorText.includes('no default audio device configured')
-          ? effectiveStatus.error
-          : `${effectiveStatus?.error ?? 'Microphone capture failed.'}\n\nSet a default microphone in Windows Sound settings and retry.`;
-        return {
-          ...effectiveStatus,
-          canRecord: false,
-          error: actionableError,
-        };
-      }
-      return effectiveStatus;
-    })();
-    void currentState;
-    void _prevObservedState;
-    _prevObservedState = currentState;
-    return normalizedStatus;
-  };
-}
-
-const _origSpawn = childProcess.spawn;
-childProcess.spawn = function patchedSpawn(cmd, args, options) {
-  const cmdText = typeof cmd === 'string' ? cmd.toLowerCase() : '';
-  const argList = Array.isArray(args) ? args.map((a) => String(a).toLowerCase()) : [];
-  const looksLikeWhisperSpawn = cmdText.includes('whisper')
-    || cmdText.endsWith('\\main.exe')
-    || cmdText.endsWith('/main.exe')
-    || argList.includes('-m') && argList.includes('-f');
-  if (looksLikeWhisperSpawn) {
-    const child = _origSpawn.apply(this, arguments);
-    return child;
-  }
-
-  if (process.platform === 'win32' && typeof cmd === 'string' && cmd.toLowerCase().endsWith('.cmd')) {
-    const nextOptions = { ...(options || {}), shell: true };
-    return _origSpawn.call(this, cmd, args, nextOptions);
-  }
-
-  if (typeof cmd === 'string' && cmd.toLowerCase().includes('sox')) {
-    let nextArgs = Array.isArray(args) ? [...args] : [];
-    if (process.platform === 'win32' && nextArgs.includes('--default-device')) {
-      nextArgs = [
-        '-t',
-        'waveaudio',
-        'default',
-        ...nextArgs.filter((a) => a !== '--default-device'),
-      ];
-    }
-    return _origSpawn.call(this, cmd, nextArgs, options);
-  }
-  return _origSpawn.apply(this, arguments);
-};
-
-const whisperBin = whisperOptions.whisperBin;
-const modelPath = whisperOptions.modelPath;
+const whisperBin = process.platform === 'win32' ? 'whisper.cmd' : 'whisper';
+const modelPath = process.env.WHISPER_MODEL || path.join(__dirname, '..', 'models', 'ggml-base.bin');
 console.log('[Electron] Using whisperBin:', whisperBin);
+const stt = registerSpeechWhisperMain({
+  // Path to whisper.cpp CLI binary (e.g., `whisper-cli`, `main`, or `whisper.exe`)
+  whisperBin,
+  // Path to GGML Whisper model file (e.g., ggml-base.bin, ggml-small.bin)
+  modelPath,
+});
 
 if (fs.existsSync(modelPath)) {
   console.log('[Electron] Found Whisper model at:', modelPath);
@@ -311,31 +60,23 @@ if (fs.existsSync(modelPath)) {
   console.error('[Electron] Whisper model not found at:', modelPath);
 }
 
-if (whisperBin) {
-  if (fs.existsSync(whisperBin)) {
-    console.log('[Electron] Found Whisper binary at:', whisperBin);
-  } else {
-    console.error('[Electron] Whisper binary not found at:', whisperBin);
-  }
+if (fs.existsSync(whisperBin)) {
+  console.log('[Electron] Found Whisper binary at:', whisperBin);
 } else {
-  console.log('[Electron] Using plugin default whisper binary resolution.');
+  console.error('[Electron] Whisper binary not found at:', whisperBin);
 }
 
-if (stt?.options?.modelPath) {
+if (stt?.options?.modelPath && stt?.options?.whisperBin) {
   if (fs.existsSync(stt.options.modelPath)) {
     console.log('[Electron] Found Whisper model at:', stt.options.modelPath);
   } else {
     console.error('[Electron] Whisper model not found at:', stt.options.modelPath);
   }
 
-  if (stt.options.whisperBin) {
-    if (fs.existsSync(stt.options.whisperBin)) {
-      console.log('[Electron] Found Whisper binary at:', stt.options.whisperBin);
-    } else {
-      console.error('[Electron] Whisper binary not found at:', stt.options.whisperBin);
-    }
+  if (fs.existsSync(stt.options.whisperBin)) {
+    console.log('[Electron] Found Whisper binary at:', stt.options.whisperBin);
   } else {
-    console.log('[Electron] STT plugin is using its internal whisper binary default.');
+    console.error('[Electron] Whisper binary not found at:', stt.options.whisperBin);
   }
 }
 else {
@@ -376,7 +117,7 @@ function installContentSecurityPolicy() {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src 'self' ${blazorOrigin} http://127.0.0.1:7650 ws: wss:`,
+    `connect-src 'self' ${blazorOrigin} ws: wss:`,
     "media-src 'self' data: blob:",
   ].join('; ');
 
@@ -399,40 +140,6 @@ function installContentSecurityPolicy() {
       });
     });
   });
-}
-
-async function ensureMicrophonePermissionOnWindows() {
-  if (process.platform !== 'win32') {
-    return;
-  }
-  try {
-    const micAccess = typeof systemPreferences?.getMediaAccessStatus === 'function'
-      ? systemPreferences.getMediaAccessStatus('microphone')
-      : 'unavailable';
-    if (micAccess !== 'granted') {
-      const opened = await shell.openExternal('ms-settings:privacy-microphone');
-      void opened;
-    }
-  } catch (err) {
-    void err;
-  }
-}
-
-function installMediaPermissionHandlers() {
-  try {
-    session.defaultSession.setPermissionCheckHandler((_webContents, permission, _requestingOrigin) => {
-      const allowed = permission === 'media';
-      return allowed;
-    });
-
-    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-      const allowed = permission === 'media';
-      void details;
-      callback(allowed);
-    });
-  } catch (err) {
-    void err;
-  }
 }
 
 /**
@@ -496,8 +203,25 @@ const ipcApi = defineIpcApi({
       }
     }
 
+    // Ensure destination directory exists for any generation/SK endpoint
+    if (typeof command === 'string' && /generate|sk|wizard|create|code|file|project|endpoint/i.test(command)) {
+      ensureDestinationDir(payload);
+    }
+
     try {
-      return await pipeBroker.invoke(command, payload);
+      const isWizardCommand =
+        typeof command === 'string' &&
+        command.toLowerCase() === 'generate.wizard/v1';
+      const timeoutMs = isWizardCommand ? 600_000 : undefined;
+
+      /** @param {object} frame WizardProgressFrame forwarded to all open windows. */
+      const onProgress = isWizardCommand
+        ? (frame) => {
+            BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'wizardProgress', frame));
+          }
+        : undefined;
+
+      return await pipeBroker.invoke(command, payload, { timeoutMs, onProgress });
     } catch (err) {
       return {
         success: false,
@@ -525,6 +249,16 @@ const ipcEvents = defineIpcEvents({
   backendCrashed: (_detail) => { },
   /** Backend exceeded max restart attempts; no further supervision. */
   backendFailed: () => { },
+  /**
+   * A single line of backend stdout/stderr output.
+   * Payload: `{ stream: 'stdout'|'stderr', message: string, timestamp: string }`.
+   */
+  backendLog: (_entry) => { },
+  /**
+   * A wizard-turn progress frame from the .NET backend (before the final response).
+   * Payload: `{ phase: string, message: string, toolPlugin?: string, toolName?: string, utcTimestamp?: string }`.
+   */
+  wizardProgress: (_frame) => { },
 });
 
 // ── Window factory ────────────────────────────────────────────────────────────
@@ -786,8 +520,6 @@ function enableContextMenu(win) {
 
 app.whenReady().then(async () => {
   installContentSecurityPolicy();
-  installMediaPermissionHandlers();
-  await ensureMicrophonePermissionOnWindows();
 
   // Build and apply the application menu from the declarative JSON spec.
   await buildAndSetMenuAsync();
@@ -810,19 +542,24 @@ app.whenReady().then(async () => {
 
   // Notify all renderer windows when the backend becomes (re-)ready.
   backendLifecycle.on('ready', () => {
-    if (stt?.manager) {
-      _refreshWhisperBinFromPreference('backend-ready').catch(() => {});
-    }
     BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendReady'));
   });
 
   // Surface backend crash events so the renderer can show a degraded-state banner.
+  // Note: ChildProcessLifecycle emits { exitCode, signal }, we map to { code, signal } for backward compat
   backendLifecycle.on('crashed', (detail) => {
-    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendCrashed', detail));
+    const compatDetail = { code: detail.exitCode ?? detail.code, signal: detail.signal };
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendCrashed', compatDetail));
   });
 
-  backendLifecycle.on('failed', () => {
+  backendLifecycle.on('failed', ({ error }) => {
+    console.error('[main] Backend failed after max restarts:', error?.message || error);
     BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendFailed'));
+  });
+
+  // Stream backend stdout/stderr lines to all renderer windows.
+  backendLifecycle.on('log', (entry) => {
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendLog', entry));
   });
 });
 
@@ -837,6 +574,24 @@ app.on('before-quit', async (event) => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
+
+console.log('==================== main.cjs ENTRY ====================');
+process.stdout.write('>>> main.cjs process.stdout.write <<<\n');
+process.on('exit', () => { console.log('>>> main.cjs process exiting <<<'); });
+
+const { execFileSync } = require('child_process');
+try {
+  let output;
+  if (process.platform === 'win32') {
+    // Use shell: true so whisper.cmd can be executed
+    output = execFileSync('whisper.cmd', ['--help'], { encoding: 'utf8', shell: true });
+  } else {
+    output = execFileSync('whisper', ['--help'], { encoding: 'utf8' });
+  }
+  console.log('[Electron] whisper --help output:', output);
+} catch (err) {
+  console.error('[Electron] Failed to run whisper:', err);
+}
 
 
 async function fileExists(path) {

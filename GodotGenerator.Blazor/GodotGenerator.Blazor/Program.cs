@@ -4,6 +4,8 @@ using GodotGenerator.Blazor.Client.Services;
 using GodotGenerator.Blazor.Client.Services.Transport;
 using GodotGenerator.Blazor.Components;
 using GodotGenerator.Blazor.Infrastructure.DesktopIpc;
+using GodotGenerator.Mcp.Api.DependencyInjection;
+using GodotGenerator.Plugins.DependencyInjection;
 using GodotGenerator.Infrastructure.Ai.DependencyInjection;
 using GodotGenerator.Infrastructure.Persistence.DependencyInjection;
 using Microsoft.AspNetCore.Mvc;
@@ -22,6 +24,8 @@ builder.Services.AddFluentUIComponents();
 builder.Services.AddGodotGeneratorPersistence(builder.Configuration);
 builder.Services.AddGodotGeneratorInfrastructure(builder.Configuration);
 builder.Services.AddScoped<IGodotGeneratorApiService, GodotGeneratorApiService>();
+builder.Services.AddGodotGeneratorMcpApi();
+builder.Services.AddGodotGeneratorPlugins();
 builder.Services.AddScoped<ProjectStateService>();
 builder.Services.AddScoped<ElectronBridgeService>();
 // AppLogService must be registered before LogBufferService (the shim depends on it).

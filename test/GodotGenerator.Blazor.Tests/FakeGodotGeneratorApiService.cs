@@ -44,6 +44,8 @@ public sealed class FakeGodotGeneratorApiService : IGodotGeneratorApiService
         Task.FromResult(OkGen("image"));
 
     /// <summary>
+    /// Generates audio.
+    /// </summary>
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateAudioAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(OkGen("audio"));
 
@@ -155,6 +157,17 @@ public sealed class FakeGodotGeneratorApiService : IGodotGeneratorApiService
     /// <returns></returns>
     public Task<ApiResponse<Dictionary<string, object?>>> GenerateGodotNodesAsync(GenerateRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(OkGen("godot-nodes"));
+
+    /// <summary>
+    /// Runs wizard orchestration.
+    /// </summary>
+    public Task<ApiResponse<Dictionary<string, object?>>> RunWizardAsync(WizardRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>
+        {
+            ["modality"] = "wizard",
+            ["message"] = "fake",
+            ["toolsInvoked"] = Array.Empty<string>(),
+        }));
 
     /// <summary>
     /// Gets a preference.

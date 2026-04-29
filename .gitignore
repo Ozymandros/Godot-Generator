@@ -1,23 +1,29 @@
 ```
 # Dependencies
 node_modules/
+package-lock.json
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
 # Environment
 .env
 .env.local
-.env.
-# Editor/IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-# Logs
-*.log
-bin/
-obj/
-out/
-coverage/
-TestResults
-models/
+*.env.*
 ```
+.vs/
+coverage/
+obj/
+bin/
+TestResults/
+models/
+*,bin
+*.exe
+
 .fake

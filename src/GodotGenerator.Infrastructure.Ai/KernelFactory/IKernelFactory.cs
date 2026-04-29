@@ -16,10 +16,17 @@ public interface IKernelFactory
     /// <param name="modalityKeyForToolFiltering">
     /// Optional generation modality (e.g. <c>godot-lighting</c>). When null, the full Godot MCP tool surface stays registered (e.g. tool catalog discovery).
     /// </param>
+    /// <param name="projectRoot">
+    /// Absolute path to the active Godot project root. When provided and different from the
+    /// currently configured path, the underlying <c>godot-mcp</c> process is restarted with the new
+    /// working directory so that GodotMCP.Server 1.5+ path validation succeeds. This value is
+    /// never null; callers should pass an empty string when no project root is available.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task<Kernel> GetOrCreateKernelAsync(
         string? provider = null,
         string? preferredModelId = null,
         string? modalityKeyForToolFiltering = null,
+        string projectRoot = "",
         CancellationToken cancellationToken = default);
 }

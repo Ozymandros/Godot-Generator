@@ -1,3 +1,5 @@
+'use strict';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -14,8 +16,15 @@ test('event channels include backend lifecycle notifications', () => {
   assert.ok(EVENT_CHANNELS.includes('backendFailed'));
 });
 
+test('event channels include backendLog for stdout/stderr streaming', () => {
+  assert.ok(EVENT_CHANNELS.includes('backendLog'));
+});
+
+test('event channels include wizardProgress for live wizard streaming', () => {
+  assert.ok(EVENT_CHANNELS.includes('wizardProgress'));
+});
+
 test('channel collections are immutable', () => {
   assert.equal(Object.isFrozen(API_CHANNELS), true);
   assert.equal(Object.isFrozen(EVENT_CHANNELS), true);
 });
-

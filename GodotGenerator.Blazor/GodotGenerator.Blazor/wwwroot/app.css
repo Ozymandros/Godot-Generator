@@ -1959,23 +1959,28 @@ fluent-text-area.app-textarea-log::part(control) {
   line-height: var(--app-line-height-body);
 }
 
+/* Wizard live-activity log — read-only, monospace, auto-scrolls via JS */
+.wizard-progress-log {
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.8125rem;          /* ~13 px — compact for activity text */
+  line-height: 1.5;
+  color: var(--neutral-foreground-rest, inherit);
+  background: var(--neutral-layer-2, transparent);
+  border: 1px solid var(--neutral-stroke-rest, #ccc);
+  border-radius: var(--control-corner-radius, 4px);
+  padding: 0.5rem 0.625rem;
+  box-sizing: border-box;
+  opacity: 0.85;
+}
+
 .generation-workspace__preview {
   width: 100%;
 }
 
 .generation-workspace__preview .generation-workspace__result-title {
   margin-top: 0;
-}
-
-.generation-workspace__result-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--app-space-sm);
-}
-
-.generation-workspace__result-header .generation-workspace__result-title {
-  margin: var(--app-space-lg) 0 var(--app-space-sm) 0;
 }
 
 .generation-workspace__cta {
