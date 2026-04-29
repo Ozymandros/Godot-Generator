@@ -3,6 +3,7 @@
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Blazor.Client.Models;
 using GodotGenerator.Blazor.Client.Services.Transport;
+using GodotGenerator.Desktop.Contracts.Commands;
 
 namespace GodotGenerator.Blazor.Client.Services;
 
@@ -38,6 +39,16 @@ public sealed class GodotGeneratorClientFacade(IGodotGeneratorClientTransport tr
         ApiKeysRequest request,
         CancellationToken cancellationToken = default) =>
         transport.SaveApiKeysAsync(request, cancellationToken);
+
+    /// <summary>
+    /// Improves an existing prompt or generates a sample prompt via a bare LLM call.
+    /// Response <c>Data["result"]</c> contains the enhanced text;
+    /// <c>Data["mode"]</c> is <c>"improve"</c> or <c>"sample"</c>.
+    /// </summary>
+    public Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistEnhanceRequest request,
+        CancellationToken cancellationToken = default) =>
+        transport.EnhancePromptAsync(request, cancellationToken);
 
     // ── Envelope-named aliases (component call-site compatibility) ────────────
 

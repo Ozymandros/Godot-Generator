@@ -1,6 +1,7 @@
 @using GodotGenerator.Api.Dtos
 @using GodotGenerator.Application
 @using GodotGenerator.Application.Orchestration
+@using System.Text.Json
 @inject GodotGeneratorClientFacade Api
 @inject ProjectStateService ProjectState
 @inject LogBufferService Logs
@@ -27,45 +28,41 @@
                     <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">Effective runtime</FluentLabel>
                     <FluentLabel Typo="Typography.Body">Provider: @_lastProvider</FluentLabel>
                     <FluentLabel Typo="Typography.Body">Model: @_lastModel</FluentLabel>
-                    <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft app-margin-top-xs">Overrides below apply to the next request.</FluentLabel>
+                    <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft app-margin-top-xs">Overrides below
+                        apply to the next request.</FluentLabel>
                 </div>
             </FluentCard>
 
             <div class="generation-workspace__row-controls">
-                <SmartField @key="@($"gw-prov-{_registryUiEpoch}")"
-                            Label="Provider"
-                            FieldType="@SmartFieldType.Select"
-                            Placeholder="—"
-                            SelectOptions="_providerOptions"
-                            Value="@_providerOverride"
-                            ValueChanged="OnProviderOverrideChanged" />
-                <SmartField @key="@($"gw-mod-{_registryUiEpoch}")"
-                            Label="Model"
-                            FieldType="@SmartFieldType.Select"
-                            Placeholder="—"
-                            SelectOptions="_modelOptions"
-                            Value="@_modelOverride"
-                            ValueChanged="OnModelOverrideChanged" />
-                <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end" OnClick="@(() => _showModelModal = true)">+</FluentButton>
+                <SmartField @key="@($"gw-prov-{_registryUiEpoch}")" Label="Provider" FieldType="@SmartFieldType.Select"
+                    Placeholder="—" SelectOptions="_providerOptions" Value="@_providerOverride"
+                    ValueChanged="OnProviderOverrideChanged" />
+                <SmartField @key="@($"gw-mod-{_registryUiEpoch}")" Label="Model" FieldType="@SmartFieldType.Select"
+                    Placeholder="—" SelectOptions="_modelOptions" Value="@_modelOverride"
+                    ValueChanged="OnModelOverrideChanged" />
+                <FluentButton Appearance="Appearance.Neutral" Class="app-align-self-end"
+                    OnClick="@(() => _showModelModal = true)">+</FluentButton>
             </div>
 
             @if (AdditionalFields is not null)
             {
-                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12" Class="generation-workspace__additional-stack">
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="12"
+                    Class="generation-workspace__additional-stack">
                     @AdditionalFields
                 </FluentStack>
             }
 
-            <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt" />
+            <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt"
+                Modality="@ModalityKey" FunctionalScope="@ModalityContextLabel" ViewTitle="@Title"
+                ViewDescription="@Description" ProviderOverride="@_providerOverride" ModelOverride="@_modelOverride"
+                SystemPromptOverride="@_advanced.SystemPromptOverride" />
 
             <AdvancedOptionsSection Options="_advanced" OnChanged="OnAdvancedOptionsChanged">
                 @AdvancedChildContent
             </AdvancedOptionsSection>
 
-            <FluentButton Appearance="Appearance.Accent"
-                          Class="generation-workspace__cta"
-                          OnClick="RunAsync"
-                          Disabled="@_busy">
+            <FluentButton Appearance="Appearance.Accent" Class="generation-workspace__cta" OnClick="RunAsync"
+                Disabled="@_busy">
                 @GenerateButtonLabel
             </FluentButton>
             @if (_busy)
@@ -74,21 +71,22 @@
             }
 
             <section class="generation-workspace__preview app-content-wide" aria-label="Generation result preview">
-                <p class="generation-workspace__result-title">Preview</p>
                 <FluentCard Class="settings-card-host generation-workspace__result">
+                    <div class="generation-workspace__result-header">
+                        <p class="generation-workspace__result-title">Preview</p>
+                    </div>
                     <div class="settings-card__inner generation-workspace__result-inner">
-                        <FluentTextArea Value="@_result"
-                                        ValueChanged="OnResultPreviewChanged"
-                                        ReadOnly="true"
-                                        Rows="@ResultPreviewRows"
-                                        Placeholder="Generation output will appear here after you run Generate."
-                                        Class="generation-workspace__result-textarea app-input-like app-input-like--textarea" />
+                        <SmartField FieldType="@SmartFieldType.PromptOutput" Value="@_result"
+                            ValueChanged="OnResultPreviewChanged" ReadOnly="true" Rows="@ResultPreviewRows"
+                            Placeholder="Generation output will appear here after you run Generate."
+                            InputClass="generation-workspace__result-textarea" />
                     </div>
                 </FluentCard>
             </section>
 
             <ModelManagerModal Visible="_showModelModal" Title="Models" OnClose="@(() => _showModelModal = false)">
-                <FluentLabel Typo="Typography.Body">Configure default models under Settings → Models; use Provider/Model fields above for per-request overrides.</FluentLabel>
+                <FluentLabel Typo="Typography.Body">Configure default models under Settings → Models; use Provider/Model
+                    fields above for per-request overrides.</FluentLabel>
             </ModelManagerModal>
 
             @if (!string.IsNullOrEmpty(_error))
@@ -101,6 +99,10 @@
 
 @code {
     [Parameter, EditorRequired] public GenerationModality Modality { get; set; }
+
+    /// <summary>Modality slug passed to <see cref="PromptInputSection"/> for prompt-assist context.</summary>
+    private string ModalityKey => ModalityRoutes.GetSlug(Modality);
+    private string ModalityContextLabel => Modality.ToString();
 
     [Parameter] public string Title { get; set; } = "Generate";
 
@@ -141,8 +143,9 @@
 
     private string GenerateButtonLabel => $"Generate — {Title}";
 
-    private Task OnResultPreviewChanged(string _)
+    private Task OnResultPreviewChanged(string value)
     {
+        _result = value;
         return Task.CompletedTask;
     }
 
@@ -174,6 +177,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Retry after first paint: OnInitializedAsync may run before JS storage interop is ready (WASM/Electron).
+        if (firstRender)
+        {
+            await ProjectState.LoadAsync();
+        }
+
         if (!firstRender || _registryReady)
         {
             return;
@@ -224,8 +233,8 @@
     /// modality-matching models) so preferences can pre-select like Configuration → General.
     /// </summary>
     private void EnsurePreferredProviderAppearsInOptions(
-        Dictionary<string, object?> data,
-        IReadOnlyDictionary<string, string?> prefs)
+    Dictionary<string, object?> data,
+    IReadOnlyDictionary<string, string?> prefs)
     {
         var slug = ModalityRoutes.GetSlug(Modality);
         var (providerKey, _) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
@@ -241,7 +250,7 @@
         }
 
         if (!GeneratorRegistryOptionsLoader.TryGetCanonicalProviderId(data, preferred, out var canonical) ||
-            string.IsNullOrEmpty(canonical))
+        string.IsNullOrEmpty(canonical))
         {
             return;
         }
@@ -266,13 +275,26 @@
         GeneratorRegistryOptionsLoader.AppendFilteredModelsForProvider(data, canonical, tags, _modelsByProvider);
     }
 
-    private void ApplyDefaultsFromPreferences(IReadOnlyDictionary<string, string?> prefs, Dictionary<string, object?> envelopeData)
+    private void ApplyDefaultsFromPreferences(IReadOnlyDictionary<string, string?> prefs, Dictionary<string, object?>
+    envelopeData)
     {
         var slug = ModalityRoutes.GetSlug(Modality);
         var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(slug);
 
         var defaultProvider = GetPreferenceString(prefs, providerKey);
         var defaultModel = GetPreferenceString(prefs, modelKey);
+        var payloadDefaultLlmProvider = GetPayloadString(envelopeData.GetValueOrDefault("defaultLlmProvider"));
+        var payloadDefaultLlmModel = GetPayloadString(envelopeData.GetValueOrDefault("defaultChatModelId"));
+        if (string.IsNullOrWhiteSpace(defaultProvider) &&
+            string.Equals(providerKey, PreferenceKeys.PreferredLlmProvider, StringComparison.OrdinalIgnoreCase))
+        {
+            defaultProvider = payloadDefaultLlmProvider ?? string.Empty;
+        }
+        if (string.IsNullOrWhiteSpace(defaultModel) &&
+            string.Equals(modelKey, PreferenceKeys.PreferredLlmModel, StringComparison.OrdinalIgnoreCase))
+        {
+            defaultModel = payloadDefaultLlmModel ?? string.Empty;
+        }
 
         _providerOverride = string.Empty;
         _modelOverride = string.Empty;
@@ -291,10 +313,10 @@
         if (!string.IsNullOrWhiteSpace(defaultModel) && !string.IsNullOrWhiteSpace(_providerOverride))
         {
             GeneratorRegistryOptionsLoader.EnsureSavedModelEngineListedForProvider(
-                envelopeData,
-                _providerOverride.Trim(),
-                defaultModel,
-                _modelsByProvider);
+            envelopeData,
+            _providerOverride.Trim(),
+            defaultModel,
+            _modelsByProvider);
         }
 
         SyncModelOptionsForCurrentProvider();
@@ -308,12 +330,73 @@
             }
         }
 
+        if (string.IsNullOrWhiteSpace(_providerOverride) && _providerOptions.Count > 0)
+        {
+            _providerOverride = _providerOptions[0];
+            SyncModelOptionsForCurrentProvider();
+        }
+
+        if (string.IsNullOrWhiteSpace(_modelOverride) && _modelOptions.Count > 0)
+        {
+            _modelOverride = _modelOptions[0];
+        }
+
         _advanced.PreferredScriptLanguage = PreferredScriptLanguagePref.ToUiLabel(
-            GetPreferenceString(prefs, PreferenceKeys.PreferredLanguage));
+        GetPreferenceString(prefs, PreferenceKeys.PreferredLanguage));
     }
 
     private static string GetPreferenceString(IReadOnlyDictionary<string, string?> prefs, string key) =>
-        prefs.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : string.Empty;
+    prefs.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v.Trim() : string.Empty;
+
+    private static string? GetPayloadString(object? raw)
+    {
+        if (raw is null)
+        {
+            return null;
+        }
+
+        return raw switch
+        {
+            JsonElement { ValueKind: JsonValueKind.String } el => string.IsNullOrWhiteSpace(el.GetString()) ? null : el.GetString()!.Trim(),
+            JsonElement el => string.IsNullOrWhiteSpace(el.ToString()) ? null : el.ToString().Trim(),
+            string s => string.IsNullOrWhiteSpace(s) ? null : s.Trim(),
+            _ => string.IsNullOrWhiteSpace(raw.ToString()) ? null : raw.ToString()!.Trim(),
+        };
+    }
+
+    /// <summary>
+    /// Combines a project path root and an optional project name into the final MCP <c>projectPath</c> value.
+    /// If the last segment of <paramref name="projectPathRoot"/> already equals <paramref name="projectName"/>
+    /// (case-insensitive), the root is returned as-is to avoid double-appending the name.
+    /// Mirrors the same logic in <c>GenerateCommandHandler.ComposeMcpProjectPath</c>.
+    /// </summary>
+    /// <param name="projectPathRoot">The base directory (e.g. <c>C:\Projects</c> or <c>C:\Projects\MyGame</c>).</param>
+    /// <param name="projectName">The project name (e.g. <c>MyGame</c>). May be null or empty.</param>
+    /// <returns>The resolved project path, or <c>null</c> when <paramref name="projectPathRoot"/> is empty.</returns>
+    private static string? ComposeMcpProjectPath(string? projectPathRoot, string? projectName)
+    {
+        if (string.IsNullOrWhiteSpace(projectPathRoot))
+        {
+            return null;
+        }
+
+        var root = projectPathRoot.Trim();
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return root;
+        }
+
+        var name = projectName.Trim();
+        var rootLeaf = System.IO.Path.GetFileName(
+            root.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+
+        if (string.Equals(rootLeaf, name, StringComparison.OrdinalIgnoreCase))
+        {
+            return root;
+        }
+
+        return System.IO.Path.Combine(root, name);
+    }
 
     private static string? FindRegisteredCase(IReadOnlyList<string> registered, string candidate)
     {
@@ -332,7 +415,7 @@
     {
         _modelOptions.Clear();
         if (string.IsNullOrWhiteSpace(_providerOverride) ||
-            !_modelsByProvider.TryGetValue(_providerOverride.Trim(), out var rows))
+        !_modelsByProvider.TryGetValue(_providerOverride.Trim(), out var rows))
         {
             _modelOverride = string.Empty;
             return;
@@ -340,7 +423,7 @@
 
         _modelOptions.AddRange(rows);
         if (!string.IsNullOrEmpty(_modelOverride) &&
-            !_modelOptions.Contains(_modelOverride, StringComparer.OrdinalIgnoreCase))
+        !_modelOptions.Contains(_modelOverride, StringComparer.OrdinalIgnoreCase))
         {
             _modelOverride = string.Empty;
         }
@@ -363,13 +446,31 @@
             opts[GenerationOptionKeys.PreferredScriptLanguage] = _advanced.PreferredScriptLanguage.Trim();
         }
 
+        // MCP 1.5+: tool argument injection and server validation need an explicit project root. Combine the
+        // persisted ActiveProjectPath root and ActiveProjectName into the final projectPath value, deduplicating
+        // the last path segment when it already equals the name (mirrors GenerateCommandHandler.ComposeMcpProjectPath).
+        if (!opts.ContainsKey(GenerationOptionKeys.GodotProjectPath))
+        {
+            var composed = ComposeMcpProjectPath(ProjectState.ActiveProjectPath, ProjectState.ActiveProjectName);
+            if (!string.IsNullOrWhiteSpace(composed))
+            {
+                opts[GenerationOptionKeys.GodotProjectPath] = composed;
+            }
+        }
+
+        if (!opts.ContainsKey(GenerationOptionKeys.ProjectName) &&
+            !string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName))
+        {
+            opts[GenerationOptionKeys.ProjectName] = ProjectState.ActiveProjectName.Trim();
+        }
+
         var apiKey = string.IsNullOrWhiteSpace(_advanced.ApiKeyOverride) ? r.ApiKey : _advanced.ApiKeyOverride.Trim();
         var sys = r.SystemPrompt;
         if (!string.IsNullOrWhiteSpace(_advanced.SystemPromptOverride))
         {
             sys = string.IsNullOrWhiteSpace(sys)
-                ? _advanced.SystemPromptOverride.Trim()
-                : $"{sys}{Environment.NewLine}{Environment.NewLine}{_advanced.SystemPromptOverride.Trim()}";
+            ? _advanced.SystemPromptOverride.Trim()
+            : $"{sys}{Environment.NewLine}{Environment.NewLine}{_advanced.SystemPromptOverride.Trim()}";
         }
 
         var provider = string.IsNullOrWhiteSpace(_providerOverride) ? r.Provider : _providerOverride.Trim();
@@ -402,10 +503,10 @@
         {
             var trimmed = _prompt.Trim();
             var request = CreateRequest is not null
-                ? CreateRequest.Invoke(trimmed)
-                : new GenerateRequest(
-                    Prompt: trimmed,
-                    ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
+            ? CreateRequest.Invoke(trimmed)
+            : new GenerateRequest(
+            Prompt: trimmed,
+            ProjectName: string.IsNullOrWhiteSpace(ProjectState.ActiveProjectName) ? null : ProjectState.ActiveProjectName.Trim());
 
             request = ApplyAdvancedAndOverrides(request);
 
@@ -449,4 +550,3 @@
         }
     }
 }
-

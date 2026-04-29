@@ -1,0 +1,191 @@
+/* ── Logs page layout ─────────────────────────────────────────────────────── */
+
+.logs-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-md);
+    padding: var(--app-space-lg);
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Toolbar ──────────────────────────────────────────────────────────────── */
+
+.logs-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-sm);
+    padding: var(--app-space-sm) var(--app-space-md);
+    background: var(--app-color-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-field-radius, 4px);
+}
+
+.logs-toolbar__group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.logs-toolbar__label {
+    font-size: var(--app-text-size-field-sm, 0.75rem);
+    color: var(--app-color-fg-muted);
+    margin-right: var(--app-space-xs);
+    white-space: nowrap;
+}
+
+.logs-toolbar__search {
+    width: 11rem;
+}
+
+.logs-toolbar__spacer {
+    flex: 1;
+}
+
+/* Level chip colours override Fluent Stealth base */
+.logs-level-chip--debug  { --chip-accent: #808080; }
+.logs-level-chip--info   { --chip-accent: var(--app-color-accent); }
+.logs-level-chip--warning { --chip-accent: #e5a000; }
+.logs-level-chip--error  { --chip-accent: var(--app-color-validation-error); }
+
+/* ── Summary ──────────────────────────────────────────────────────────────── */
+
+.logs-summary {
+    font-size: var(--app-text-size-field-sm, 0.75rem);
+}
+
+/* ── Entry list ───────────────────────────────────────────────────────────── */
+
+.logs-list {
+    flex: 1;
+    overflow: auto;
+    background: var(--app-color-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-field-radius, 4px);
+    font-family: var(--fontFamilyMonospace, monospace);
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.logs-empty {
+    padding: var(--app-space-xl);
+    text-align: center;
+}
+
+/* ── Entry row ────────────────────────────────────────────────────────────── */
+
+.logs-entry {
+    display: flex;
+    align-items: baseline;
+    gap: var(--app-space-sm);
+    padding: 2px var(--app-space-md);
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.08s ease;
+}
+
+.logs-entry:hover {
+    background: var(--app-overlay-subtle);
+}
+
+/* Level-based left-border accent */
+.logs-entry--debug   { border-left: 2px solid #505050; }
+.logs-entry--info    { border-left: 2px solid var(--app-color-accent); }
+.logs-entry--warning { border-left: 2px solid #e5a000; }
+.logs-entry--error   { border-left: 2px solid var(--app-color-validation-error); }
+
+/* IPC rows get a slightly different background tone */
+.logs-entry--ipc-req,
+.logs-entry--ipc-resp { background: rgba(255,255,255,0.015); }
+
+.logs-entry__ts {
+    flex-shrink: 0;
+    color: var(--app-color-fg-muted);
+    font-size: 0.72rem;
+    width: 9ch;
+    text-align: right;
+}
+
+.logs-entry__badge {
+    flex-shrink: 0;
+    width: 3ch;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.68rem;
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+.logs-badge--debug   { color: #808080; }
+.logs-badge--info    { color: var(--app-color-accent); }
+.logs-badge--warning { color: #e5a000; }
+.logs-badge--error   { color: var(--app-color-validation-error); }
+
+.logs-entry__kind {
+    flex-shrink: 0;
+    width: 1.5ch;
+    text-align: center;
+    color: var(--app-color-fg-muted);
+    font-size: 0.78rem;
+}
+
+.logs-entry__cat {
+    flex-shrink: 0;
+    width: 12ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--app-color-fg-muted);
+}
+
+.logs-entry__msg {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--app-color-fg);
+}
+
+.logs-entry--error .logs-entry__msg {
+    color: var(--app-color-validation-error);
+}
+
+.logs-entry--warning .logs-entry__msg {
+    color: #e5a000;
+}
+
+.logs-entry__duration {
+    flex-shrink: 0;
+    color: var(--app-color-fg-muted);
+    font-size: 0.7rem;
+    min-width: 5ch;
+    text-align: right;
+}
+
+.logs-entry__expand-btn {
+    flex-shrink: 0;
+    padding: 0 !important;
+    width: 1.4rem !important;
+    min-width: unset !important;
+    height: 1.4rem !important;
+    font-size: 0.8rem;
+    background: transparent !important;
+    border: none !important;
+}
+
+/* ── Expanded detail ──────────────────────────────────────────────────────── */
+
+.logs-entry-detail {
+    padding: var(--app-space-xs) var(--app-space-md) var(--app-space-xs) calc(var(--app-space-md) + 27ch);
+    background: var(--app-color-bg);
+    border-bottom: 1px solid var(--app-color-border);
+}
+
+.logs-entry-detail__pre {
+    margin: 0;
+    font-size: 0.72rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--app-color-fg-muted);
+    line-height: 1.4;
+}

@@ -10,6 +10,14 @@
  *   window.godotElectronEvents  — push-event subscriptions (backendReady, etc.)
  *   window.godotElectronMeta    — read-only static constants (platform)
  *
+ * Additionally, speech-to-text is exposed as `window.speech` via the
+ * @ozymandros/electron-message-bridge-plugin-speech-whisper plugin:
+ *
+ *   window.speech.start()       — Start microphone capture
+ *   window.speech.stop()        — Stop capture and run Whisper STT
+ *   window.speech.status()      — Get STT capability status
+ *   window.speech.onTranscript(cb) — Subscribe to transcript results (returns unsubscribe fn)
+ *
  * Event subscription functions return an unsubscribe callback.
  * `subscribeLifecycleEvents` and `subscribeFolderSelected` store those
  * callbacks internally; call `disposeSubscriptions()` to remove them all.
@@ -130,6 +138,17 @@ window.godotElectronInterop = {
     return window.godotElectronEvents.backendFailed(callback);
   },
 
+  /**
+   * Subscribes to individual backend log lines streamed from stdout/stderr.
+   * Returns an unsubscribe function; call it when the subscriber is disposed.
+   * @param {(payload: {stream: 'stdout'|'stderr', message: string, timestamp: string}) => void} callback
+   * @returns {() => void} unsubscribe
+   */
+  onBackendLog: function (callback) {
+    if (!_hasEvents()) return _noopUnsub;
+    return window.godotElectronEvents.backendLog(callback);
+  },
+
   // ── DotNet-bridge subscriptions (used by ElectronBridgeService) ───────────
   //
   // These functions accept a DotNetObjectReference and subscribe to Electron
@@ -184,11 +203,193 @@ window.godotElectronInterop = {
   },
 
   /**
+   * Subscribes to the new-project push event (File → New Project menu item)
+   * and routes it to the given DotNet reference's [JSInvokable] method:
+   *   OnNewProject()
+   *
+   * @param {DotNetObjectReference} dotNetRef
+   */
+  subscribeNewProject: function (dotNetRef) {
+    if (!_hasEvents() || typeof window.godotElectronEvents.newProject !== 'function') return;
+
+    _allUnsubs.push(
+      window.godotElectronEvents.newProject(() => {
+        dotNetRef.invokeMethodAsync('OnNewProject').catch(console.error);
+      }),
+    );
+  },
+
+  /**
+   * Subscribes to backend log lines and routes each to the given DotNet
+   * reference's [JSInvokable] method:
+   *   OnBackendLog(string stream, string message, string timestamp)
+   *
+   * Each payload carries a single pre-split, non-empty log line.
+   * Unsubscribe is stored internally; call `disposeSubscriptions()` to clean up.
+   *
+   * @param {DotNetObjectReference} dotNetRef
+   */
+  subscribeBackendLog: function (dotNetRef) {
+    if (!_hasEvents()) return;
+
+    _allUnsubs.push(
+      window.godotElectronEvents.backendLog((payload) => {
+        dotNetRef.invokeMethodAsync(
+          'OnBackendLog',
+          payload?.stream    ?? 'stdout',
+          payload?.message   ?? '',
+          payload?.timestamp ?? new Date().toISOString(),
+        ).catch(console.error);
+      }),
+    );
+  },
+
+  /**
    * Removes all event listeners registered via subscribeLifecycleEvents /
-   * subscribeFolderSelected. Called from ElectronBridgeService.DisposeAsync.
+   * subscribeFolderSelected / subscribeBackendLog. Called from ElectronBridgeService.DisposeAsync.
    */
   disposeSubscriptions: function () {
     _allUnsubs.forEach((unsub) => unsub());
     _allUnsubs.length = 0;
+  },
+
+  // ── Wizard progress (scoped, per-component) ───────────────────────────────
+  //
+  // Unlike the global _allUnsubs pool, wizard progress subscriptions are keyed
+  // by a caller-supplied string so each WizardPanel instance can clean up only
+  // its own listener when it disposes, without affecting other subscribers.
+
+  /** @type {Map<string, () => void>} */
+  _wizardProgressUnsubs: new Map(),
+
+  /**
+   * Subscribes to wizard progress frames and routes each to the given DotNet
+   * reference's [JSInvokable] method:
+   *   OnWizardProgress(string phase, string message, string? toolPlugin, string? toolName)
+   *
+   * The `key` parameter scopes the subscription; call `unsubscribeWizardProgress(key)`
+   * from the component's DisposeAsync to remove only this listener.
+   * Replaces any existing subscription registered under the same key.
+   *
+   * @param {DotNetObjectReference} dotNetRef
+   * @param {string} key  Caller-defined identifier, e.g. "wizard-panel".
+   */
+  subscribeWizardProgress: function (dotNetRef, key) {
+    if (!_hasEvents()) return;
+
+    // Remove any previous subscription for this key before re-subscribing.
+    const existing = this._wizardProgressUnsubs.get(key);
+    if (existing) { existing(); this._wizardProgressUnsubs.delete(key); }
+
+    const unsub = window.godotElectronEvents.wizardProgress((frame) => {
+      dotNetRef.invokeMethodAsync(
+        'OnWizardProgress',
+        frame?.phase      ?? 'status',
+        frame?.message    ?? '',
+        frame?.toolPlugin ?? null,
+        frame?.toolName   ?? null,
+      ).catch(console.error);
+    });
+
+    this._wizardProgressUnsubs.set(key, unsub);
+  },
+
+  /**
+   * Removes the wizard progress subscription registered under `key`.
+   * Safe to call when no subscription exists for that key.
+   *
+   * @param {string} key  Same key passed to `subscribeWizardProgress`.
+   */
+  unsubscribeWizardProgress: function (key) {
+    const unsub = this._wizardProgressUnsubs.get(key);
+    if (unsub) {
+      unsub();
+      this._wizardProgressUnsubs.delete(key);
+    }
+  },
+
+  // ── Speech-to-text helpers (Whisper.cpp via electron-message-bridge-plugin-speech-whisper) ──
+
+  /**
+   * Returns true when speech-to-text is available in the Electron shell.
+   * @returns {boolean}
+   */
+  hasSpeech: function () {
+    return typeof window.speech !== 'undefined' && window.speech !== null;
+  },
+
+  /**
+   * Gets the STT status (capabilities, current state, errors).
+   * @returns {Promise<{canRecord: boolean, hasModel: boolean, hasBinary: boolean, state: string, error?: string}>}
+   */
+  getSpeechStatus: async function () {
+    if (!this.hasSpeech()) return { canRecord: false, hasModel: false, hasBinary: false, state: 'UNSUPPORTED' };
+    return await window.speech.status();
+  },
+
+  /**
+   * Starts microphone capture for speech-to-text.
+   * Call `stopSpeech()` on the same window to finalize and receive transcript.
+   * @returns {Promise<void>}
+   */
+  startSpeech: async function () {
+    if (!this.hasSpeech()) throw new Error('Speech-to-text not available.');
+    try {
+      const status = await window.speech.status();
+      console.info('[godotElectronInterop] startSpeech status before start:', status);
+    } catch (err) {
+      console.warn('[godotElectronInterop] Unable to read speech status before start:', err);
+    }
+    return await window.speech.start();
+  },
+
+  /**
+   * Stops microphone capture, runs Whisper STT, and emits transcript via `onTranscript`.
+   * Must be called from the same BrowserWindow that called `startSpeech()`.
+   * @returns {Promise<void>}
+   */
+  stopSpeech: async function () {
+    if (!this.hasSpeech()) throw new Error('Speech-to-text not available.');
+    try {
+      const status = await window.speech.status();
+      const state = typeof status?.state === 'string' ? status.state.toUpperCase() : '';
+      // Avoid stop only when state is explicitly idle.
+      // Runtime evidence showed ERROR can still follow an active LISTENING session.
+      if (state && state !== 'LISTENING') {
+        console.info('[godotElectronInterop] stopSpeech skipped: not recording.', status);
+        return;
+      }
+    } catch {
+      // If status probing fails, continue and let stop() decide.
+    }
+
+    try {
+      const result = await window.speech.stop();
+      return result;
+    } catch (err) {
+      const message = typeof err?.message === 'string' ? err.message : String(err ?? '');
+      // Idempotent stop semantics for UI calls (race between transcript auto-stop and UI stop).
+      if (message.includes('No active recording')) {
+        try {
+          const status = await window.speech.status();
+          console.info('[godotElectronInterop] stopSpeech received "No active recording". Current status:', status);
+        } catch {
+          console.info('[godotElectronInterop] stopSpeech received "No active recording".');
+        }
+        return;
+      }
+      throw err;
+    }
+  },
+
+  /**
+   * Subscribes to speech transcript results. Callback receives plain text string.
+   * Returns an unsubscribe function to clean up the listener.
+   * @param {(text: string) => void} callback
+   * @returns {() => void} unsubscribe
+   */
+  onSpeechTranscript: function (callback) {
+    if (!this.hasSpeech()) return () => {};
+    return window.speech.onTranscript(callback);
   },
 };

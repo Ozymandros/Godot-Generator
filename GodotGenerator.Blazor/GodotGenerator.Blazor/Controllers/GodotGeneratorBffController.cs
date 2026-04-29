@@ -116,4 +116,5 @@ public sealed class GodotGeneratorBffController(IGodotGeneratorApiService api) :
         var result = await task.ConfigureAwait(false);
         return result.Success ? Ok(result) : BadRequest(result);
     }
+
 }

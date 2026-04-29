@@ -1,17 +1,29 @@
-out/
-debug-*.log
-**/node_modules/
-test-results/
-coverage-report/
-coverage-report-core/
-coverage-report-core2/
-playwright-report/
-playwright/.cache/
+```
+# Dependencies
+node_modules/
+package-lock.json
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+*.env.*
+```
 .vs/
-**/bin/
-**/obj/
-*.user
+coverage/
+obj/
+bin/
+TestResults/
+models/
+*,bin
+*.exe
 
 .fake
-TestResults
-test/GodotGenerator.Infrastructure.Ai.Tests/TestResults/

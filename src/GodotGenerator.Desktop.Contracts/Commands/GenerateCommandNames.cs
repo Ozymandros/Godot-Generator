@@ -53,12 +53,19 @@ public static class GenerateCommandNames
     /// <summary>Generates Godot node operations (add, configure, reparent, set properties).</summary>
     public const string GodotNodes = "Generate.GodotNodes/v1";
 
+    /// <summary>
+    /// Runs the Wizard orchestration turn: the LLM may call multiple generation tools
+    /// to fulfil a project-scoped goal before producing a consolidated response.
+    /// </summary>
+    public const string Wizard = "Generate.Wizard/v1";
+
     /// <summary>Ordered list of all generate command names; used to register handlers.</summary>
     public static readonly IReadOnlyList<string> All =
     [
         Text, Code, Image, Audio, Video, Sprites,
         GodotUi, GodotPhysics, GodotProject, Scenes, Animations,
         GodotLighting, GodotCamera, GodotShaders, GodotSignals, GodotNodes,
+        Wizard,
     ];
 }
 

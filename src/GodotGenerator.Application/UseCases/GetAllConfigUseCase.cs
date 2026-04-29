@@ -37,6 +37,7 @@ public sealed class GetAllConfigUseCase(
             PromptsSystemV1,
             AppBackendUrl,
             AppOutputBasePath,
+            AppWhisperBinPath,
             AppWorkspaceNotes,
             PromptsTextLegacy,
             PromptsCodeLegacy,

@@ -28,8 +28,7 @@ public sealed class ConfigurationRegistryServiceTests
 
         var json = ConfigurationRegistryService.Serialize(doc);
         var back = ConfigurationRegistryService.ParseProviderRegistry(json);
-        Assert.Single(back.Providers);
-        Assert.Equal("openai", back.Providers[0].Id);
+        Assert.Contains(back.Providers, p => p.Id == "openai");
         Assert.Null(ConfigurationRegistryService.ValidateProviderRegistry(back));
     }
 

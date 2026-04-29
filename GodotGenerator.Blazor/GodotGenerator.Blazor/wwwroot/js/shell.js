@@ -57,3 +57,10 @@ window.godotClipboard = {
     return Promise.reject(new Error('Clipboard API unavailable'));
   },
 };
+
+/** Scrolls a log-list element to its bottom edge (used by LogsPage auto-scroll). */
+window.godotLogsScrollToBottom = function (element) {
+  if (element && element.scrollHeight \!== undefined) {
+    element.scrollTop = element.scrollHeight;
+  }
+};
