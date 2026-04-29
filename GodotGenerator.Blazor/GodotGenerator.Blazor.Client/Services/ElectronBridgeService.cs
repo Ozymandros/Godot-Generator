@@ -24,16 +24,18 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
 {
     private readonly IJSRuntime _js;
     private readonly StatusBannerService _statusBanner;
+    private readonly AppLogService _appLog;
 
     private DotNetObjectReference<ElectronBridgeService>? _dotNetRef;
     private bool _initialized;
     private bool _disposed;
 
     /// <summary>Initialises the service with required dependencies.</summary>
-    public ElectronBridgeService(IJSRuntime js, StatusBannerService statusBanner)
+    public ElectronBridgeService(IJSRuntime js, StatusBannerService statusBanner, AppLogService appLog)
     {
         _js = js;
         _statusBanner = statusBanner;
+        _appLog = appLog;
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -43,6 +45,12 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
     /// "Open Project Folder…" menu item. Carries the selected absolute path.
     /// </summary>
     public event Action<string>? FolderSelected;
+
+    /// <summary>
+    /// Raised when the Electron File menu triggers "New Project".
+    /// Subscribers should reset all in-memory project state.
+    /// </summary>
+    public event Action? NewProject;
 
     /// <summary>
     /// Raised when the local .NET backend IPC pipe becomes ready (first start or after restart).
@@ -69,6 +77,14 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
 
             await _js.InvokeVoidAsync(
                 "godotElectronInterop.subscribeFolderSelected",
+                _dotNetRef).ConfigureAwait(false);
+
+            await _js.InvokeVoidAsync(
+                "godotElectronInterop.subscribeNewProject",
+                _dotNetRef).ConfigureAwait(false);
+
+            await _js.InvokeVoidAsync(
+                "godotElectronInterop.subscribeBackendLog",
                 _dotNetRef).ConfigureAwait(false);
         }
         catch (JSException)
@@ -129,6 +145,35 @@ public sealed class ElectronBridgeService : IDisposable, IAsyncDisposable
     [JSInvokable]
     public void OnFolderSelected(string path) =>
         FolderSelected?.Invoke(path);
+
+    /// <summary>
+    /// Invoked by <c>electronBridge.js</c> when the Electron File menu's
+    /// "New Project" item is activated. Raises <see cref="NewProject"/> so
+    /// subscribers can reset all in-memory project state.
+    /// </summary>
+    [JSInvokable]
+    public void OnNewProject() =>
+        NewProject?.Invoke();
+
+    /// <summary>
+    /// Invoked by <c>electronBridge.js</c> for each individual line emitted by
+    /// the backend process stdout or stderr.  Forwards the line into
+    /// <see cref="AppLogService"/> so it is visible in the in-app log view.
+    /// </summary>
+    /// <param name="stream">
+    /// <c>"stdout"</c> for standard output; <c>"stderr"</c> for standard error.
+    /// </param>
+    /// <param name="message">A single, non-empty, pre-split log line.</param>
+    /// <param name="timestamp">ISO-8601 timestamp from the Electron main process (informational).</param>
+    [JSInvokable]
+    public void OnBackendLog(string stream, string message, string timestamp)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+        // Timestamp from Electron is informational; AppLogService assigns its own
+        // wall-clock stamp for consistency with other entry types.
+        _ = timestamp;
+        _appLog.LogBackend(stream, message);
+    }
 
     // ── IDisposable / IAsyncDisposable ─────────────────────────────────────────
 

@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GodotGenerator.Wizard.Contracts</RootNamespace>
+    <AssemblyName>GodotGenerator.Wizard.Contracts</AssemblyName>
+    <Description>Wizard-specific contracts shared between MCP API adapters and plugin orchestration.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

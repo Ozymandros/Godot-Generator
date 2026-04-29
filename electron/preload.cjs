@@ -1,7 +1,9 @@
 'use strict';
 
 const { exposeApiToRenderer, exposeEventsToRenderer, exposeValues } =
-  require('electron-message-bridge/preload');
+  require('@ozymandros/electron-message-bridge/preload');
+const { exposeSpeechWhisperToRenderer } =
+  require('@ozymandros/electron-message-bridge-plugin-speech-whisper/preload');
 const { API_CHANNELS, EVENT_CHANNELS } = require('./ipcDefinitions.cjs');
 
 /**
@@ -41,3 +43,7 @@ exposeEventsToRenderer({ _channels: EVENT_CHANNELS }, 'godotElectronEvents');
 // Static constants → window.godotElectronMeta
 // Exposed without an IPC round-trip; no Node.js globals leak to the renderer.
 exposeValues({ platform: process.platform }, 'godotElectronMeta');
+
+// Speech-to-text (Whisper.cpp) → window.speech
+// Exposes: start(), stop(), status(), onTranscript(callback) returning unsubscribe fn.
+exposeSpeechWhisperToRenderer('speech');

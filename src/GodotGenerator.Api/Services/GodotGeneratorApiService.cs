@@ -23,6 +23,8 @@ public sealed class GodotGeneratorApiService(
     GetApiKeysUseCase getApiKeys,
     SaveApiKeysUseCase saveApiKeys,
     GetAllConfigUseCase getAllConfig,
+    EnhancePromptUseCase enhancePrompt,
+    RunWizardUseCase runWizard,
     IModalityTurnComposer modalityTurnComposer,
     IGodotMcpToolCatalog godotToolCatalog,
     ILogger<GodotGeneratorApiService> logger) : IGodotGeneratorApiService
@@ -92,6 +94,132 @@ public sealed class GodotGeneratorApiService(
         GenerateByModalityAsync("godot-nodes", request, cancellationToken);
 
     /// <inheritdoc />
+    public async Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        try
+        {
+            // Apply the same provider/model preference-resolution precedence used by
+            // GenerateByModalityAsync so that the user's configured provider (e.g. DeepSeek)
+            // is honoured when no explicit override is supplied by the caller.
+            var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(request.Modality);
+            var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var effective = EffectiveSelectionPolicy.Resolve(
+                request.Modality,
+                request.Provider,
+                request.PreferredModelId,
+                panelLanguageOverride: null,
+                globalPreferredLanguage: null,
+                preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [providerKey] = preferredProvider,
+                    [modelKey] = preferredModelId,
+                },
+                hostDefaultProvider: null,
+                hostDefaultModelId: null);
+
+            var resolvedRequest = request with
+            {
+                Provider = effective.Provider,
+                PreferredModelId = effective.ModelId,
+            };
+
+            var result = await enhancePrompt
+                .ExecuteAsync(resolvedRequest, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return ApiResponse<Dictionary<string, object?>>.Fail(
+                    result.Error ?? "Prompt assist failed.");
+            }
+
+            return ApiResponse<Dictionary<string, object?>>.Ok(
+                new Dictionary<string, object?>(StringComparer.Ordinal)
+                {
+                    ["result"] = result.Result,
+                    ["mode"] = result.Mode,
+                    ["modality"] = request.Modality,
+                });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "EnhancePromptAsync failed for modality {Modality}", request.Modality);
+            return ApiResponse<Dictionary<string, object?>>.Fail(ex.Message);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<ApiResponse<Dictionary<string, object?>>> RunWizardAsync(
+        WizardRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        try
+        {
+            // Resolve effective provider/model using the same preference chain as other modalities.
+            var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys("wizard");
+            var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var effective = EffectiveSelectionPolicy.Resolve(
+                "wizard",
+                request.Provider,
+                request.PreferredModelId,
+                panelLanguageOverride: null,
+                globalPreferredLanguage: null,
+                preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [providerKey] = preferredProvider,
+                    [modelKey] = preferredModelId,
+                },
+                hostDefaultProvider: null,
+                hostDefaultModelId: null);
+
+            var resolved = request with
+            {
+                Provider = effective.Provider,
+                PreferredModelId = effective.ModelId,
+            };
+
+            var result = await runWizard
+                .ExecuteAsync(resolved, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!result.Success)
+            {
+                return ApiResponse<Dictionary<string, object?>>.Fail(result.Error ?? "Wizard failed.");
+            }
+
+            return ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["modality"] = "wizard",
+                ["provider"] = effective.Provider,
+                ["modelId"] = effective.ModelId,
+                ["message"] = result.Message,
+                ["toolsInvoked"] = result.ToolsInvoked,
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "RunWizardAsync failed");
+            return ApiResponse<Dictionary<string, object?>>.Fail(ex.Message);
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<ApiResponse<Dictionary<string, string?>>> GetPreferenceAsync(string key, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -150,7 +278,6 @@ public sealed class GodotGeneratorApiService(
     {
         var snapshot = await getAllConfig.ExecuteAsync(cancellationToken).ConfigureAwait(false);
         var toolNames = await godotToolCatalog.ListRegisteredToolNamesAsync(cancellationToken).ConfigureAwait(false);
-
         var providers = snapshot.ProviderRegistry.Select(MapProviderEntry).Cast<object>().ToList();
         var models = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (providerId, entries) in snapshot.ModelsByProvider)
@@ -242,6 +369,7 @@ public sealed class GodotGeneratorApiService(
             "godot-shaders" => "godot-shaders",
             "godot-signals" => "godot-signals",
             "godot-nodes" => "godot-nodes",
+            "wizard" => "wizard",
             _ => "text",
         };
     }

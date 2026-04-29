@@ -1,5 +1,6 @@
 #nullable enable
 using GodotGenerator.Application.Orchestration;
+using GodotGenerator.Application.Abstractions;
 using GodotMcp.Plugin;
 using GodotMcp.Plugin.Extensions;
 using GodotGenerator.Infrastructure.Ai.Options;
@@ -16,9 +17,8 @@ namespace GodotGenerator.Infrastructure.Ai.KernelFactory;
 /// </summary>
 public sealed class GodotKernelFactory(
     IServiceProvider rootServices,
-    IOptions<LlmOptions> llmOptions,
     IOptions<OrchestrationOptions> orchestrationOptions,
-    Services.IProviderSecretResolver providerSecretResolver,
+    IProviderConnectionResolver providerConnectionResolver,
     ILoggerFactory loggerFactory,
     ILogger<GodotKernelFactory> logger) : IKernelFactory
 {
@@ -32,48 +32,50 @@ public sealed class GodotKernelFactory(
         string? provider = null,
         string? preferredModelId = null,
         string? modalityKeyForToolFiltering = null,
+        string projectRoot = "",
         CancellationToken cancellationToken = default)
     {
-        var effectiveProvider = ResolveProvider(provider);
-        var modelId = ResolveModelId(preferredModelId);
+        var connection = await providerConnectionResolver
+            .ResolveAsync(provider, preferredModelId, cancellationToken)
+            .ConfigureAwait(false);
         var applyFiltering = orchestrationOptions.Value.EnableModalityToolFiltering
             && ModalityMcpToolPolicy.ShouldApplyFiltering(modalityKeyForToolFiltering);
         var filterSegment = applyFiltering
             ? EffectiveSelectionPolicy.NormalizeModality(modalityKeyForToolFiltering!.Trim())
             : "full";
-        var cacheKey = BuildCacheKey(effectiveProvider, modelId, filterSegment);
-        if (_kernelsByCacheKey.TryGetValue(cacheKey, out var cached))
-        {
-            return cached;
-        }
+        var cacheKey = BuildCacheKey(connection.Provider, connection.ModelId, filterSegment, projectRoot);
 
         await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_kernelsByCacheKey.TryGetValue(cacheKey, out cached))
+            await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
+
+            if (_kernelsByCacheKey.TryGetValue(cacheKey, out var cached))
             {
                 return cached;
             }
 
-            var apiKey = await ResolveApiKeyAsync(effectiveProvider, cancellationToken).ConfigureAwait(false);
-            EnsureApiKeyConfigured(apiKey, effectiveProvider);
-            await EnsurePluginInitializedAsync(cancellationToken).ConfigureAwait(false);
-
-            var kernel = BuildKernel(apiKey!, modelId, modalityKeyForToolFiltering, applyFiltering);
+            var kernel = BuildKernel(
+                connection.Provider,
+                connection.ApiKey,
+                connection.ModelId,
+                connection.Endpoint,
+                modalityKeyForToolFiltering,
+                applyFiltering);
             _kernelsByCacheKey[cacheKey] = kernel;
             if (_pluginInitializationSkipped)
             {
                 logger.LogInformation(
                     "Kernel ready without Godot MCP tools for provider {Provider}, model {ModelId}.",
-                    effectiveProvider,
-                    modelId);
+                    connection.Provider,
+                    connection.ModelId);
             }
             else
             {
                 logger.LogInformation(
                     "Kernel ready with Godot MCP tools for provider {Provider}, model {ModelId}.",
-                    effectiveProvider,
-                    modelId);
+                    connection.Provider,
+                    connection.ModelId);
             }
             return kernel;
         }
@@ -84,73 +86,18 @@ public sealed class GodotKernelFactory(
     }
 
     /// <summary>
-    /// Resolves the provider for the kernel creation, applying optional request-level overrides.
-    /// </summary>
-    /// <param name="provider">Optional provider from the caller.</param>
-    /// <returns>The effective provider to use for the kernel.</returns>
-    private string ResolveProvider(string? provider) =>
-        string.IsNullOrWhiteSpace(provider) ? "openai" : provider.Trim().ToLowerInvariant();
-
-    /// <summary>
     /// Builds a cache key for the kernel creation, applying optional request-level overrides.
     /// </summary>
     /// <param name="provider">Provider identifier used for the cache key.</param>
     /// <param name="modelId">Model id used for the cache key.</param>
     /// <param name="toolFilterSegment">Normalized modality segment or <c>full</c> when no tool filtering applies.</param>
+    /// <param name="projectRoot">Optional project root used to scope caches per workspace.</param>
     /// <returns>The effective cache key to use for the kernel.</returns>
-    private static string BuildCacheKey(string provider, string modelId, string toolFilterSegment) =>
-        $"{provider}::{modelId}::{toolFilterSegment}";
+    private static string BuildCacheKey(string provider, string modelId, string toolFilterSegment, string? projectRoot) =>
+        $"{provider}::{modelId}::{toolFilterSegment}::{NormalizeProjectRootForCache(projectRoot)}";
 
-    /// <summary>
-    /// Resolves the model id for kernel creation, applying optional request-level overrides.
-    /// </summary>
-    /// <param name="preferredModelId">Optional preferred model id from the caller.</param>
-    /// <returns>The effective model id to use for the kernel.</returns>
-    private string ResolveModelId(string? preferredModelId)
-    {
-        var configured = llmOptions.Value.ChatModelId;
-        if (string.IsNullOrWhiteSpace(preferredModelId))
-        {
-            return configured;
-        }
-
-        logger.LogDebug("Using preferred model id override: {ModelId}", preferredModelId);
-        return preferredModelId.Trim();
-    }
-
-    /// <summary>
-    /// Ensures an API key exists before attempting provider initialization.
-    /// </summary>
-    /// <param name="apiKey">Configured API key value.</param>
-    /// <param name="provider">Provider identifier used for the error message.</param>
-    private static void EnsureApiKeyConfigured(string? apiKey, string provider)
-    {
-        if (!string.IsNullOrWhiteSpace(apiKey))
-        {
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"API key for provider '{provider}' is not configured. Set it in Settings > Secrets.");
-    }
-
-    private async Task<string?> ResolveApiKeyAsync(string provider, CancellationToken cancellationToken)
-    {
-        var key = await providerSecretResolver.ResolveApiKeyAsync(provider, cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(key))
-        {
-            return key;
-        }
-
-        // Backward-compatible fallback for existing local config.
-        if (string.Equals(provider, "openai", StringComparison.OrdinalIgnoreCase))
-        {
-            var configured = llmOptions.Value.ApiKey;
-            return string.IsNullOrWhiteSpace(configured) ? null : configured.Trim();
-        }
-
-        return null;
-    }
+    private static string NormalizeProjectRootForCache(string? projectRoot) =>
+        string.IsNullOrWhiteSpace(projectRoot) ? string.Empty : projectRoot.Trim().ToLowerInvariant();
 
     /// <summary>
     /// Initializes the Godot MCP plugin once for the process lifetime.
@@ -195,18 +142,33 @@ public sealed class GodotKernelFactory(
     /// <summary>
     /// Builds a semantic kernel for a specific model and registers Godot tools.
     /// </summary>
+    /// <param name="provider">Resolved provider id.</param>
     /// <param name="apiKey">Provider API key.</param>
     /// <param name="modelId">Resolved model id.</param>
+    /// <param name="endpoint">Optional OpenAI-compatible endpoint override.</param>
     /// <param name="modalityKeyForToolFiltering">Modality key when filtering is enabled.</param>
     /// <param name="applyToolFiltering">Whether to narrow Godot MCP functions for the modality.</param>
     /// <returns>Ready-to-use kernel instance.</returns>
-    private Kernel BuildKernel(string apiKey, string modelId, string? modalityKeyForToolFiltering, bool applyToolFiltering)
+    private Kernel BuildKernel(
+        string provider,
+        string apiKey,
+        string modelId,
+        Uri? endpoint,
+        string? modalityKeyForToolFiltering,
+        bool applyToolFiltering)
     {
         try
         {
             var kernelBuilder = Kernel.CreateBuilder();
             kernelBuilder.Services.AddSingleton(loggerFactory);
-            kernelBuilder.AddOpenAIChatCompletion(modelId, apiKey);
+            if (endpoint is null)
+            {
+                kernelBuilder.AddOpenAIChatCompletion(modelId, apiKey);
+            }
+            else
+            {
+                kernelBuilder.AddOpenAIChatCompletion(modelId, endpoint, apiKey);
+            }
 
             var kernel = kernelBuilder.Build();
             if (_pluginInitializationSkipped)
@@ -217,8 +179,22 @@ public sealed class GodotKernelFactory(
             }
             else
             {
-                kernel.RegisterGodotTools(rootServices);
-                logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+                try
+                {
+                    kernel.RegisterGodotTools(rootServices);
+                    logger.LogInformation("Godot tools registered for model {ModelId}.", modelId);
+                }
+                catch (ArgumentException ex) when (IsInvalidMcpFunctionName(ex))
+                {
+                    // MCP 1.5+ exposes dotted tool names (e.g. camera.create); SK requires [A-Za-z0-9_]. Recovery path is expected.
+                    logger.LogDebug(ex, "RegisterGodotTools skipped for model {ModelId} (invalid SK function name from MCP).", modelId);
+                    logger.LogInformation(
+                        "Using typed Godot MCP skills for model {ModelId} (dynamic MCP tools use dotted names incompatible with SK identifiers).",
+                        modelId);
+
+                    kernel.AddGodotMcpSkills(rootServices);
+                }
+
                 if (applyToolFiltering && !string.IsNullOrWhiteSpace(modalityKeyForToolFiltering))
                 {
                     ModalityGodotToolFilter.Apply(kernel, modalityKeyForToolFiltering, logger);
@@ -228,11 +204,22 @@ public sealed class GodotKernelFactory(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed during kernel build or Godot tool registration for model {ModelId}.", modelId);
+            logger.LogError(
+                ex,
+                "Failed during kernel build or Godot tool registration for provider {Provider}, model {ModelId}.",
+                provider,
+                modelId);
             throw new InvalidOperationException("Failed to build Semantic Kernel with Godot tools.", ex);
         }
     }
 
+    /// <summary>
+    /// Detects the known Godot MCP schema mismatch condition that can be safely downgraded.
+    /// </summary>
+    /// <param name="ex">Initialization exception to inspect.</param>
+    /// <returns>
+    /// True when the exception matches the known mapper mismatch signature; otherwise false.
+    /// </returns>
     private static bool IsKnownToolSchemaShapeMismatch(Exception ex)
     {
         var message = ex.Message;
@@ -242,4 +229,8 @@ public sealed class GodotKernelFactory(
             && !string.IsNullOrWhiteSpace(stack)
             && stack.Contains("GodotMcpToolDefinitionMapper.ParseInputSchema", StringComparison.Ordinal);
     }
+
+    private static bool IsInvalidMcpFunctionName(ArgumentException ex) =>
+        ex.Message.Contains("A function name can contain only ASCII letters, digits, and underscores", StringComparison.OrdinalIgnoreCase)
+        || ex.Message.Contains("is not a valid name", StringComparison.OrdinalIgnoreCase);
 }

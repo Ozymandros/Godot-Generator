@@ -22,11 +22,13 @@ public static class AppIconFactory
     public static Icon DocumentBulletList { get; } = new FluentIcons.Regular.Size20.DocumentBulletList();
     public static Icon BranchFork { get; } = new FluentIcons.Regular.Size20.BranchFork();
     public static Icon LightBulb { get; } = new FluentIcons.Regular.Size20.LightbulbFilament();
-    public static Icon Camera { get; } = new FluentIcons.Regular.Size20.Camera();
+    public static Icon Camera { get; } = new FluentIcons.Regular.Size20.CameraSwitch();
     public static Icon PaintBrush { get; } = new FluentIcons.Regular.Size20.PaintBrush();
     public static Icon ArrowSync { get; } = new FluentIcons.Regular.Size20.ArrowSync();
     public static Icon TreeDeciduous { get; } = new FluentIcons.Regular.Size20.TreeDeciduous();
     public static Icon SlideGrid { get; } = new FluentIcons.Regular.Size20.SlideGrid();
     public static Icon ChevronRight { get; } = new FluentIcons.Regular.Size20.ChevronRight();
     public static Icon ChevronDown { get; } = new FluentIcons.Regular.Size20.ChevronDown();
+    /// <summary>Wizard — AI orchestration with tool-calling.</summary>
+    public static Icon Wizard { get; } = new FluentIcons.Regular.Size20.BotSparkle();
 }

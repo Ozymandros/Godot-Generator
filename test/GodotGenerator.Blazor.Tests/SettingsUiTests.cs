@@ -194,7 +194,7 @@ public sealed class SettingsUiTests
 
     private static GodotGeneratorHttpClient CreateHttpClientForConfig()
     {
-        var handler = new StubHandler(_ =>
+        using var handler = new StubHandler(_ =>
         {
             var payload = ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>
             {
@@ -211,13 +211,13 @@ public sealed class SettingsUiTests
             };
         });
 
-        var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         return new GodotGeneratorHttpClient(http);
     }
 
     private static GodotGeneratorHttpClient CreateHttpClientForPreferences(Action<string, string?> capture)
     {
-        var handler = new StubHandler(req =>
+        using var handler = new StubHandler(req =>
         {
             if (req.Method == HttpMethod.Post && req.RequestUri?.PathAndQuery == "/api/preference")
             {
@@ -241,13 +241,13 @@ public sealed class SettingsUiTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         return new GodotGeneratorHttpClient(http);
     }
 
     private static GodotGeneratorHttpClient CreateHttpClientForApiKeys(Action<string> captureBody)
     {
-        var handler = new StubHandler(req =>
+        using var handler = new StubHandler(req =>
         {
             var path = req.RequestUri?.PathAndQuery ?? string.Empty;
             if (req.Method == HttpMethod.Post && (path == "/api/keys" || path == "api/keys"))
@@ -270,7 +270,7 @@ public sealed class SettingsUiTests
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         });
 
-        var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         return new GodotGeneratorHttpClient(http);
     }
 

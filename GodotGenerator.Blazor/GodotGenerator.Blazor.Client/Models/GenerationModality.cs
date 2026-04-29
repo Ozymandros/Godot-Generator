@@ -21,4 +21,8 @@ public enum GenerationModality
     GodotShaders,
     GodotSignals,
     GodotNodes,
+    /// <summary>
+    /// Wizard orchestration: the LLM may invoke multiple generation tools to fulfil a project-scoped goal.
+    /// </summary>
+    Wizard,
 }

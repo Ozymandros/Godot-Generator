@@ -17,6 +17,9 @@ public sealed class GetApiKeysUseCase(
 
     /// <summary>
     /// Gets all configured API keys keyed by service name.
+    /// Decrypted values are also injected into the current process environment so that
+    /// third-party SDKs that read <c>Environment.GetEnvironmentVariable</c> directly
+    /// (e.g. the OpenAI .NET SDK) pick them up without additional configuration.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Dictionary of service name to key value.</returns>
@@ -31,11 +34,34 @@ public sealed class GetApiKeysUseCase(
             if (!string.IsNullOrWhiteSpace(value))
             {
                 result[name] = value;
+                InjectIntoEnvironment(name, value);
             }
         }
 
         logger.LogDebug("GetApiKeys: returned {Count} key(s)", result.Count);
         return result;
+    }
+
+    /// <summary>
+    /// Sets the process environment variable for a provider API key using the
+    /// conventional <c>{PROVIDER_UPPER}_API_KEY</c> naming pattern.
+    /// </summary>
+    /// <param name="serviceName">Provider/service name (e.g. <c>openai</c>).</param>
+    /// <param name="keyValue">Decrypted API key value.</param>
+    private void InjectIntoEnvironment(string serviceName, string keyValue)
+    {
+        try
+        {
+            var envVarName = serviceName.ToUpperInvariant().Replace('-', '_').Replace(' ', '_') + "_API_KEY";
+            Environment.SetEnvironmentVariable(envVarName, keyValue, EnvironmentVariableTarget.Process);
+            logger.LogDebug("Injected API key for '{Service}' into environment as {EnvVar}.", serviceName, envVarName);
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: environment injection is best-effort; the primary resolution path
+            // uses IPreferenceRepository and does not depend on environment variables.
+            logger.LogWarning(ex, "Failed to inject API key for '{Service}' into process environment.", serviceName);
+        }
     }
 
     /// <summary>

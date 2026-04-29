@@ -49,19 +49,19 @@ public sealed class GodotGeneratorHttpClientTests
     public async Task GenerateAsync_posts_to_expected_route_for_modality(GenerationModality modality, string expectedPath)
     {
         string? lastUri = null;
-        var handler = new StubHandler(req =>
-        {
-            lastUri = req.RequestUri?.PathAndQuery;
-            var json = JsonSerializer.Serialize(
-                ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?> { ["message"] = "ok" }),
-                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-            return new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = new StringContent(json, Encoding.UTF8, "application/json"),
-            };
-        });
+        using var handler = new StubHandler(req =>
+         {
+             lastUri = req.RequestUri?.PathAndQuery;
+             var json = JsonSerializer.Serialize(
+                 ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?> { ["message"] = "ok" }),
+                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+             return new HttpResponseMessage(HttpStatusCode.OK)
+             {
+                 Content = new StringContent(json, Encoding.UTF8, "application/json"),
+             };
+         });
 
-        var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         var sut = new GodotGeneratorHttpClient(http);
 
         _ = await sut.GenerateAsync(modality, new GenerateRequest("x"), CancellationToken.None);
@@ -72,11 +72,11 @@ public sealed class GodotGeneratorHttpClientTests
     [Fact]
     public async Task PostGenerateAsync_returns_Fail_when_body_empty()
     {
-        var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent(string.Empty, Encoding.UTF8, "application/json"),
         });
-        var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         var sut = new GodotGeneratorHttpClient(http);
 
         var r = await sut.PostGenerateAsync("api/generate/text", new GenerateRequest("a"), CancellationToken.None);
@@ -88,11 +88,11 @@ public sealed class GodotGeneratorHttpClientTests
     [Fact]
     public async Task PostGenerateAsync_returns_Fail_when_body_is_not_json()
     {
-        var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        using var handler = new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("not-json", Encoding.UTF8, "application/json"),
         });
-        var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
         var sut = new GodotGeneratorHttpClient(http);
 
         var r = await sut.PostGenerateAsync("api/generate/text", new GenerateRequest("a"), CancellationToken.None);

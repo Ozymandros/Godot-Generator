@@ -35,6 +35,7 @@ public static class ConfigurationRegistryService
                 return GetDefaultProviderRegistry();
             }
 
+            ApplyProviderDefaults(doc);
             return doc;
         }
         catch (JsonException)
@@ -69,20 +70,66 @@ public static class ConfigurationRegistryService
             Version = 1,
             Providers =
             [
-                new() { Id = Constants.ProviderOpenAi, KeyStoreHandle = Constants.ProviderOpenAi, OpenAiCompatibility = true },
-                new() { Id = Constants.ProviderAnthropic, KeyStoreHandle = Constants.ProviderAnthropic },
-                new() { Id = Constants.ProviderGoogle, KeyStoreHandle = Constants.ProviderGoogle },
-                new() { Id = Constants.ProviderDeepSeek, KeyStoreHandle = Constants.ProviderDeepSeek, OpenAiCompatibility = true },
+                new()
+                {
+                    Id = Constants.ProviderOpenAi,
+                    KeyStoreHandle = Constants.ProviderOpenAi,
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderAnthropic,
+                    KeyStoreHandle = Constants.ProviderAnthropic,
+                    Endpoint = "https://api.anthropic.com/v1",
+                    Modalities = ["llm"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderGoogle,
+                    KeyStoreHandle = Constants.ProviderGoogle,
+                    Endpoint = "https://generativelanguage.googleapis.com",
+                    Modalities = ["llm", "image", "audio"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderDeepSeek,
+                    KeyStoreHandle = Constants.ProviderDeepSeek,
+                    Endpoint = "https://api.deepseek.com/v1",
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
                 new()
                 {
                     Id = Constants.ProviderOpenRouter,
                     KeyStoreHandle = Constants.ProviderOpenRouter,
                     Endpoint = "https://openrouter.ai/api/v1",
                     OpenAiCompatibility = true,
+                    Modalities = ["llm"],
                 },
-                new() { Id = Constants.ProviderHuggingFace, KeyStoreHandle = Constants.ProviderHuggingFace },
-                new() { Id = Constants.ProviderOllama, KeyStoreHandle = "ollama", Endpoint = "http://localhost:11434/v1", OpenAiCompatibility = true },
-                new() { Id = Constants.ProviderGroq, KeyStoreHandle = Constants.ProviderGroq, OpenAiCompatibility = true },
+                new()
+                {
+                    Id = Constants.ProviderHuggingFace,
+                    KeyStoreHandle = Constants.ProviderHuggingFace,
+                    Endpoint = "https://api-inference.huggingface.co",
+                    Modalities = ["llm", "image", "audio"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderOllama,
+                    KeyStoreHandle = "ollama",
+                    Endpoint = "http://localhost:11434/v1",
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderGroq,
+                    KeyStoreHandle = Constants.ProviderGroq,
+                    Endpoint = "https://api.groq.com/openai/v1",
+                    OpenAiCompatibility = true,
+                    Modalities = ["llm"],
+                },
                 new()
                 {
                     Id = Constants.ProviderQwen,
@@ -91,11 +138,83 @@ public static class ConfigurationRegistryService
                     OpenAiCompatibility = true,
                     Modalities = ["llm"],
                 },
-                new() { Id = Constants.ProviderStability, KeyStoreHandle = Constants.ProviderStability },
-                new() { Id = Constants.ProviderFlux, KeyStoreHandle = "flux" },
-                new() { Id = Constants.ProviderElevenLabs, KeyStoreHandle = Constants.ProviderElevenLabs },
+                new()
+                {
+                    Id = Constants.ProviderStability,
+                    KeyStoreHandle = Constants.ProviderStability,
+                    Endpoint = "https://api.stability.ai",
+                    Modalities = ["image", "sprites"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderFlux,
+                    KeyStoreHandle = "flux",
+                    Endpoint = "https://api.bfl.ai/v1",
+                    Modalities = ["image"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderElevenLabs,
+                    KeyStoreHandle = Constants.ProviderElevenLabs,
+                    Endpoint = "https://api.elevenlabs.io",
+                    Modalities = ["audio"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderPlayHt,
+                    KeyStoreHandle = Constants.ProviderPlayHt,
+                    Endpoint = "https://api.play.ht/api/v2",
+                    Modalities = ["audio"],
+                },
+                new()
+                {
+                    Id = Constants.ProviderVertexAi,
+                    KeyStoreHandle = Constants.ProviderVertexAi,
+                    Endpoint = "https://aiplatform.googleapis.com",
+                    Modalities = ["llm", "image", "audio", "video"],
+                },
             ]
         };
+    }
+
+    private static void ApplyProviderDefaults(ProviderRegistryDocument document)
+    {
+        var defaults = GetDefaultProviderRegistry().Providers;
+        foreach (var defaultEntry in defaults)
+        {
+            var existing = document.Providers.FirstOrDefault(p =>
+                string.Equals(p.Id, defaultEntry.Id, StringComparison.OrdinalIgnoreCase));
+            if (existing is null)
+            {
+                document.Providers.Add(new ProviderRegistryEntry
+                {
+                    Id = defaultEntry.Id,
+                    KeyStoreHandle = defaultEntry.KeyStoreHandle,
+                    Endpoint = defaultEntry.Endpoint,
+                    OpenAiCompatibility = defaultEntry.OpenAiCompatibility,
+                    AuthenticationRequired = defaultEntry.AuthenticationRequired,
+                    Vision = defaultEntry.Vision,
+                    Streaming = defaultEntry.Streaming,
+                    FunctionCalling = defaultEntry.FunctionCalling,
+                    GenericToolUse = defaultEntry.GenericToolUse,
+                    Modalities = [.. defaultEntry.Modalities],
+                });
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(existing.Endpoint) && !string.IsNullOrWhiteSpace(defaultEntry.Endpoint))
+            {
+                // Keep user-defined endpoint overrides; only backfill missing endpoint values.
+                existing.Endpoint = defaultEntry.Endpoint;
+            }
+
+            if ((existing.Modalities is null || existing.Modalities.Count == 0) &&
+                defaultEntry.Modalities is { Count: > 0 })
+            {
+                // Backfill missing modality tags so provider lists can be filtered correctly.
+                existing.Modalities = [.. defaultEntry.Modalities];
+            }
+        }
     }
 
     private static ModelRegistryDocument GetDefaultModelRegistry()
