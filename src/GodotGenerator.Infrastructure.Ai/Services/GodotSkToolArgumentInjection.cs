@@ -1,5 +1,6 @@
 #nullable enable
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using GodotGenerator.Application.Serialization;
 using Microsoft.Extensions.Logging;
@@ -312,6 +313,15 @@ internal static class GodotSkToolArgumentInjection
 
         foreach (var kvp in context.Arguments)
         {
+            if (TryNormalizeProjectRelativeFileName(kvp.Key, kvp.Value, state.GodotProjectRoot!, out var normalizedFileName))
+            {
+                logger?.LogDebug(
+                    "[Injection] Normalized file name {Param}: '{Old}' → '{New}' ({Tool}).",
+                    kvp.Key, kvp.Value, normalizedFileName, functionName);
+                context.Arguments[kvp.Key] = normalizedFileName!;
+                continue;
+            }
+
             if (!TryNormalizePathLikeArgument(kvp.Key, kvp.Value, state.GodotProjectRoot!, out var normalized))
             {
                 continue;
@@ -403,6 +413,81 @@ internal static class GodotSkToolArgumentInjection
     }
 
     /// <summary>
+    /// Normalizes project-relative file identifiers used by scene/script/resource tools.
+    /// </summary>
+    internal static bool TryNormalizeProjectRelativeFileName(
+        string parameterName,
+        object? currentValue,
+        string projectRoot,
+        out object? normalizedValue)
+    {
+        normalizedValue = null;
+        if (!IsProjectRelativeFileParameter(parameterName))
+        {
+            return false;
+        }
+
+        var raw = JsonOptionValue.AsTrimmedString(currentValue);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        if (raw.StartsWith("res://", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedValue = raw["res://".Length..].TrimStart('/', '\\').Replace('\\', '/');
+            return true;
+        }
+
+        if (Path.IsPathRooted(raw))
+        {
+            try
+            {
+                var full = Path.GetFullPath(raw);
+                var rootFull = Path.GetFullPath(projectRoot);
+                if (full.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
+                {
+                    normalizedValue = Path.GetRelativePath(rootFull, full).Replace('\\', '/');
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+
+            return false;
+        }
+
+        var relative = raw.Replace('\\', '/').TrimStart('/');
+        if (relative.Contains('/'))
+        {
+            normalizedValue = relative;
+            return !string.Equals(raw, relative, StringComparison.Ordinal);
+        }
+
+        try
+        {
+            var matches = Directory
+                .EnumerateFiles(projectRoot, relative, SearchOption.AllDirectories)
+                .Take(2)
+                .ToArray();
+
+            if (matches.Length == 1)
+            {
+                normalizedValue = Path.GetRelativePath(projectRoot, matches[0]).Replace('\\', '/');
+                return true;
+            }
+        }
+        catch
+        {
+            // Keep original when discovery fails.
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// Forces a project-root path parameter to the active turn's project root.
     /// </summary>
     internal static bool TryForceProjectRoot(
@@ -491,8 +576,20 @@ internal static class GodotSkToolArgumentInjection
             || name.EndsWith("_path", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsProjectRelativeFileParameter(string name) =>
+        name.Equals("fileName", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("file_name", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("sceneFileName", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("scene_file_name", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("scriptFileName", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("script_file_name", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("resourceFileName", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("resource_file_name", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsNodeTreePathParameter(string name) =>
         name.Equals("nodePath", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("parentNodePath", StringComparison.OrdinalIgnoreCase)
+        || name.Equals("newParentNodePath", StringComparison.OrdinalIgnoreCase)
         || name.Equals("parentPath", StringComparison.OrdinalIgnoreCase)
         || name.Equals("newParentPath", StringComparison.OrdinalIgnoreCase)
         || name.Equals("lightPath", StringComparison.OrdinalIgnoreCase)

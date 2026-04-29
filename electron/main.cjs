@@ -546,11 +546,14 @@ app.whenReady().then(async () => {
   });
 
   // Surface backend crash events so the renderer can show a degraded-state banner.
+  // Note: ChildProcessLifecycle emits { exitCode, signal }, we map to { code, signal } for backward compat
   backendLifecycle.on('crashed', (detail) => {
-    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendCrashed', detail));
+    const compatDetail = { code: detail.exitCode ?? detail.code, signal: detail.signal };
+    BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendCrashed', compatDetail));
   });
 
-  backendLifecycle.on('failed', () => {
+  backendLifecycle.on('failed', ({ error }) => {
+    console.error('[main] Backend failed after max restarts:', error?.message || error);
     BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'backendFailed'));
   });
 

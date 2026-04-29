@@ -137,6 +137,7 @@ public sealed class WizardOrchestrationService(
     /// </remarks>
     /// <param name="provider">Preferred provider id.</param>
     /// <param name="preferredModelId">Optional preferred model id.</param>
+    /// <param name="projectRoot">Optional project root path used by Godot MCP tools.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Configured kernel with all available wizard plugin tools registered.</returns>
     private async Task<Kernel> BuildKernelAsync(
@@ -147,14 +148,14 @@ public sealed class WizardOrchestrationService(
     {
         // Obtain the shared base kernel (with GodotMcp tools) and clone it so that adding
         // wizard-specific plugins does not mutate the shared cached instance.
-            var baseKernel = await kernelFactory
-            .GetOrCreateKernelAsync(
-                provider,
-                preferredModelId,
-                modalityKeyForToolFiltering: null,
-                projectRoot: projectRoot ?? string.Empty,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var baseKernel = await kernelFactory
+        .GetOrCreateKernelAsync(
+            provider,
+            preferredModelId,
+            modalityKeyForToolFiltering: null,
+            projectRoot: projectRoot ?? string.Empty,
+            cancellationToken)
+        .ConfigureAwait(false);
 
         var kernel = baseKernel.Clone();
 
@@ -281,9 +282,9 @@ public sealed class WizardOrchestrationService(
         /// </summary>
         /// <param name="context">Invocation context for the current function call.</param>
         /// <param name="next">Next filter delegate.</param>
-            public async Task OnFunctionInvocationAsync(
-                FunctionInvocationContext context,
-                Func<FunctionInvocationContext, Task> next)
+        public async Task OnFunctionInvocationAsync(
+            FunctionInvocationContext context,
+            Func<FunctionInvocationContext, Task> next)
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
             invoked.Add(invocationId);
@@ -384,7 +385,7 @@ public sealed class WizardOrchestrationService(
             WizardIpcProgressContext.EmitIfActive(
                 WizardProgressFrame.Tool(
                     context.Function.PluginName ?? "unknown",
-                    context.Function.Name));
+                    context.Function.Name ?? "unknown"));
 
             if (invocationId.Contains("configure", StringComparison.OrdinalIgnoreCase)
                 || invocationId.Contains("autoload", StringComparison.OrdinalIgnoreCase))
@@ -425,20 +426,20 @@ public sealed class WizardOrchestrationService(
 
             switch (value)
             {
-                case int i:    result = i != 0;                         return true;
-                case long l:   result = l != 0L;                        return true;
-                case float f:  result = Math.Abs(f) > float.Epsilon;    return true;
-                case double d: result = Math.Abs(d) > double.Epsilon;   return true;
-                case decimal m:result = m != 0m;                        return true;
+                case int i: result = i != 0; return true;
+                case long l: result = l != 0L; return true;
+                case float f: result = Math.Abs(f) > float.Epsilon; return true;
+                case double d: result = Math.Abs(d) > double.Epsilon; return true;
+                case decimal m: result = m != 0m; return true;
             }
 
             if (value is JsonElement el)
             {
                 switch (el.ValueKind)
                 {
-                    case JsonValueKind.True:   result = true;                        return true;
-                    case JsonValueKind.False:  result = false;                       return true;
-                    case JsonValueKind.Number: result = el.GetDouble() != 0d;        return true;
+                    case JsonValueKind.True: result = true; return true;
+                    case JsonValueKind.False: result = false; return true;
+                    case JsonValueKind.Number: result = el.GetDouble() != 0d; return true;
                     case JsonValueKind.String:
                         var val = el.GetString();
                         return val is not null && TryCoerceToBool(val, out result);

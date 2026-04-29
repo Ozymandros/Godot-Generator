@@ -51,7 +51,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     private static readonly TimeSpan DefaultExecutionTimeout = TimeSpan.FromSeconds(30);
 
     /// <summary>Timeout for non-wizard generate commands.</summary>
-    private static readonly TimeSpan GenerateExecutionTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan GenerateExecutionTimeout = TimeSpan.FromMinutes(3);
 
     /// <summary>Longer timeout budget for wizard turns, which often chain multiple tool invocations.</summary>
     private static readonly TimeSpan WizardExecutionTimeout = TimeSpan.FromSeconds(240);

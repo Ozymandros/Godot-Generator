@@ -23,7 +23,7 @@ public static class ModalityRoutes
         ["godot-shaders"] = GenerationModality.GodotShaders,
         ["godot-signals"] = GenerationModality.GodotSignals,
         ["godot-nodes"] = GenerationModality.GodotNodes,
-        ["wizard"]      = GenerationModality.Wizard,
+        ["wizard"] = GenerationModality.Wizard,
     };
 
     public static bool TryGet(string slug, out GenerationModality modality) => Map.TryGetValue(slug, out modality);

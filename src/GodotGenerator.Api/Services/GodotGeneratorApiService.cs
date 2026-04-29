@@ -107,7 +107,7 @@ public sealed class GodotGeneratorApiService(
             // is honoured when no explicit override is supplied by the caller.
             var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys(request.Modality);
             var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
-            var preferredModelId  = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
             var effective = EffectiveSelectionPolicy.Resolve(
                 request.Modality,
                 request.Provider,
@@ -117,14 +117,14 @@ public sealed class GodotGeneratorApiService(
                 preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
                     [providerKey] = preferredProvider,
-                    [modelKey]    = preferredModelId,
+                    [modelKey] = preferredModelId,
                 },
                 hostDefaultProvider: null,
                 hostDefaultModelId: null);
 
             var resolvedRequest = request with
             {
-                Provider         = effective.Provider,
+                Provider = effective.Provider,
                 PreferredModelId = effective.ModelId,
             };
 
@@ -169,7 +169,7 @@ public sealed class GodotGeneratorApiService(
             // Resolve effective provider/model using the same preference chain as other modalities.
             var (providerKey, modelKey) = EffectiveSelectionPolicy.GetPreferenceKeys("wizard");
             var preferredProvider = await getPreference.ExecuteAsync(providerKey, cancellationToken).ConfigureAwait(false);
-            var preferredModelId  = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
+            var preferredModelId = await getPreference.ExecuteAsync(modelKey, cancellationToken).ConfigureAwait(false);
             var effective = EffectiveSelectionPolicy.Resolve(
                 "wizard",
                 request.Provider,
@@ -179,14 +179,14 @@ public sealed class GodotGeneratorApiService(
                 preferences: new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
                 {
                     [providerKey] = preferredProvider,
-                    [modelKey]    = preferredModelId,
+                    [modelKey] = preferredModelId,
                 },
                 hostDefaultProvider: null,
                 hostDefaultModelId: null);
 
             var resolved = request with
             {
-                Provider         = effective.Provider,
+                Provider = effective.Provider,
                 PreferredModelId = effective.ModelId,
             };
 
@@ -201,10 +201,10 @@ public sealed class GodotGeneratorApiService(
 
             return ApiResponse<Dictionary<string, object?>>.Ok(new Dictionary<string, object?>(StringComparer.Ordinal)
             {
-                ["modality"]     = "wizard",
-                ["provider"]     = effective.Provider,
-                ["modelId"]      = effective.ModelId,
-                ["message"]      = result.Message,
+                ["modality"] = "wizard",
+                ["provider"] = effective.Provider,
+                ["modelId"] = effective.ModelId,
+                ["message"] = result.Message,
                 ["toolsInvoked"] = result.ToolsInvoked,
             });
         }

@@ -11,15 +11,20 @@ using Microsoft.Extensions.Options;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using GodotMcp.Plugin;
+using System.IO;
 
 namespace GodotGenerator.Infrastructure.Ai.Services;
 
 /// <summary>
 /// Orchestrates LLM turns with automatic Godot MCP tool invocation via Semantic Kernel.
 /// </summary>
-using GodotMcp.Plugin;
-using System.IO;
-
+/// <param name="kernelFactory">Factory to create or reuse Semantic Kernel instances.</param>
+/// <param name="providerCapabilityRouter">Router to determine provider/modality capabilities.</param>
+/// <param name="orchestrationOptions">Orchestration options (feature flags, timeouts).</param>
+/// <param name="godotProjectPathValidator">Validates provided Godot project root paths.</param>
+/// <param name="logger">Logger for diagnostic messages.</param>
+/// <param name="godotPlugin">Optional Godot MCP plugin instance.</param>
 public sealed class AiOrchestrationService(
     IKernelFactory kernelFactory,
     IProviderCapabilityRouter providerCapabilityRouter,
@@ -157,6 +162,11 @@ public sealed class AiOrchestrationService(
         }
 
         kernel.FunctionInvocationFilters.Add(new GodotToolDebugFilter(logger, godotPlugin));
+
+        // Native SK lifecycle filter: detects GDScript blocks in assistant messages and
+        // auto-invokes the appropriate Godot file-creation function inside the completion
+        // loop so the tool result is visible to the model before the final response is returned.
+        kernel.AutoFunctionInvocationFilters.Add(new GodotAutoInvokeFilter(logger));
     }
 
     private static void ExtractProjectContextFromOptions(
@@ -319,11 +329,17 @@ public sealed class AiOrchestrationService(
 
     private sealed class GodotToolDebugFilter(ILogger logger, GodotPlugin? godotPlugin) : IFunctionInvocationFilter
     {
+        private const string DebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-5ae4bd.log";
+        private const string DebugSessionId = "5ae4bd";
+
         public async Task OnFunctionInvocationAsync(
             FunctionInvocationContext context,
             Func<FunctionInvocationContext, Task> next)
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
+            var runId = Guid.NewGuid().ToString("N")[..8];
+            var isSceneTool =
+                string.Equals(context.Function.PluginName, "scene", StringComparison.OrdinalIgnoreCase);
 
             var isGodotTool =
                 string.Equals(context.Function.PluginName, "godot", StringComparison.OrdinalIgnoreCase) ||
@@ -336,12 +352,86 @@ public sealed class AiOrchestrationService(
                 var turn = GodotSkTurnContext.Snapshot;
                 if (turn is not null)
                 {
+                    if (isSceneTool)
+                    {
+                        var declaredParams = context.Function.Metadata.Parameters
+                            .Select(p => p.Name)
+                            .Where(n => !string.IsNullOrWhiteSpace(n))
+                            .Cast<string>()
+                            .ToArray();
+                        var preArgs = SnapshotArguments(context.Arguments);
+                        var preProjectPath = preArgs.TryGetValue("projectPath", out var preProjectPathRaw)
+                            ? preProjectPathRaw?.ToString()
+                            : null;
+                        var preFileName = preArgs.TryGetValue("fileName", out var preFileNameRaw)
+                            ? preFileNameRaw?.ToString()
+                            : null;
+                        var preSceneAbsolutePath = TryBuildSceneAbsolutePath(preProjectPath, preFileName);
+                        var preSceneCandidates = TryListSceneCandidates(preProjectPath, 10);
+                        #region agent log
+                        WriteDebugLog(
+                            runId,
+                            "H1",
+                            "AiOrchestrationService.cs:351",
+                            "scene tool pre-injection snapshot",
+                            new
+                            {
+                                plugin = context.Function.PluginName,
+                                function = context.Function.Name,
+                                declaredParams,
+                                args = preArgs,
+                                undeclaredArgs = context.Arguments.Keys
+                                    .Where(k => !declaredParams.Contains(k, StringComparer.OrdinalIgnoreCase))
+                                    .ToArray(),
+                                turnRoot = turn.GodotProjectRoot,
+                                turnProjectName = turn.ProjectName,
+                                turnDefaultFile = turn.DefaultFileName,
+                                fs = new
+                                {
+                                    projectPath = preProjectPath,
+                                    fileName = preFileName,
+                                    projectGodotExists = TryFileExists(TryCombine(preProjectPath, "project.godot")),
+                                    sceneAbsolutePath = preSceneAbsolutePath,
+                                    sceneExists = TryFileExists(preSceneAbsolutePath),
+                                    sceneCandidateCount = preSceneCandidates.Count,
+                                    sceneCandidates = preSceneCandidates,
+                                },
+                            });
+                        #endregion
+                    }
+
                     GodotKernelToolArgumentInjection.ApplyProjectDefaults(
                         context,
                         turn.GodotProjectRoot,
                         turn.ProjectName,
                         turn.DefaultFileName,
                         logger);
+
+                    if (isSceneTool)
+                    {
+                        var declaredParams = context.Function.Metadata.Parameters
+                            .Select(p => p.Name)
+                            .Where(n => !string.IsNullOrWhiteSpace(n))
+                            .Cast<string>()
+                            .ToArray();
+                        #region agent log
+                        WriteDebugLog(
+                            runId,
+                            "H2",
+                            "AiOrchestrationService.cs:377",
+                            "scene tool post-injection snapshot",
+                            new
+                            {
+                                plugin = context.Function.PluginName,
+                                function = context.Function.Name,
+                                declaredParams,
+                                args = SnapshotArguments(context.Arguments),
+                                undeclaredArgs = context.Arguments.Keys
+                                    .Where(k => !declaredParams.Contains(k, StringComparer.OrdinalIgnoreCase))
+                                    .ToArray(),
+                            });
+                        #endregion
+                    }
 
                     // If this is a create-project invocation, proactively set the MCP
                     // server's working directory to the composite path so the server
@@ -405,7 +495,231 @@ public sealed class AiOrchestrationService(
                 CoerceBoolArgument(context, "iscsharp", invocationId, logger);
             }
 
-            await next(context).ConfigureAwait(false);
+            try
+            {
+                if (isSceneTool && TryBuildSceneInvocationError(context.Arguments, out var sceneValidationError))
+                {
+                    throw sceneValidationError;
+                }
+
+                await next(context).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                if (isSceneTool)
+                {
+                    var postArgs = SnapshotArguments(context.Arguments);
+                    var postProjectPath = postArgs.TryGetValue("projectPath", out var postProjectPathRaw)
+                        ? postProjectPathRaw?.ToString()
+                        : null;
+                    var postFileName = postArgs.TryGetValue("fileName", out var postFileNameRaw)
+                        ? postFileNameRaw?.ToString()
+                        : null;
+                    var postSceneAbsolutePath = TryBuildSceneAbsolutePath(postProjectPath, postFileName);
+                    var postSceneCandidates = TryListSceneCandidates(postProjectPath, 10);
+                    #region agent log
+                    WriteDebugLog(
+                        runId,
+                        "H3",
+                        "AiOrchestrationService.cs:445",
+                        "scene tool invocation exception",
+                        new
+                        {
+                            plugin = context.Function.PluginName,
+                            function = context.Function.Name,
+                            args = postArgs,
+                            exceptionType = ex.GetType().FullName,
+                            exceptionMessage = ex.Message,
+                            innerExceptionType = ex.InnerException?.GetType().FullName,
+                            innerExceptionMessage = ex.InnerException?.Message,
+                            exception = ex.ToString(),
+                            fs = new
+                            {
+                                projectPath = postProjectPath,
+                                fileName = postFileName,
+                                projectGodotExists = TryFileExists(TryCombine(postProjectPath, "project.godot")),
+                                sceneAbsolutePath = postSceneAbsolutePath,
+                                sceneExists = TryFileExists(postSceneAbsolutePath),
+                                sceneCandidateCount = postSceneCandidates.Count,
+                                sceneCandidates = postSceneCandidates,
+                            },
+                        });
+                    #endregion
+                }
+
+                throw;
+            }
+        }
+
+        private static bool TryBuildSceneInvocationError(
+            KernelArguments arguments,
+            out Exception validationError)
+        {
+            validationError = null!;
+            var projectPath = TryGetArgumentString(arguments, "projectPath");
+            var fileName = TryGetArgumentString(arguments, "fileName");
+            if (string.IsNullOrWhiteSpace(projectPath) || string.IsNullOrWhiteSpace(fileName))
+            {
+                return false;
+            }
+
+            var sceneAbsolutePath = TryBuildSceneAbsolutePath(projectPath, fileName);
+            if (TryFileExists(sceneAbsolutePath))
+            {
+                return false;
+            }
+
+            var projectLooksValid = TryFileExists(TryCombine(projectPath, "project.godot"));
+            if (!projectLooksValid)
+            {
+                return false;
+            }
+
+            validationError = new InvalidOperationException(
+                $"Scene tool validation failed: fileName '{fileName}' does not exist under projectPath '{projectPath}'. " +
+                "Use an existing project-relative .tscn file or create one before invoking scene tools.");
+            return true;
+        }
+
+        private static string? TryGetArgumentString(KernelArguments arguments, string key)
+        {
+            if (!arguments.TryGetValue(key, out var raw) || raw is null)
+            {
+                return null;
+            }
+
+            return raw switch
+            {
+                JsonElement je => je.ValueKind == JsonValueKind.String ? je.GetString() : je.ToString(),
+                _ => raw.ToString(),
+            };
+        }
+
+        private static bool TryFileExists(string? path)
+        {
+            try
+            {
+                return !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static string? TryCombine(string? left, string? right)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                {
+                    return null;
+                }
+
+                return Path.Combine(left, right);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string? TryBuildSceneAbsolutePath(string? projectPath, string? fileName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(projectPath) || string.IsNullOrWhiteSpace(fileName))
+                {
+                    return null;
+                }
+
+                if (Path.IsPathRooted(fileName))
+                {
+                    return fileName;
+                }
+
+                return Path.Combine(
+                    projectPath,
+                    fileName.TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static List<string> TryListSceneCandidates(string? projectPath, int maxCount)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(projectPath) || !Directory.Exists(projectPath))
+                {
+                    return [];
+                }
+
+                return Directory.EnumerateFiles(projectPath, "*.tscn", SearchOption.AllDirectories)
+                    .Select(path => Path.GetRelativePath(projectPath, path).Replace('\\', '/'))
+                    .Take(Math.Max(1, maxCount))
+                    .ToList();
+            }
+            catch
+            {
+                return [];
+            }
+        }
+
+        private static Dictionary<string, object?> SnapshotArguments(KernelArguments arguments)
+        {
+            var snapshot = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            foreach (var kvp in arguments)
+            {
+                snapshot[kvp.Key] = kvp.Value switch
+                {
+                    JsonElement je => je.ValueKind switch
+                    {
+                        JsonValueKind.Object or JsonValueKind.Array => je.GetRawText(),
+                        JsonValueKind.String => je.GetString(),
+                        JsonValueKind.Number when je.TryGetInt64(out var l) => l,
+                        JsonValueKind.Number when je.TryGetDouble(out var d) => d,
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        JsonValueKind.Null => null,
+                        _ => je.ToString(),
+                    },
+                    _ => kvp.Value,
+                };
+            }
+
+            return snapshot;
+        }
+
+        private static void WriteDebugLog(
+            string runId,
+            string hypothesisId,
+            string location,
+            string message,
+            object data)
+        {
+            try
+            {
+                var payload = new
+                {
+                    sessionId = DebugSessionId,
+                    runId,
+                    hypothesisId,
+                    location,
+                    message,
+                    data,
+                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                };
+
+                var line = JsonSerializer.Serialize(payload);
+                File.AppendAllText(DebugLogPath, line + Environment.NewLine);
+            }
+            catch
+            {
+                // Never block tool execution for debug instrumentation failures.
+            }
         }
 
         private static void CoerceBoolArgument(

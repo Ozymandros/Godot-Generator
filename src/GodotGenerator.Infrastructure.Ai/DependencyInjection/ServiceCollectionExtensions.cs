@@ -9,11 +9,11 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GodotGenerator.Infrastructure.Ai.DependencyInjection;
 
-    /// <summary>
-    /// Registers Semantic Kernel, Godot MCP plugin, and AI orchestration.
-    /// The active game folder for generation is chosen in the app UI and sent per request; MCP connection options
-    /// may still use the <c>GodotMcp</c> configuration section for the stdio executable and timeouts.
-    /// </summary>
+/// <summary>
+/// Registers Semantic Kernel, Godot MCP plugin, and AI orchestration.
+/// The active game folder for generation is chosen in the app UI and sent per request; MCP connection options
+/// may still use the <c>GodotMcp</c> configuration section for the stdio executable and timeouts.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
