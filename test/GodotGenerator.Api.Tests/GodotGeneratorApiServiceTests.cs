@@ -110,7 +110,7 @@ public sealed class GodotGeneratorApiServiceTests
 
         Assert.True(result.Success);
         Assert.Equal("improved prompt text", result.Data!["result"]?.ToString());
-        Assert.Equal("improve",              result.Data!["mode"]?.ToString());
+        Assert.Equal("improve", result.Data!["mode"]?.ToString());
     }
 
     /// <summary>
@@ -156,11 +156,11 @@ public sealed class GodotGeneratorApiServiceTests
         var result = modalityKey switch
         {
             "godot-lighting" => await api.GenerateGodotLightingAsync(new GenerateRequest("add lights")),
-            "godot-camera"   => await api.GenerateGodotCameraAsync(new GenerateRequest("setup cam")),
-            "godot-shaders"  => await api.GenerateGodotShadersAsync(new GenerateRequest("write shader")),
-            "godot-signals"  => await api.GenerateGodotSignalsAsync(new GenerateRequest("connect signal")),
-            "godot-nodes"    => await api.GenerateGodotNodesAsync(new GenerateRequest("add node")),
-            _                => throw new InvalidOperationException($"Unknown modality: {modalityKey}"),
+            "godot-camera" => await api.GenerateGodotCameraAsync(new GenerateRequest("setup cam")),
+            "godot-shaders" => await api.GenerateGodotShadersAsync(new GenerateRequest("write shader")),
+            "godot-signals" => await api.GenerateGodotSignalsAsync(new GenerateRequest("connect signal")),
+            "godot-nodes" => await api.GenerateGodotNodesAsync(new GenerateRequest("add node")),
+            _ => throw new InvalidOperationException($"Unknown modality: {modalityKey}"),
         };
 
         Assert.True(result.Success);
