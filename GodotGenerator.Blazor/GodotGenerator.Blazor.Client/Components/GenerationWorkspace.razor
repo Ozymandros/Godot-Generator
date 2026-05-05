@@ -453,6 +453,10 @@
         {
             opts[GenerationOptionKeys.PreferredScriptLanguage] = _advanced.PreferredScriptLanguage.Trim();
         }
+        if (!string.IsNullOrWhiteSpace(_advanced.GodotNodeType))
+        {
+            opts[GenerationOptionKeys.GodotNodeType] = _advanced.GodotNodeType.Trim();
+        }
 
         // MCP 1.5+: tool argument injection and server validation need an explicit project root. Combine the
         // persisted ActiveProjectPath root and ActiveProjectName into the final projectPath value, deduplicating

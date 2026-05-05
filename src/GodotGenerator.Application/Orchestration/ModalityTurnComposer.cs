@@ -25,6 +25,9 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
     /// <summary>Option key for default MCP 1.5 <c>fileName</c> (project-relative, POSIX-style) merged into tool calls when empty.</summary>
     public const string GodotTargetFileNameOptionKey = "godot_file_name";
 
+    /// <summary>Option key for Godot node type preference: 2D or 3D.</summary>
+    public const string GodotNodeTypeOptionKey = "godot_node_type";
+
     /// <inheritdoc />
     public AgentTurnRequest Compose(
         string modalityKey,
@@ -101,6 +104,15 @@ public sealed class ModalityTurnComposer : IModalityTurnComposer
             sb.Append("When generating code, prefer ");
             sb.Append(scriptLang.Trim());
             sb.Append(" unless the user specifies otherwise.");
+        }
+
+        var nodeType = ExtractOptionString(options, GodotNodeTypeOptionKey);
+        if (!string.IsNullOrWhiteSpace(nodeType))
+        {
+            sb.AppendLine();
+            sb.Append("Generate Godot content for ");
+            sb.Append(nodeType.Trim());
+            sb.Append(" projects (e.g., use Node2D/Camera2D for 2D, Node3D/Camera3D for 3D).");
         }
 
         AppendGodotToolHints(sb, options);

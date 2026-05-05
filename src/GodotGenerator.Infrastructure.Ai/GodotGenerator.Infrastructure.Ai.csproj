@@ -18,7 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Local source reference — picks up in-progress changes without a NuGet pack/publish cycle. -->
-    <PackageReference Include="GodotMcp.SemanticKernel.Plugin" Version="1.8.0" />
+    <PackageReference Include="GodotMcp.SemanticKernel.Plugin" Version="1.8.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.6" />

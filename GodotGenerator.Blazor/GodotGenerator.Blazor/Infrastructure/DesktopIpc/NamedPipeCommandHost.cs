@@ -54,7 +54,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     private static readonly TimeSpan GenerateExecutionTimeout = TimeSpan.FromMinutes(10);
 
     /// <summary>Longer timeout budget for wizard turns, which often chain multiple tool invocations.</summary>
-    private static readonly TimeSpan WizardExecutionTimeout = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan WizardExecutionTimeout = TimeSpan.FromMinutes(15);
 
     /// <summary>Short grace timeout for writing responses after execution has completed/cancelled.</summary>
     private static readonly TimeSpan ResponseWriteGraceTimeout = TimeSpan.FromSeconds(5);
