@@ -100,21 +100,26 @@ public sealed class WizardOrchestrationService(
             logger.LogInformation("Wizard turn completed; tools invoked: [{Tools}]", string.Join(", ", toolsInvoked));
             return WizardResult.Ok(message, toolsInvoked);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException ex)
         {
-            throw;
-        }
-        catch (OperationCanceledException)
-        {
+            logger.LogWarning(ex, "Wizard turn cancelled or timed out.");
             return WizardResult.Fail("The Wizard turn timed out.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Wizard turn failed.");
+            logger.LogError(ex, "Wizard turn failed: {Message}", ex.Message);
             var safeMessage = ex is InvalidOperationException ioe && ioe.Message.Contains("API key", StringComparison.OrdinalIgnoreCase)
                 ? ioe.Message
                 : "The Wizard encountered an error. Check the configured provider and API key.";
-            return WizardResult.Fail(safeMessage);
+            try
+            {
+                return WizardResult.Fail(safeMessage);
+            }
+            catch (Exception inner)
+            {
+                logger.LogError(inner, "Failed to create WizardResult failure response");
+                return WizardResult.Fail("The Wizard encountered an unexpected error.");
+            }
         }
         finally
         {

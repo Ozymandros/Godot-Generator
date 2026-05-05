@@ -50,11 +50,11 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     /// <summary>Default timeout for command execution when no command-specific timeout applies.</summary>
     private static readonly TimeSpan DefaultExecutionTimeout = TimeSpan.FromSeconds(30);
 
-    /// <summary>Timeout for non-wizard generate commands.</summary>
-    private static readonly TimeSpan GenerateExecutionTimeout = TimeSpan.FromMinutes(3);
+    /// <summary>Timeout for non-wizard generate commands (aligned with Electron 10-min timeout).</summary>
+    private static readonly TimeSpan GenerateExecutionTimeout = TimeSpan.FromMinutes(10);
 
     /// <summary>Longer timeout budget for wizard turns, which often chain multiple tool invocations.</summary>
-    private static readonly TimeSpan WizardExecutionTimeout = TimeSpan.FromSeconds(240);
+    private static readonly TimeSpan WizardExecutionTimeout = TimeSpan.FromMinutes(10);
 
     /// <summary>Short grace timeout for writing responses after execution has completed/cancelled.</summary>
     private static readonly TimeSpan ResponseWriteGraceTimeout = TimeSpan.FromSeconds(5);
@@ -203,7 +203,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
         try
         {
             using var executionCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt);
-            executionCts.CancelAfter(WizardExecutionTimeout);
+            executionCts.CancelAfter(GetExecutionTimeout(envelope.Command));
 
             // Install the progress sink BEFORE dispatching so the entire async call graph
             // (including SK continuations) can emit frames via GenerationIpcProgressContext.
@@ -228,8 +228,10 @@ internal sealed class NamedPipeCommandHost : BackgroundService
         }
         catch (OperationCanceledException ex)
         {
-            _logger.LogWarning(ex, "Wizard connection timed out or was cancelled.");
-            return;
+            _logger.LogWarning(ex, "Generation connection timed out or was cancelled.");
+            response = new ResponseEnvelope(
+                envelope.CorrelationId, false, null,
+                "TIMEOUT", "The generation operation timed out.");
         }
         catch (Exception ex)
         {

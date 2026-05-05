@@ -133,7 +133,7 @@ class BackendLifecycle extends EventEmitter {
     // Allow a much longer ready timeout in development (dotnet run needs
     // time to build/publish). Production (bundled) remains the shorter
     // timeout.
-    const effectiveReadyTimeoutMs = isBundled ? READY_TIMEOUT : 600_000; // 10 minutes
+    const effectiveReadyTimeoutMs = isBundled ? READY_TIMEOUT : 900_000; // 10 minutes
 
     this._lifecycle = new ChildProcessLifecycle({
       command: cmd,

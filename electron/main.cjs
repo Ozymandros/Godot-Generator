@@ -212,7 +212,7 @@ const ipcApi = defineIpcApi({
       const isGenerationCommand =
         typeof command === 'string' &&
         command.toLowerCase().startsWith('generate.');
-      const timeoutMs = isGenerationCommand ? 600_000 : undefined;
+      const timeoutMs = isGenerationCommand ? 900_000 : undefined;
 
       /** @param {object} frame GenerationProgressFrame forwarded to all open windows. */
       const onProgress = isGenerationCommand
