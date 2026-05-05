@@ -209,15 +209,15 @@ const ipcApi = defineIpcApi({
     }
 
     try {
-      const isWizardCommand =
+      const isGenerationCommand =
         typeof command === 'string' &&
-        command.toLowerCase() === 'generate.wizard/v1';
-      const timeoutMs = isWizardCommand ? 600_000 : undefined;
+        command.toLowerCase().startsWith('generate.');
+      const timeoutMs = isGenerationCommand ? 900_000 : undefined;
 
-      /** @param {object} frame WizardProgressFrame forwarded to all open windows. */
-      const onProgress = isWizardCommand
+      /** @param {object} frame GenerationProgressFrame forwarded to all open windows. */
+      const onProgress = isGenerationCommand
         ? (frame) => {
-            BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'wizardProgress', frame));
+            BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'generationProgress', frame));
           }
         : undefined;
 
@@ -255,10 +255,10 @@ const ipcEvents = defineIpcEvents({
    */
   backendLog: (_entry) => { },
   /**
-   * A wizard-turn progress frame from the .NET backend (before the final response).
+   * A generation progress frame from the .NET backend (before the final response).
    * Payload: `{ phase: string, message: string, toolPlugin?: string, toolName?: string, utcTimestamp?: string }`.
    */
-  wizardProgress: (_frame) => { },
+  generationProgress: (_frame) => { },
 });
 
 // ── Window factory ────────────────────────────────────────────────────────────
@@ -282,6 +282,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -290,6 +291,10 @@ function createWindow() {
       sandbox: false,
     },
   });
+  console.log(path.join(__dirname, 'icon.png'));
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, 'icon.png'));
+  }
 
   const url = process.env.GODOT_BLAZOR_URL || defaultDevUrl;
   win.loadURL(url).catch((err) => {

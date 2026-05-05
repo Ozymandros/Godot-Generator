@@ -42,12 +42,12 @@ const EVENT_CHANNELS = Object.freeze([
    */
   'backendLog',
   /**
-   * A wizard-turn progress frame emitted by the .NET backend before the final
-   * response envelope.  Forwarded in real time so the Wizard panel can display
+   * A generation progress frame emitted by the .NET backend before the final
+   * response envelope.  Forwarded in real time so generation panels can display
    * live tool-call activity without polling.
    * Payload: `{ phase: string, message: string, toolPlugin?: string, toolName?: string, utcTimestamp?: string }`.
    */
-  'wizardProgress',
+  'generationProgress',
 ]);
 
 module.exports = { API_CHANNELS, EVENT_CHANNELS };

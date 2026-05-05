@@ -23,4 +23,7 @@ public static class GenerationOptionKeys
 
     /// <summary>Optional default MCP 1.5 <c>fileName</c> (project-relative) for tool argument injection.</summary>
     public const string GodotTargetFileName = "godot_file_name";
+
+    /// <summary>Godot node type preference: 2D or 3D (merged into system prompt for scene generation).</summary>
+    public const string GodotNodeType = "godot_node_type";
 }

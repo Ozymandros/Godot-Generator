@@ -20,8 +20,8 @@ test('event channels include backendLog for stdout/stderr streaming', () => {
   assert.ok(EVENT_CHANNELS.includes('backendLog'));
 });
 
-test('event channels include wizardProgress for live wizard streaming', () => {
-  assert.ok(EVENT_CHANNELS.includes('wizardProgress'));
+test('event channels include generationProgress for live generation streaming', () => {
+  assert.ok(EVENT_CHANNELS.includes('generationProgress'));
 });
 
 test('channel collections are immutable', () => {

@@ -11,7 +11,8 @@
                      Badge="Orchestrator"
                      Description="Describe your project goal. The Wizard orchestrates multiple generation tools — code, scenes, physics, lighting, shaders, and more — to accomplish it in one turn."
                      PromptPlaceholder="Describe what you want to build or configure in your Godot 4 project…"
-                     CreateRequest="BuildRequest">
+                     CreateRequest="BuildRequest"
+                     ShowLiveActivity="false">
     <AdditionalFields>
         <FluentStack Orientation="Orientation.Vertical" VerticalGap="6">
             <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">
@@ -41,7 +42,7 @@
 </GenerationWorkspace>
 
 @code {
-    /// <summary>Fixed key used to scope the wizard progress JS subscription.</summary>
+    /// <summary>Fixed key used to scope the generation progress JS subscription.</summary>
     private const string ProgressSubscriptionKey = "wizard-panel";
 
     private string _godotProjectPath = string.Empty;
@@ -55,13 +56,13 @@
 
         _dotNetRef = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync(
-            "godotElectronInterop.subscribeWizardProgress",
+            "godotElectronInterop.subscribeGenerationProgress",
             _dotNetRef,
             ProgressSubscriptionKey);
     }
 
     /// <summary>
-    /// Invoked by JS when a wizard progress frame arrives over the IPC pipe.
+    /// Invoked by JS when a generation progress frame arrives over the IPC pipe.
     /// Clears the log on turn-start and appends each frame's human-readable message.
     /// </summary>
     /// <param name="phase">One of <c>status</c>, <c>tool</c>, or <c>llm</c>.</param>
@@ -69,7 +70,7 @@
     /// <param name="toolPlugin">Plugin name when <paramref name="phase"/> is <c>tool</c>; otherwise <c>null</c>.</param>
     /// <param name="toolName">Function name when <paramref name="phase"/> is <c>tool</c>; otherwise <c>null</c>.</param>
     [JSInvokable]
-    public void OnWizardProgress(string phase, string message, string? toolPlugin, string? toolName)
+    public void OnGenerationProgress(string phase, string message, string? toolPlugin, string? toolName)
     {
         // A "starting" status frame signals a new wizard turn — clear stale progress.
         if (string.Equals(phase, "status", StringComparison.OrdinalIgnoreCase) &&
@@ -92,7 +93,7 @@
         try
         {
             await JS.InvokeVoidAsync(
-                "godotElectronInterop.unsubscribeWizardProgress",
+                "godotElectronInterop.unsubscribeGenerationProgress",
                 ProgressSubscriptionKey);
         }
         catch (JSDisconnectedException)

@@ -70,7 +70,7 @@ public sealed class WizardOrchestrationService(
                 effectiveCt = timeoutCts.Token;
             }
 
-            WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("Wizard turn starting…"));
+            GenerationIpcProgressContext.EmitIfActive(GenerationProgressFrame.Status("Wizard turn starting…"));
 
             var kernel = await BuildKernelAsync(request.Provider, request.PreferredModelId, request.GodotProjectPath, effectiveCt).ConfigureAwait(false);
             var chat = kernel.GetRequiredService<IChatCompletionService>();
@@ -84,7 +84,7 @@ public sealed class WizardOrchestrationService(
             var toolsInvoked = new List<string>();
             kernel.FunctionInvocationFilters.Add(new ToolTrackingFilter(toolsInvoked, request, logger, godotPlugin));
 
-            WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("LLM processing request…"));
+            GenerationIpcProgressContext.EmitIfActive(GenerationProgressFrame.Status("LLM processing request…"));
 
             var contents = await chat
                 .GetChatMessageContentsAsync(history, settings, kernel, cancellationToken: effectiveCt)
@@ -96,25 +96,30 @@ public sealed class WizardOrchestrationService(
                 message = "(The Wizard completed the requested tasks but returned no summary.)";
             }
 
-            WizardIpcProgressContext.EmitIfActive(WizardProgressFrame.Status("Wizard turn complete."));
+            GenerationIpcProgressContext.EmitIfActive(GenerationProgressFrame.Status("Wizard turn complete."));
             logger.LogInformation("Wizard turn completed; tools invoked: [{Tools}]", string.Join(", ", toolsInvoked));
             return WizardResult.Ok(message, toolsInvoked);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException ex)
         {
-            throw;
-        }
-        catch (OperationCanceledException)
-        {
+            logger.LogWarning(ex, "Wizard turn cancelled or timed out.");
             return WizardResult.Fail("The Wizard turn timed out.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Wizard turn failed.");
+            logger.LogError(ex, "Wizard turn failed: {Message}", ex.Message);
             var safeMessage = ex is InvalidOperationException ioe && ioe.Message.Contains("API key", StringComparison.OrdinalIgnoreCase)
                 ? ioe.Message
                 : "The Wizard encountered an error. Check the configured provider and API key.";
-            return WizardResult.Fail(safeMessage);
+            try
+            {
+                return WizardResult.Fail(safeMessage);
+            }
+            catch (Exception inner)
+            {
+                logger.LogError(inner, "Failed to create WizardResult failure response");
+                return WizardResult.Fail("The Wizard encountered an unexpected error.");
+            }
         }
         finally
         {
@@ -382,8 +387,8 @@ public sealed class WizardOrchestrationService(
 
             // Emit a structured progress frame before the tool executes so the user sees
             // live activity in the Wizard panel. Plugin and function names are safe to forward.
-            WizardIpcProgressContext.EmitIfActive(
-                WizardProgressFrame.Tool(
+            GenerationIpcProgressContext.EmitIfActive(
+                GenerationProgressFrame.Tool(
                     context.Function.PluginName ?? "unknown",
                     context.Function.Name ?? "unknown"));
 
