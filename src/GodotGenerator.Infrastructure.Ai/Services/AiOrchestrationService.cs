@@ -49,10 +49,13 @@ public sealed class AiOrchestrationService(
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(orchestrationOptions.Value.TurnTimeoutSeconds));
                 effectiveCancellationToken = timeoutCts.Token;
             }
-            if (!providerCapabilityRouter.Supports(request.Provider, request.Modality, out var reason))
+if (!providerCapabilityRouter.Supports(request.Provider, request.Modality, out var reason))
             {
                 return new AgentTurnResult(false, reason ?? "Unsupported provider/modality combination.");
             }
+
+            var modalityLabel = request.Modality ?? "generation";
+            GenerationIpcProgressContext.EmitIfActive(GenerationProgressFrame.Status($"{modalityLabel} starting..."));
 
             ExtractProjectContextFromOptions(request, out var turnProjectRoot, out var turnProjectName, out var turnDefaultFileName);
 
@@ -110,16 +113,19 @@ public sealed class AiOrchestrationService(
                     : ToolCallBehavior.EnableKernelFunctions,
             };
 
-            if (TryGetTemperature(request.Options, out var temperature))
+if (TryGetTemperature(request.Options, out var temperature))
             {
                 settings.Temperature = temperature;
             }
+
+            GenerationIpcProgressContext.EmitIfActive(GenerationProgressFrame.Status("Processing with LLM..."));
 
             var contents = await chat
                 .GetChatMessageContentsAsync(history, settings, kernel, cancellationToken: effectiveCancellationToken)
                 .ConfigureAwait(false);
 
-            var text = NormalizeResponseText(contents);
+var text = NormalizeResponseText(contents);
+            GenerationIpcProgressContext.EmitIfActive(GenerationProgressFrame.Status($"{modalityLabel} complete."));
             return new AgentTurnResult(true, text);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -332,11 +338,17 @@ public sealed class AiOrchestrationService(
         private const string DebugLogPath = @"C:\Projects\Godot-Generator-Avalonia\debug-5ae4bd.log";
         private const string DebugSessionId = "5ae4bd";
 
-        public async Task OnFunctionInvocationAsync(
+public async Task OnFunctionInvocationAsync(
             FunctionInvocationContext context,
             Func<FunctionInvocationContext, Task> next)
         {
             var invocationId = $"{context.Function.PluginName}.{context.Function.Name}";
+
+            GenerationIpcProgressContext.EmitIfActive(
+                GenerationProgressFrame.Tool(
+                    context.Function.PluginName ?? "unknown",
+                    context.Function.Name ?? "unknown"));
+
             var runId = Guid.NewGuid().ToString("N")[..8];
             var isSceneTool =
                 string.Equals(context.Function.PluginName, "scene", StringComparison.OrdinalIgnoreCase);

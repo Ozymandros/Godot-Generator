@@ -52,6 +52,11 @@
                 </FluentStack>
             }
 
+            @if (ShowLiveActivity)
+            {
+                <LiveActivityLog ModalityKey="@ModalityKey" />
+            }
+
             <PromptInputSection Title="Prompt" Placeholder="@PromptPlaceholder" @bind-Prompt="_prompt"
                 Modality="@ModalityKey" FunctionalScope="@ModalityContextLabel" ViewTitle="@Title"
                 ViewDescription="@Description" ProviderOverride="@_providerOverride" ModelOverride="@_modelOverride"
@@ -120,6 +125,9 @@
 
     /// <summary>Visible rows for the readonly result preview textarea.</summary>
     [Parameter] public int ResultPreviewRows { get; set; } = 14;
+
+    /// <summary>Whether to show the live activity log for real-time progress updates.</summary>
+    [Parameter] public bool ShowLiveActivity { get; set; } = true;
 
     private string _prompt = string.Empty;
     private string _providerOverride = string.Empty;

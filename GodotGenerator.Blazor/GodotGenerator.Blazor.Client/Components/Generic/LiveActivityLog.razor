@@ -1,0 +1,72 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (ProgressLines.Count > 0)
+{
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="4">
+        <FluentLabel Typo="Typography.Body" Class="app-fluent-label-strong">
+            Live activity
+        </FluentLabel>
+        <textarea class="wizard-progress-log"
+                  rows="6"
+                  readonly
+                  aria-label="Live activity log"
+                  aria-live="polite">@string.Join("\n", ProgressLines)</textarea>
+    </FluentStack>
+}
+
+@code {
+    [Parameter] public string ModalityKey { get; set; } = "generation";
+
+    public List<string> ProgressLines { get; } = [];
+
+    private DotNetObjectReference<LiveActivityLog>? _dotNetRef;
+    private const string SubscriptionKey = "live-activity-log";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync(
+            "godotElectronInterop.subscribeGenerationProgress",
+            _dotNetRef,
+            SubscriptionKey);
+    }
+
+    [JSInvokable]
+    public void OnGenerationProgress(string phase, string message, string? toolPlugin, string? toolName)
+    {
+        if (string.Equals(phase, "status", StringComparison.OrdinalIgnoreCase) &&
+            message.Contains("starting", StringComparison.OrdinalIgnoreCase))
+        {
+            ProgressLines.Clear();
+        }
+
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            ProgressLines.Add(message);
+        }
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "godotElectronInterop.unsubscribeGenerationProgress",
+                SubscriptionKey);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (TaskCanceledException)
+        {
+        }
+
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
+    }
+}

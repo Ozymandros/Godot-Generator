@@ -28,7 +28,7 @@ namespace GodotGenerator.Blazor.Infrastructure.DesktopIpc;
 /// writes zero or more progress frames before the final response envelope.  Each frame is a
 /// length-prefixed JSON object that uses a <c>"t"</c> discriminator field:
 /// <list type="bullet">
-///   <item><term><c>{ "t": "p", "p": { …WizardProgressFrame } }</c></term><description>progress update</description></item>
+///   <item><term><c>{ "t": "p", "p": { …GenerationProgressFrame } }</c></term><description>progress update</description></item>
 ///   <item><term><c>{ "t": "f", "e": { …ResponseEnvelope } }</c></term><description>final response (exactly one per connection)</description></item>
 /// </list>
 /// Non-wizard connections continue to use the legacy single-frame protocol so the broker can
@@ -153,14 +153,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
                 return;
             }
 
-            if (envelope.Command == GenerateCommandNames.Wizard)
-            {
-                await HandleWizardConnectionAsync(server, envelope, hostCt).ConfigureAwait(false);
-            }
-            else
-            {
-                await HandleStandardConnectionAsync(server, envelope, hostCt).ConfigureAwait(false);
-            }
+            await HandleStreamingConnectionAsync(server, envelope, hostCt).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -173,29 +166,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     }
 
     /// <summary>
-    /// Handles a non-wizard command using the legacy single-frame response protocol.
-    /// </summary>
-    private async Task HandleStandardConnectionAsync(
-        NamedPipeServerStream server,
-        CommandEnvelope envelope,
-        CancellationToken hostCt)
-    {
-        var executionTimeout = GetExecutionTimeout(envelope.Command);
-
-        ResponseEnvelope response;
-        using (var executionCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt))
-        {
-            executionCts.CancelAfter(executionTimeout);
-            response = await _dispatcher.DispatchAsync(envelope, executionCts.Token).ConfigureAwait(false);
-        }
-
-        using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(hostCt);
-        writeCts.CancelAfter(ResponseWriteGraceTimeout);
-        await WriteResponseAsync(server, response, writeCts.Token).ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Handles a wizard command using the multi-frame streaming protocol.
+    /// Handles a command using the multi-frame streaming protocol (progress + final response).
     /// </summary>
     /// <remarks>
     /// The connection proceeds in two concurrent phases:
@@ -204,8 +175,8 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     ///     <term>Dispatch</term>
     ///     <description>
     ///       <see cref="CommandDispatcher.DispatchAsync"/> runs with an
-    ///       <see cref="WizardIpcProgressContext"/> installed.  Each progress callback
-    ///       enqueues a <see cref="WizardProgressFrame"/> into a
+    ///       <see cref="GenerationIpcProgressContext"/> installed.  Each progress callback
+    ///       enqueues a <see cref="GenerationProgressFrame"/> into a
     ///       <see cref="Channel{T}"/> without blocking dispatch.
     ///     </description>
     ///   </item>
@@ -219,12 +190,12 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     ///   </item>
     /// </list>
     /// </remarks>
-    private async Task HandleWizardConnectionAsync(
+    private async Task HandleStreamingConnectionAsync(
         NamedPipeServerStream server,
         CommandEnvelope envelope,
         CancellationToken hostCt)
     {
-        var frameChannel = Channel.CreateUnbounded<WizardProgressFrame>(
+        var frameChannel = Channel.CreateUnbounded<GenerationProgressFrame>(
             new UnboundedChannelOptions { SingleWriter = false, SingleReader = true });
 
         ResponseEnvelope response;
@@ -235,8 +206,8 @@ internal sealed class NamedPipeCommandHost : BackgroundService
             executionCts.CancelAfter(WizardExecutionTimeout);
 
             // Install the progress sink BEFORE dispatching so the entire async call graph
-            // (including SK continuations) can emit frames via WizardIpcProgressContext.
-            using (WizardIpcProgressContext.Enter(frame => frameChannel.Writer.TryWrite(frame)))
+            // (including SK continuations) can emit frames via GenerationIpcProgressContext.
+            using (GenerationIpcProgressContext.Enter(frame => frameChannel.Writer.TryWrite(frame)))
             {
                 var dispatchTask = _dispatcher.DispatchAsync(envelope, executionCts.Token);
                 var drainTask = DrainProgressFramesAsync(server, frameChannel.Reader, executionCts.Token);
@@ -281,7 +252,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     /// </summary>
     private static async Task DrainProgressFramesAsync(
         PipeStream stream,
-        ChannelReader<WizardProgressFrame> reader,
+        ChannelReader<GenerationProgressFrame> reader,
         CancellationToken ct)
     {
         var written = 0;
@@ -344,10 +315,10 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     /// </summary>
     private static async Task WriteProgressFrameAsync(
         PipeStream stream,
-        WizardProgressFrame frame,
+        GenerationProgressFrame frame,
         CancellationToken ct)
     {
-        var wrapper = new WizardProgressWireFrame("p", Progress: frame, Envelope: null);
+        var wrapper = new GenerationProgressWireFrame("p", Progress: frame, Envelope: null);
         var payload = JsonSerializer.SerializeToUtf8Bytes(wrapper, ContractJsonOptions.Default);
         var lenBuf = BitConverter.GetBytes(payload.Length);
 
@@ -364,7 +335,7 @@ internal sealed class NamedPipeCommandHost : BackgroundService
         ResponseEnvelope envelope,
         CancellationToken ct)
     {
-        var wrapper = new WizardProgressWireFrame("f", Progress: null, Envelope: envelope);
+        var wrapper = new GenerationProgressWireFrame("f", Progress: null, Envelope: envelope);
         var payload = JsonSerializer.SerializeToUtf8Bytes(wrapper, ContractJsonOptions.Default);
         var lenBuf = BitConverter.GetBytes(payload.Length);
 
@@ -423,11 +394,11 @@ internal sealed class NamedPipeCommandHost : BackgroundService
     ///   <item><c>t = "f"</c> — final frame; <see cref="Envelope"/> is set, <see cref="Progress"/> is null.</item>
     /// </list>
     /// </summary>
-    private sealed record WizardProgressWireFrame(
+    private sealed record GenerationProgressWireFrame(
         [property: System.Text.Json.Serialization.JsonPropertyName("t")]
         string Type,
         [property: System.Text.Json.Serialization.JsonPropertyName("p")]
-        WizardProgressFrame? Progress,
+        GenerationProgressFrame? Progress,
         [property: System.Text.Json.Serialization.JsonPropertyName("e")]
         ResponseEnvelope? Envelope);
 }

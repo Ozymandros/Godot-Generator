@@ -209,15 +209,15 @@ const ipcApi = defineIpcApi({
     }
 
     try {
-      const isWizardCommand =
+      const isGenerationCommand =
         typeof command === 'string' &&
-        command.toLowerCase() === 'generate.wizard/v1';
-      const timeoutMs = isWizardCommand ? 600_000 : undefined;
+        command.toLowerCase().startsWith('generate.');
+      const timeoutMs = isGenerationCommand ? 600_000 : undefined;
 
-      /** @param {object} frame WizardProgressFrame forwarded to all open windows. */
-      const onProgress = isWizardCommand
+      /** @param {object} frame GenerationProgressFrame forwarded to all open windows. */
+      const onProgress = isGenerationCommand
         ? (frame) => {
-            BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'wizardProgress', frame));
+            BrowserWindow.getAllWindows().forEach((w) => ipcEvents.emit(w, 'generationProgress', frame));
           }
         : undefined;
 
@@ -255,10 +255,10 @@ const ipcEvents = defineIpcEvents({
    */
   backendLog: (_entry) => { },
   /**
-   * A wizard-turn progress frame from the .NET backend (before the final response).
+   * A generation progress frame from the .NET backend (before the final response).
    * Payload: `{ phase: string, message: string, toolPlugin?: string, toolName?: string, utcTimestamp?: string }`.
    */
-  wizardProgress: (_frame) => { },
+  generationProgress: (_frame) => { },
 });
 
 // ── Window factory ────────────────────────────────────────────────────────────

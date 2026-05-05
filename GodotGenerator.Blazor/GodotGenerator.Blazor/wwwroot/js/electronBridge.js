@@ -253,37 +253,37 @@ window.godotElectronInterop = {
     _allUnsubs.length = 0;
   },
 
-  // ── Wizard progress (scoped, per-component) ───────────────────────────────
+  // ── Generation progress (scoped, per-component) ───────────────────────────────
   //
-  // Unlike the global _allUnsubs pool, wizard progress subscriptions are keyed
-  // by a caller-supplied string so each WizardPanel instance can clean up only
+  // Unlike the global _allUnsubs pool, generation progress subscriptions are keyed
+  // by a caller-supplied string so each generation panel instance can clean up only
   // its own listener when it disposes, without affecting other subscribers.
 
   /** @type {Map<string, () => void>} */
-  _wizardProgressUnsubs: new Map(),
+  _generationProgressUnsubs: new Map(),
 
   /**
-   * Subscribes to wizard progress frames and routes each to the given DotNet
+   * Subscribes to generation progress frames and routes each to the given DotNet
    * reference's [JSInvokable] method:
-   *   OnWizardProgress(string phase, string message, string? toolPlugin, string? toolName)
+   *   OnGenerationProgress(string phase, string message, string? toolPlugin, string? toolName)
    *
-   * The `key` parameter scopes the subscription; call `unsubscribeWizardProgress(key)`
+   * The `key` parameter scopes the subscription; call `unsubscribeGenerationProgress(key)`
    * from the component's DisposeAsync to remove only this listener.
    * Replaces any existing subscription registered under the same key.
    *
    * @param {DotNetObjectReference} dotNetRef
-   * @param {string} key  Caller-defined identifier, e.g. "wizard-panel".
+   * @param {string} key  Caller-defined identifier, e.g. "code-panel".
    */
-  subscribeWizardProgress: function (dotNetRef, key) {
+  subscribeGenerationProgress: function (dotNetRef, key) {
     if (!_hasEvents()) return;
 
     // Remove any previous subscription for this key before re-subscribing.
-    const existing = this._wizardProgressUnsubs.get(key);
-    if (existing) { existing(); this._wizardProgressUnsubs.delete(key); }
+    const existing = this._generationProgressUnsubs.get(key);
+    if (existing) { existing(); this._generationProgressUnsubs.delete(key); }
 
-    const unsub = window.godotElectronEvents.wizardProgress((frame) => {
+    const unsub = window.godotElectronEvents.generationProgress((frame) => {
       dotNetRef.invokeMethodAsync(
-        'OnWizardProgress',
+        'OnGenerationProgress',
         frame?.phase      ?? 'status',
         frame?.message    ?? '',
         frame?.toolPlugin ?? null,
@@ -291,20 +291,20 @@ window.godotElectronInterop = {
       ).catch(console.error);
     });
 
-    this._wizardProgressUnsubs.set(key, unsub);
+    this._generationProgressUnsubs.set(key, unsub);
   },
 
   /**
-   * Removes the wizard progress subscription registered under `key`.
+   * Removes the generation progress subscription registered under `key`.
    * Safe to call when no subscription exists for that key.
    *
-   * @param {string} key  Same key passed to `subscribeWizardProgress`.
+   * @param {string} key  Same key passed to `subscribeGenerationProgress`.
    */
-  unsubscribeWizardProgress: function (key) {
-    const unsub = this._wizardProgressUnsubs.get(key);
+  unsubscribeGenerationProgress: function (key) {
+    const unsub = this._generationProgressUnsubs.get(key);
     if (unsub) {
       unsub();
-      this._wizardProgressUnsubs.delete(key);
+      this._generationProgressUnsubs.delete(key);
     }
   },
 
