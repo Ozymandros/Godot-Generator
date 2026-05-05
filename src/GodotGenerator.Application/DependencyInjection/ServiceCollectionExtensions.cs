@@ -26,6 +26,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<GetApiKeysUseCase>();
         services.AddScoped<SaveApiKeysUseCase>();
         services.AddScoped<GetAllConfigUseCase>();
+        services.AddScoped<EnhancePromptUseCase>();
+        services.AddScoped<RunWizardUseCase>();
         return services;
     }
 }

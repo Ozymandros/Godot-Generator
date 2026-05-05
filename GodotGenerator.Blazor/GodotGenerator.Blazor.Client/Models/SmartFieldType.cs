@@ -7,6 +7,8 @@ public enum SmartFieldType
 {
     Text,
     Multiline,
+    Prompt,
+    PromptOutput,
     Password,
     Select,
 }

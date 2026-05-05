@@ -1,0 +1,4 @@
+{
+  "whisperBinPath": "C:\\Tools\\whispercpp\\main.exe",
+  "modelPath": "C:\\Projects\\Godot-Generator-Avalonia\\models\\ggml-base.bin"
+}

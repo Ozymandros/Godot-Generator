@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 
 namespace GodotGenerator.Infrastructure.Persistence.Options;
 
@@ -16,5 +17,17 @@ public sealed class DataStoreOptions
     /// Root directory for JSON data files (must be writable).
     /// </summary>
     [Required]
-    public string RootPath { get; set; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GodotGenerator", "data");
+    public string RootPath { get; set; } = ResolveDefaultRootPath();
+
+    private static string ResolveDefaultRootPath()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        if (!string.IsNullOrWhiteSpace(localAppData))
+        {
+            return Path.Combine(localAppData, "GodotGenerator", "data");
+        }
+
+        // Cross-platform fallback when LocalApplicationData is unavailable.
+        return Path.Combine(AppContext.BaseDirectory, "data");
+    }
 }

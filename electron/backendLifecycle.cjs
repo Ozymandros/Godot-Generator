@@ -2,11 +2,14 @@
 
 /**
  * @file backendLifecycle.cjs
- * Manages the local .NET backend process lifetime:
- *   - spawn with GODOT_DESKTOP_IPC=1
- *   - verify readiness via named-pipe handshake
- *   - supervise with automatic restart on unexpected exit
- *   - graceful shutdown on app-quit
+ *
+ * MIGRATED to use @ozymandros/electron-message-bridge/lifecycle
+ *
+ * Manages the local .NET backend process lifetime using ChildProcessLifecycle:
+ *   - spawn with GODOT_DESKTOP_IPC=1 via ChildProcessLifecycle
+ *   - verify readiness via named-pipe handshake (readyCheck)
+ *   - supervise with automatic restart on unexpected exit (restartPolicy)
+ *   - graceful shutdown on app-quit via lifecycle.stop()
  *
  * Usage:
  *   const lifecycle = require('./backendLifecycle.cjs');
@@ -15,19 +18,20 @@
  *   lifecycle.isReady()               // true once handshake succeeds
  */
 
-const { spawn }    = require('child_process');
-const net          = require('net');
-const path         = require('path');
+const { ChildProcessLifecycle } = require('@ozymandros/electron-message-bridge/lifecycle');
+const net = require('net');
+const path = require('path');
 const EventEmitter = require('events');
+const fs = require('fs');
 
 // ── Configuration ────────────────────────────────────────────────────────────
 
-const PIPE_NAME       = '\\\\.\\pipe\\godot-generator-ipc';
-const READY_TIMEOUT   = 60_000;   // ms to wait for pipe handshake after spawn
-const RESTART_DELAY   = 2_000;    // ms between supervised restart attempts
-const MAX_RESTARTS    = 5;        // stop supervising after this many rapid restarts
-const RAPID_WINDOW    = 10_000;   // ms window for counting rapid restarts
-const DEFAULT_UI_URL  = 'http://127.0.0.1:5044';
+const PIPE_NAME = '\\\\.\\pipe\\godot-generator-ipc';
+const READY_TIMEOUT = 300_000;   // ms to wait for pipe handshake after spawn
+const RESTART_DELAY = 2_000;    // ms between supervised restart attempts
+const MAX_RESTARTS = 5;        // stop supervising after this many rapid restarts
+const RAPID_WINDOW = 10_000;   // ms window for counting rapid restarts
+const DEFAULT_UI_URL = 'http://127.0.0.1:5044';
 const EXISTING_BACKEND_PROBE_TIMEOUT = 1_000;
 
 // ── Resolve backend executable ───────────────────────────────────────────────
@@ -44,7 +48,6 @@ function resolveBackendCommand() {
 
   // Packaged path (electron-builder copies to resources/backend/)
   const bundled = path.join(process.resourcesPath ?? '', 'backend', exeName);
-  const fs = require('fs');
   if (fs.existsSync(bundled)) {
     return { cmd: bundled, args: [], isBundled: true };
   }
@@ -84,28 +87,28 @@ function waitForPipeReady(timeoutMs) {
   });
 }
 
-// ── BackendLifecycle ─────────────────────────────────────────────────────────
+// ── BackendLifecycle wrapper around ChildProcessLifecycle ────────────────────
 
 class BackendLifecycle extends EventEmitter {
   constructor() {
     super();
-    /** @type {import('child_process').ChildProcess | null} */
-    this._process     = null;
-    this._ready       = false;
-    this._stopping    = false;
-    this._restartCount = 0;
-    this._lastRestartAt = 0;
+    /** @type {ChildProcessLifecycle | null} */
+    this._lifecycle = null;
+    this._ready = false;
+    this._stopping = false;
+    this._existingBackendDetected = false;
   }
 
   /** Whether the backend pipe has completed its readiness handshake. */
   isReady() { return this._ready; }
 
   /**
-   * Spawns the backend process and waits for the pipe handshake.
+   * Initializes and starts the backend process using ChildProcessLifecycle.
    * Resolves when the backend is ready to accept IPC commands.
    */
   async start() {
     this._stopping = false;
+    this._existingBackendDetected = false;
 
     // If another backend instance is already serving the named pipe (e.g. from
     // a previous Electron run), reuse it instead of spawning a duplicate that
@@ -113,6 +116,7 @@ class BackendLifecycle extends EventEmitter {
     try {
       await waitForPipeReady(EXISTING_BACKEND_PROBE_TIMEOUT);
       this._ready = true;
+      this._existingBackendDetected = true;
       console.log('[BackendLifecycle] Reusing existing backend already ready on pipe:', PIPE_NAME);
       this.emit('ready');
       return;
@@ -120,40 +124,23 @@ class BackendLifecycle extends EventEmitter {
       // No existing backend detected; continue with normal spawn path.
     }
 
-    await this._spawn();
-    await waitForPipeReady(READY_TIMEOUT);
-    this._ready = true;
-    console.log('[BackendLifecycle] Backend is ready on pipe:', PIPE_NAME);
-    this.emit('ready');
-  }
-
-  /**
-   * Gracefully shuts down the backend process and stops supervision.
-   */
-  async stop() {
-    this._stopping = true;
-    this._ready    = false;
-    if (this._process) {
-      this._process.kill('SIGTERM');
-      // Give it a second to exit cleanly before forcing
-      await new Promise((res) => setTimeout(res, 1000));
-      if (this._process && !this._process.killed) {
-        this._process.kill('SIGKILL');
-      }
-      this._process = null;
-    }
-    console.log('[BackendLifecycle] Backend stopped.');
-  }
-
-  // ── Internal ────────────────────────────────────────────────────────────────
-
-  async _spawn() {
     const { cmd, args, isBundled } = resolveBackendCommand();
     const aspnetEnvironment =
       process.env.ASPNETCORE_ENVIRONMENT || (isBundled ? 'Production' : 'Development');
-    console.log(`[BackendLifecycle] Spawning backend: ${cmd} ${args.join(' ')}`);
 
-    this._process = spawn(cmd, args, {
+    console.log(`[BackendLifecycle] Initializing ChildProcessLifecycle for: ${cmd} ${args.join(' ')}`);
+
+    // Allow a much longer ready timeout in development (dotnet run needs
+    // time to build/publish). Production (bundled) remains the shorter
+    // timeout.
+    const effectiveReadyTimeoutMs = isBundled ? READY_TIMEOUT : 900_000; // 10 minutes
+
+    this._lifecycle = new ChildProcessLifecycle({
+      command: cmd,
+      args: args,
+      // The lifecycle implementation expects these at the top-level of the
+      // options object (not nested under `options`). Map our settings to the
+      // names that the packaged lifecycle uses.
       env: {
         ...process.env,
         GODOT_DESKTOP_IPC: '1',
@@ -161,66 +148,199 @@ class BackendLifecycle extends EventEmitter {
         ASPNETCORE_Logging__LogLevel__Microsoft_AspNetCore_Server_Kestrel:
           process.env.ASPNETCORE_Logging__LogLevel__Microsoft_AspNetCore_Server_Kestrel || 'Error',
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
+      spawnOptions: {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      },
+
+      // Readiness check via named pipe
+      readyCheck: async (process) => {
+        try {
+          await waitForPipeReady(effectiveReadyTimeoutMs);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+
+      // Lifecycle-specific timeouts and restart policy (names expected by the
+      // @ozymandros lifecycle implementation)
+      readyTimeoutMs: effectiveReadyTimeoutMs,
+      forceKillAfterMs: 10000,
+      maxRestarts: MAX_RESTARTS,
+      restartDelayMs: RESTART_DELAY,
+      rapidRestartWindowMs: RAPID_WINDOW,
     });
 
-    this._process.stdout?.on('data', (d) =>
-      console.log('[backend]', d.toString().trimEnd()));
-    this._process.stderr?.on('data', (d) =>
-      console.error('[backend:err]', d.toString().trimEnd()));
+    // diagnostic: inspect lifecycle instance safely
+    const lifecycleListenerKeys = this._lifecycle && this._lifecycle.listeners
+      ? Object.keys(this._lifecycle.listeners)
+      : [];
+    console.log('ChildProcessLifecycle instance listener keys:', lifecycleListenerKeys);
+    console.log('ChildProcessLifecycle proto methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this._lifecycle || {})));
+    if (typeof this._lifecycle.on !== 'function') {
+      console.error('ChildProcessLifecycle missing .on()');
+    }
 
-    this._process.on('exit', (code, signal) => {
-      if (this._stopping) return;
-      console.warn(`[BackendLifecycle] Backend exited (code=${code}, signal=${signal}); scheduling restart.`);
+    // Register only events the lifecycle implementation actually exposes.
+    // The packaged ChildProcessLifecycle initializes a `listeners` map with
+    // a limited set of keys (e.g. 'ready','crashed','failed'). Attempting to
+    // .on() for unsupported events will throw because the backing Set is
+    // undefined.
+    const registerIfSupported = (eventName, cb) => {
+      if (this._lifecycle && this._lifecycle.listeners && Object.prototype.hasOwnProperty.call(this._lifecycle.listeners, eventName)) {
+        this._lifecycle.on(eventName, cb);
+      } else {
+        console.debug(`[BackendLifecycle] Skipping unsupported lifecycle event registration: ${eventName}`);
+      }
+    };
+
+    registerIfSupported('ready', () => {
+      this._ready = true;
+      console.log('[BackendLifecycle] Backend is ready on pipe:', PIPE_NAME);
+      this.emit('ready');
+    });
+
+    registerIfSupported('crashed', ({ exitCode, signal }) => {
       this._ready = false;
-      this.emit('crashed', { code, signal });
-      this._scheduledRestart();
+      console.warn(`[BackendLifecycle] Backend exited (code=${exitCode}, signal=${signal}); lifecycle will handle restart.`);
+      this.emit('crashed', { code: exitCode, signal });
     });
+
+    registerIfSupported('failed', (reason) => {
+      console.error('[BackendLifecycle] Backend failed after max restarts:', reason?.message || reason);
+      this.emit('failed', reason);
+    });
+
+    // Intercept the lifecycle's `child` assignment so we can attach stdout/
+    // stderr handlers immediately when the process is spawned. This ensures
+    // we capture early startup logs even if the lifecycle's readyCheck times
+    // out.
+    try {
+      const outer = this;
+      let _childBacking = null;
+      const desc = Object.getOwnPropertyDescriptor(this._lifecycle, 'child');
+      if (!desc || desc.configurable !== false) {
+        Object.defineProperty(this._lifecycle, 'child', {
+          configurable: true,
+          enumerable: true,
+          get() {
+            return _childBacking;
+          },
+          set(child) {
+            _childBacking = child;
+            if (child) {
+              child.stdout?.on('data', (d) => {
+                const text = d.toString().trimEnd();
+                console.log('[backend]', text);
+                outer._emitLogLines('stdout', text);
+              });
+              child.stderr?.on('data', (d) => {
+                const text = d.toString().trimEnd();
+                console.error('[backend:err]', text);
+                outer._emitLogLines('stderr', text);
+              });
+            }
+          },
+        });
+      }
+    } catch (err) {
+      console.debug('[BackendLifecycle] Could not intercept lifecycle.child:', err);
+    }
+
+    // If child already exists, attach handlers immediately as a fallback.
+    if (this._lifecycle.child) {
+      this._lifecycle.child.stdout?.on('data', (d) => {
+        const text = d.toString().trimEnd();
+        console.log('[backend]', text);
+        this._emitLogLines('stdout', text);
+      });
+
+      this._lifecycle.child.stderr?.on('data', (d) => {
+        const text = d.toString().trimEnd();
+        console.error('[backend:err]', text);
+        this._emitLogLines('stderr', text);
+      });
+    }
+
+    // Start the lifecycle
+    await this._lifecycle.start();
   }
 
-  _scheduledRestart() {
-    const now = Date.now();
-    if (now - this._lastRestartAt < RAPID_WINDOW) {
-      this._restartCount++;
-    } else {
-      this._restartCount = 1;
-    }
-    this._lastRestartAt = now;
+  /**
+   * Gracefully shuts down the backend process using lifecycle.stop().
+   */
+  async stop() {
+    this._stopping = true;
+    this._ready = false;
 
-    if (this._restartCount > MAX_RESTARTS) {
-      console.error('[BackendLifecycle] Max restarts exceeded; giving up supervision.');
-      this.emit('failed');
+    if (this._existingBackendDetected) {
+      // We reused an existing backend, don't kill it
+      console.log('[BackendLifecycle] Not stopping reused backend.');
       return;
     }
 
-    console.log(`[BackendLifecycle] Restarting in ${RESTART_DELAY}ms (attempt ${this._restartCount}/${MAX_RESTARTS}).`);
-    setTimeout(async () => {
-      if (this._stopping) return;
-
-      // Another instance may have become healthy between crash and retry.
+    if (this._lifecycle) {
       try {
-        await waitForPipeReady(EXISTING_BACKEND_PROBE_TIMEOUT);
-        this._ready = true;
-        this._restartCount = 0;
-        console.log('[BackendLifecycle] Existing backend detected during restart; reusing pipe endpoint.');
-        this.emit('ready');
-        return;
-      } catch {
-        // No existing backend detected, continue with spawn.
+        await this._lifecycle.stop();
+        console.log('[BackendLifecycle] Backend stopped gracefully via lifecycle.');
+      } catch (error) {
+        console.error('[BackendLifecycle] Error during lifecycle stop:', error);
       }
+      this._lifecycle = null;
+    }
+  }
 
-      try {
-        await this._spawn();
-        await waitForPipeReady(READY_TIMEOUT);
-        this._ready = true;
-        this.emit('ready');
-      } catch (err) {
-        console.error('[BackendLifecycle] Restart failed:', err.message);
-        this._scheduledRestart();
-      }
-    }, RESTART_DELAY);
+  // ── Internal ────────────────────────────────────────────────────────────────
+
+  /**
+   * Splits a raw stdout/stderr chunk into individual non-empty lines and emits
+   * a `log` event for each.  Handles both Unix (`\n`) and Windows (`\r\n`) line
+   * endings; skips blank lines; caps each line at 2 000 characters to bound
+   * per-entry payload while still capturing long diagnostics across consecutive
+   * events.
+   *
+   * Consumers (e.g. Electron main) can forward these events to the renderer so
+   * backend logs are visible in the in-app log stream without opening a terminal.
+   *
+   * @param {'stdout'|'stderr'} stream
+   * @param {string} chunk  Raw data chunk, potentially multi-line.
+   */
+  _emitLogLines(stream, chunk) {
+    const MAX_LINE_LENGTH = 2_000;
+    const timestamp = new Date().toISOString();
+    chunk
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .forEach((line) => {
+        const message = line.length > MAX_LINE_LENGTH
+          ? line.slice(0, MAX_LINE_LENGTH) + ' …[truncated]'
+          : line;
+        this.emit('log', { stream, message, timestamp });
+      });
   }
 }
 
-module.exports = new BackendLifecycle();
+const lifecycle = new BackendLifecycle();
+
+// Test hooks for unit testing
+function __setTestDeps(partial) {
+  // Note: With ChildProcessLifecycle, test dependency injection is handled
+  // differently. This function is kept for backward compatibility but may
+  // have limited effect on the lifecycle module itself.
+  if (!partial || typeof partial !== 'object') return;
+  // For tests that need to mock the lifecycle, they should mock
+  // require('@ozymandros/electron-message-bridge/lifecycle') directly
+}
+
+function __resetTestDeps() {
+  // Reset is a no-op with the migrated implementation
+}
+
+module.exports = lifecycle;
+module.exports.BackendLifecycle = BackendLifecycle;
+module.exports.resolveBackendCommand = resolveBackendCommand;
+module.exports.waitForPipeReady = waitForPipeReady;
+module.exports.__setTestDeps = __setTestDeps;
+module.exports.__resetTestDeps = __resetTestDeps;

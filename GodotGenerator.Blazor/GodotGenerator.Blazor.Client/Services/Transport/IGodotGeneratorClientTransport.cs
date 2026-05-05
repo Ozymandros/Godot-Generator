@@ -2,6 +2,7 @@
 
 using GodotGenerator.Api.Dtos;
 using GodotGenerator.Blazor.Client.Models;
+using GodotGenerator.Desktop.Contracts.Commands;
 
 namespace GodotGenerator.Blazor.Client.Services.Transport;
 
@@ -35,5 +36,13 @@ public interface IGodotGeneratorClientTransport
     /// <summary>Saves API keys in batch by service handle.</summary>
     Task<ApiResponse<Dictionary<string, object?>>> SaveApiKeysAsync(
         ApiKeysRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Improves an existing prompt or generates a sample prompt via a bare LLM call
+    /// (no plugin tools involved).
+    /// </summary>
+    Task<ApiResponse<Dictionary<string, object?>>> EnhancePromptAsync(
+        PromptAssistEnhanceRequest request,
         CancellationToken cancellationToken = default);
 }

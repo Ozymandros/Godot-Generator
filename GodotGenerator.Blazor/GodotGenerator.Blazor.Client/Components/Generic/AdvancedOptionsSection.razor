@@ -21,6 +21,15 @@
                         ValueChanged="OnScriptLanguageChanged"
                         Width="100%" />
 
+            <SmartField Label="Node type"
+                        Help="Godot node type for scene generation: 2D or 3D. Affects node types (Node2D vs Node3D), cameras, lighting, etc."
+                        FieldType="@SmartFieldType.Select"
+                        Placeholder="Default (no preference)"
+                        SelectOptions="DimensionOptions"
+                        Value="@Options.GodotNodeType"
+                        ValueChanged="OnDimensionChanged"
+                        Width="100%" />
+
             <SmartField Label="Temperature (creativity)"
                         Help="0 = focused, 2 = more random. Passed to the model when supported." Placeholder="0.0 to 2.0"
                         Value="@TemperatureText" ValueChanged="OnTemperatureChanged" Width="100%" />
@@ -39,6 +48,7 @@
 
 @code {
     private static readonly string[] ScriptLanguageOptions = ["GDScript", "C#"];
+    private static readonly string[] DimensionOptions = ["2D", "3D"];
 
     [Parameter, EditorRequired]
     public GenerationAdvancedOptions Options { get; set; } = null!;
@@ -65,6 +75,12 @@
     private async Task OnScriptLanguageChanged(string value)
     {
         Options.PreferredScriptLanguage = value;
+        await OnChanged.InvokeAsync().ConfigureAwait(false);
+    }
+
+    private async Task OnDimensionChanged(string value)
+    {
+        Options.GodotNodeType = value;
         await OnChanged.InvokeAsync().ConfigureAwait(false);
     }
 

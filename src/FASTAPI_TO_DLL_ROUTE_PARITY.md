@@ -12,6 +12,14 @@ This matrix maps Unity FastAPI router behaviors to transport-agnostic DLL servic
 - `POST /generate/sprites` -> `IGodotGeneratorApiService.GenerateSpritesAsync(...)`
 - `POST /generate/unity-ui` -> `IGodotGeneratorApiService.GenerateGodotUiAsync(...)`
 - `POST /generate/unity-physics` -> `IGodotGeneratorApiService.GenerateGodotPhysicsAsync(...)`
+- `POST /generate/godot-project` -> `IGodotGeneratorApiService.GenerateGodotProjectAsync(...)`
+- `POST /generate/scenes` -> `IGodotGeneratorApiService.CreateSceneAsync(...)`
+- `POST /generate/animations` -> `IGodotGeneratorApiService.GenerateAnimationsAsync(...)`
+- `POST /generate/godot-lighting` -> `IGodotGeneratorApiService.GenerateGodotLightingAsync(...)`
+- `POST /generate/godot-camera` -> `IGodotGeneratorApiService.GenerateGodotCameraAsync(...)`
+- `POST /generate/godot-shaders` -> `IGodotGeneratorApiService.GenerateGodotShadersAsync(...)`
+- `POST /generate/godot-signals` -> `IGodotGeneratorApiService.GenerateGodotSignalsAsync(...)`
+- `POST /generate/godot-nodes` -> `IGodotGeneratorApiService.GenerateGodotNodesAsync(...)`
 
 Semantics preserved in DLL:
 - prompt validation (`Prompt` must be non-empty),
@@ -57,4 +65,14 @@ Contract completeness checklist:
 - includes prompts section semantics (read-only or CRUD depending on phase),
 - includes provider/model summaries aligned to runtime policy,
 - never exposes secret values (names/index only).
+
+## Prompt-Assist Router (new — no FastAPI counterpart)
+
+- `POST /prompt-assist/enhance` -> `IGodotGeneratorApiService.EnhancePromptAsync(...)`
+
+Semantics:
+- mode `"improve"` when `CurrentPrompt` is non-empty; `"sample"` otherwise,
+- bare SK call (no Godot plugin tools),
+- result written directly into the caller's textarea via IPC callback,
+- IPC command: `PromptAssist.Enhance/v1`.
 

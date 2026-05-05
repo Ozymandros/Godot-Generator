@@ -13,15 +13,55 @@ public static class GenerationResponseFormatter
             return string.Empty;
         }
 
-        data.TryGetValue("message", out var m);
-        data.TryGetValue("detail", out var d);
-        var msg = m?.ToString() ?? string.Empty;
-        var detail = d?.ToString();
+        var msg = GetFirstText(data, "message", "result", "content", "text", "output");
+        var detail = GetFirstText(data, "detail", "details", "error");
         if (!string.IsNullOrWhiteSpace(detail))
         {
             return string.IsNullOrEmpty(msg) ? detail! : msg + Environment.NewLine + Environment.NewLine + detail;
         }
 
-        return msg;
+        if (!string.IsNullOrWhiteSpace(msg))
+        {
+            return msg;
+        }
+
+        // Last-resort fallback: first non-empty string value in the payload.
+        foreach (var value in data.Values)
+        {
+            if (value is null)
+            {
+                continue;
+            }
+
+            var text = value.ToString();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                return text.Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string GetFirstText(IReadOnlyDictionary<string, object?> data, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            foreach (var entry in data)
+            {
+                if (!string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var text = entry.Value?.ToString();
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    return text.Trim();
+                }
+            }
+        }
+
+        return string.Empty;
     }
 }

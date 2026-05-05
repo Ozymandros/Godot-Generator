@@ -152,6 +152,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
+    icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       preload:          path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -160,6 +161,10 @@ function createWindow() {
       sandbox:          false,
     },
   });
+  console.log(path.join(__dirname, 'icon.png'));
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, 'icon.png'));
+  }
 
   const url = process.env.GODOT_BLAZOR_URL || defaultDevUrl;
   win.loadURL(url).catch((err) => {

@@ -90,6 +90,47 @@ pnpm start
 
 `pnpm start` now supervises the local .NET backend process and uses the typed IPC path (`GODOT_DESKTOP_IPC=1`) automatically.
 
+### Whisper CLI configuration (Speech-to-Text)
+
+Speech-to-Text is available from the **Prompt** input mic button (desktop/Electron only).
+The app now requires an explicit Whisper binary path; there is no implicit PATH fallback.
+
+#### End-user setup (recommended)
+
+1. Download a whisper.cpp release for your platform and extract it anywhere you prefer (for example `C:\Tools\whispercpp\` on Windows).
+2. Keep the executable and required DLLs together in that folder.
+3. Open **Settings -> General** in the app.
+4. Set **Whisper CLI path (desktop STT)** to your local executable (prefer `whisper-cli.exe` on recent Windows builds).
+5. Save settings.
+
+If this path is missing or invalid, the prompt mic button is disabled.
+
+#### Optional developer bootstrap (config/env)
+
+You can still preconfigure startup defaults in Electron:
+
+- `electron/whisper.config.json` (copy from `whisper.config.example.json`)
+  - `whisperBinPath`: absolute binary path
+  - `modelPath`: absolute model path
+- `WHISPER_BIN`: binary path override
+- `WHISPER_MODEL`: model path override
+
+Notes:
+- Runtime speech execution is governed by the persisted **General Settings** preference.
+- Prompt mic/wand actions are rendered only in prompt inputs, not in generic textareas.
+
+### Prompt actions (Wand + Mic)
+
+In generation workspaces, the prompt textarea has two built-in actions:
+
+- **Wand**:
+  - If prompt has text: improves/rewrites it.
+  - If prompt is empty: generates a sample prompt suggestion.
+- **Mic**:
+  - Starts/stops speech-to-text and inserts transcript into the prompt.
+
+Prompt assist is scoped by the active screen context (modality + view title/description), so sample/improved prompts are targeted to the current functional flow instead of broad app-wide suggestions.
+
 Default UI URL is `http://127.0.0.1:5044`. Override with:
 
 ```bash

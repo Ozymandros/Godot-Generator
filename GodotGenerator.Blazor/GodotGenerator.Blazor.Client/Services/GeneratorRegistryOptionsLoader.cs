@@ -59,6 +59,33 @@ internal static class GeneratorRegistryOptionsLoader
             allowedProviderIds.Add(id);
         }
 
+        if (providerIds.Count == 0)
+        {
+            // Keep dropdowns usable when provider rows have missing/unknown modality tags.
+            foreach (var item in providersEl.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
+                var entry = JsonSerializer.Deserialize<ProviderRegistryEntry>(item.GetRawText(), ProviderJsonOptions);
+                if (entry is null || string.IsNullOrWhiteSpace(entry.Id))
+                {
+                    continue;
+                }
+
+                var id = entry.Id.Trim();
+                if (id.Length == 0 || allowedProviderIds.Contains(id))
+                {
+                    continue;
+                }
+
+                providerIds.Add(id);
+                allowedProviderIds.Add(id);
+            }
+        }
+
         providerIds.Sort(StringComparer.OrdinalIgnoreCase);
 
         if (!TryGetJsonElement(data.GetValueOrDefault("models"), out var modelsRoot) ||

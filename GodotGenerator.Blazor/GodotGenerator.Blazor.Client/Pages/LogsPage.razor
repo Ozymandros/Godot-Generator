@@ -1,43 +1,325 @@
 @page "/logs"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@inject LogBufferService Logs
+@inject AppLogService Log
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>Logs</PageTitle>
 
-<FluentLabel Typo="Typography.H4" Class="app-fluent-label-margin-title">Console</FluentLabel>
-<FluentLabel Typo="Typography.Body" Class="app-fluent-label-margin-title app-opacity-muted">Terminal-style output from this session (newest lines at the bottom).</FluentLabel>
+<div class="logs-page">
 
-<FluentCard Class="log-terminal-shell app-card-padding">
-    <SmartField FieldType="@SmartFieldType.Multiline"
-                ReadOnly="true"
-                Rows="24"
-                Value="@_text"
-                InputClass="app-textarea-log" />
-</FluentCard>
+    @* ── Toolbar ────────────────────────────────────────────────────────── *@
+    <div class="logs-toolbar app-content-wide" role="toolbar" aria-label="Log filters">
+
+        @* Level toggles *@
+        <div class="logs-toolbar__group" role="group" aria-label="Severity filter">
+            <span class="logs-toolbar__label">Level</span>
+            @foreach (var lvl in _allLevels)
+            {
+                var active = _activeLevels.Contains(lvl);
+                <FluentButton Appearance="@(active ? Appearance.Accent : Appearance.Stealth)"
+                              Class="@($"logs-level-chip logs-level-chip--{LevelCssName(lvl)}")"
+                              Title="@(active ? $"Hide {lvl}" : $"Show {lvl}")"
+                              aria-pressed="@active.ToString().ToLower()"
+                              OnClick="@(() => ToggleLevel(lvl))">
+                    @LevelLabel(lvl)
+                </FluentButton>
+            }
+        </div>
+
+        @* Kind filter *@
+        <div class="logs-toolbar__group" role="group" aria-label="Entry kind filter">
+            <span class="logs-toolbar__label">Kind</span>
+            @foreach (var k in _allKinds)
+            {
+                var active = _activeKind == k;
+                <FluentButton Appearance="@(active ? Appearance.Accent : Appearance.Stealth)"
+                              Class="logs-kind-chip"
+                              Title="@(active ? "Showing all kinds" : $"Filter to {KindLabel(k)}")"
+                              aria-pressed="@active.ToString().ToLower()"
+                              OnClick="@(() => ToggleKind(k))">
+                    @KindLabel(k)
+                </FluentButton>
+            }
+        </div>
+
+        @* Search *@
+        <FluentTextField @bind-Value="_search"
+                         Placeholder="Search…"
+                         Class="logs-toolbar__search"
+                         aria-label="Search log entries"
+                         @oninput="OnSearchInput" />
+
+        <div class="logs-toolbar__spacer" aria-hidden="true"></div>
+
+        @* Auto-scroll toggle *@
+        <FluentButton Appearance="@(_autoScroll ? Appearance.Accent : Appearance.Stealth)"
+                      Title="@(_autoScroll ? "Auto-scroll on" : "Auto-scroll off")"
+                      aria-pressed="@_autoScroll.ToString().ToLower()"
+                      OnClick="@(() => _autoScroll = !_autoScroll)">
+            ↓
+        </FluentButton>
+
+        @* Clear *@
+        <FluentButton Appearance="Appearance.Stealth"
+                      Title="Clear all log entries"
+                      Disabled="@(_totalCount == 0)"
+                      OnClick="ClearLogs">
+            Clear
+        </FluentButton>
+    </div>
+
+    @* ── Summary bar ────────────────────────────────────────────────────── *@
+    <div class="logs-summary app-content-wide" aria-live="polite" aria-atomic="true">
+        <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">
+            Showing @_filtered.Count of @_totalCount entr@(_totalCount == 1 ? "y" : "ies")@(_filtered.Count < _totalCount ? " (filtered)" : "")
+        </FluentLabel>
+    </div>
+
+    @* ── Entry list ──────────────────────────────────────────────────────── *@
+    <div class="logs-list app-content-wide"
+         @ref="_listRef"
+         role="log"
+         aria-label="Log entries"
+         aria-live="polite"
+         aria-relevant="additions">
+
+        @if (_filtered.Count == 0)
+        {
+            <div class="logs-empty">
+                <FluentLabel Typo="Typography.Body" Class="app-opacity-muted-soft">
+                    @(_totalCount == 0 ? "No log entries yet." : "No entries match the current filter.")
+                </FluentLabel>
+            </div>
+        }
+        else
+        {
+            @foreach (var entry in _filtered)
+            {
+                <div class="logs-entry logs-entry--@LevelCssName(entry.Level) logs-entry--@KindCssName(entry.Kind)"
+                     @key="entry.Sequence"
+                     role="listitem">
+
+                    <span class="logs-entry__ts" title="@entry.Timestamp.ToString("O")">
+                        @entry.Timestamp.ToString("HH:mm:ss.fff")
+                    </span>
+
+                    <span class="logs-entry__badge logs-badge--@LevelCssName(entry.Level)"
+                          aria-label="@entry.Level.ToString()">
+                        @LevelLabel(entry.Level)
+                    </span>
+
+                    <span class="logs-entry__kind" aria-label="@entry.Kind.ToString()">
+                        @KindIcon(entry.Kind)
+                    </span>
+
+                    <span class="logs-entry__cat" title="@entry.Category">
+                        @entry.Category
+                    </span>
+
+                    <span class="logs-entry__msg">@entry.Message</span>
+
+                    @if (entry.DurationMs.HasValue)
+                    {
+                        <span class="logs-entry__duration">@entry.DurationMs.Value.ToString("F0") ms</span>
+                    }
+
+                    @if (entry.Detail is not null)
+                    {
+                        <FluentButton Appearance="Appearance.Stealth"
+                                      Class="logs-entry__expand-btn"
+                                      Title="@(IsExpanded(entry) ? "Collapse" : "Expand")"
+                                      aria-expanded="@IsExpanded(entry).ToString().ToLower()"
+                                      OnClick="@(() => ToggleExpand(entry))">
+                            @(IsExpanded(entry) ? "▾" : "▸")
+                        </FluentButton>
+                    }
+                </div>
+
+                @if (entry.Detail is not null && IsExpanded(entry))
+                {
+                    <div class="logs-entry-detail" @key="@($"d-{entry.Sequence}")">
+                        <pre class="logs-entry-detail__pre">@entry.Detail</pre>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
 
 @code {
-    private string _text = string.Empty;
+    // ── Filter state ─────────────────────────────────────────────────────────
+
+    private static readonly LogEntryLevel[] _allLevels =
+        [LogEntryLevel.Debug, LogEntryLevel.Information, LogEntryLevel.Warning, LogEntryLevel.Error];
+
+    private static readonly LogEntryKind?[] _allKinds =
+        [null, LogEntryKind.Application, LogEntryKind.IpcRequest, LogEntryKind.IpcResponse, LogEntryKind.Backend];
+
+    private readonly HashSet<LogEntryLevel> _activeLevels = new(
+        [LogEntryLevel.Information, LogEntryLevel.Warning, LogEntryLevel.Error]);
+
+    private LogEntryKind? _activeKind;   // null = All
+    private string _search = string.Empty;
+    private bool _autoScroll = true;
+
+    // ── Data state ────────────────────────────────────────────────────────────
+
+    private IReadOnlyList<LogEntry> _filtered = Array.Empty<LogEntry>();
+    private int _totalCount;
+    private readonly HashSet<long> _expanded = [];
+    private ElementReference _listRef;
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     protected override void OnInitialized()
     {
-        Logs.Changed += OnLogChanged;
+        Log.Changed += OnLogChanged;
+        Log.Cleared += OnLogCleared;
         Refresh();
-    }
-
-    private void OnLogChanged() => InvokeAsync(() =>
-    {
-        Refresh();
-        StateHasChanged();
-    });
-
-    private void Refresh()
-    {
-        _text = string.Join(Environment.NewLine, Logs.GetSnapshot());
     }
 
     public void Dispose()
     {
-        Logs.Changed -= OnLogChanged;
+        Log.Changed -= OnLogChanged;
+        Log.Cleared -= OnLogCleared;
     }
+
+    private void OnLogChanged() => InvokeAsync(async () =>
+    {
+        Refresh();
+        StateHasChanged();
+        if (_autoScroll)
+        {
+            await ScrollToBottomAsync().ConfigureAwait(false);
+        }
+    });
+
+    private void OnLogCleared() => InvokeAsync(() =>
+    {
+        _expanded.Clear();
+        Refresh();
+        StateHasChanged();
+        return Task.CompletedTask;
+    });
+
+    // ── Filter ────────────────────────────────────────────────────────────────
+
+    private void Refresh()
+    {
+        // Build a minimum level for the fast server-side filter.
+        // If the set is sparse, we still post-filter below.
+        var minLevel = _activeLevels.Count == 0
+            ? LogEntryLevel.Error        // nothing active; sentinel that returns nothing
+            : _activeLevels.Min();
+
+        var all = Log.GetSnapshot(
+            minLevel: minLevel,
+            kind: _activeKind,
+            search: string.IsNullOrWhiteSpace(_search) ? null : _search);
+
+        // Post-filter for non-contiguous level selections (e.g. DBG + ERR but not INF/WRN).
+        _filtered = _activeLevels.Count == 0
+            ? Array.Empty<LogEntry>()
+            : all.Where(e => _activeLevels.Contains(e.Level)).ToArray();
+
+        _totalCount = Log.Count;
+    }
+
+    private void ToggleLevel(LogEntryLevel lvl)
+    {
+        if (!_activeLevels.Remove(lvl))
+        {
+            _activeLevels.Add(lvl);
+        }
+        Refresh();
+    }
+
+    private void ToggleKind(LogEntryKind? k)
+    {
+        _activeKind = _activeKind == k ? null : k;
+        Refresh();
+    }
+
+    private Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? string.Empty;
+        Refresh();
+        return Task.CompletedTask;
+    }
+
+    private void ClearLogs() => Log.Clear();
+
+    // ── Expand ────────────────────────────────────────────────────────────────
+
+    private bool IsExpanded(LogEntry e) => _expanded.Contains(e.Sequence);
+
+    private void ToggleExpand(LogEntry e)
+    {
+        if (!_expanded.Remove(e.Sequence))
+        {
+            _expanded.Add(e.Sequence);
+        }
+    }
+
+    // ── Auto-scroll ───────────────────────────────────────────────────────────
+
+    private async Task ScrollToBottomAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("godotLogsScrollToBottom", _listRef).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Best-effort; safe to ignore during prerender or testing.
+        }
+    }
+
+    // ── Display helpers ───────────────────────────────────────────────────────
+
+    private static string LevelLabel(LogEntryLevel lvl) => lvl switch
+    {
+        LogEntryLevel.Debug       => "DBG",
+        LogEntryLevel.Information => "INF",
+        LogEntryLevel.Warning     => "WRN",
+        LogEntryLevel.Error       => "ERR",
+        _                         => "???",
+    };
+
+    private static string LevelCssName(LogEntryLevel lvl) => lvl switch
+    {
+        LogEntryLevel.Debug       => "debug",
+        LogEntryLevel.Information => "info",
+        LogEntryLevel.Warning     => "warning",
+        LogEntryLevel.Error       => "error",
+        _                         => "info",
+    };
+
+    private static string KindLabel(LogEntryKind? k) => k switch
+    {
+        null                        => "All",
+        LogEntryKind.Application    => "App",
+        LogEntryKind.IpcRequest     => "IPC →",
+        LogEntryKind.IpcResponse    => "IPC ←",
+        LogEntryKind.Backend        => "Backend",
+        _                           => k.ToString()!,
+    };
+
+    private static string KindCssName(LogEntryKind k) => k switch
+    {
+        LogEntryKind.Application  => "app",
+        LogEntryKind.IpcRequest   => "ipc-req",
+        LogEntryKind.IpcResponse  => "ipc-resp",
+        LogEntryKind.Backend      => "backend",
+        _                         => "app",
+    };
+
+    private static string KindIcon(LogEntryKind k) => k switch
+    {
+        LogEntryKind.IpcRequest  => "→",
+        LogEntryKind.IpcResponse => "←",
+        LogEntryKind.Backend     => "⬡",
+        _                        => "·",
+    };
 }

@@ -4,7 +4,7 @@ Living tracker: Unity reference is [Ozymandros/Unity-Generator](https://github.c
 
 | Unity / reference area | Godot target | Status | Notes |
 |------------------------|--------------|--------|--------|
-| Multi-modality generation (text/code/image/audio/video/sprites + engine-specific) | Same modalities; Godot UI / Godot Physics replace Unity UI / Physics | partial | API facade routes all modalities; orchestration gains modality-aware prompts + options |
+| Multi-modality generation (text/code/image/audio/video/sprites + engine-specific) | Same modalities; Godot UI / Godot Physics replace Unity UI / Physics + 5 new Godot modalities (Lighting, Camera, Shaders, Signals, Nodes) | implemented | All 16 modalities have API, IPC commands, Blazor panels, system prompts, and tests |
 | `GET /api/management/all` discovery | `GetAllConfigAsync` + preferences | implemented | Returns `providers` (registry), `models` (by provider), `prompts` (modality map), `defaultLlmProvider` / `defaultChatModelId`, plus scalar `preferences` |
 | Provider/model CRUD | JSON registries `providers.registry.v1`, `models.registry.v1` | implemented | Avalonia list/detail + models table; `SetPreference` persists versioned JSON |
 | API keys management | `GetApiKeys` / `SaveApiKeys` | implemented | JSON store |
@@ -33,11 +33,14 @@ Living tracker: Unity reference is [Ozymandros/Unity-Generator](https://github.c
 | F-PRM-001 | Prompts tab | System prompts by modality + reset to defaults | implemented | `prompts.system.v1` + legacy merge; merged into generation system prompt in API |
 | F-SEC-001 | Secrets tab | Store modal + row replace + remove | implemented | `SaveApiKeys` null removes; masked entry |
 | F-PNL-001 | Generation panels | Prompt + per-panel language + generate response | implemented | add effective settings summary + cancel/progress UX |
-| F-PNL-002 | Modality sub-controls | Modality-specific advanced controls | missing | implement by modality family |
+| F-PNL-002 | Modality sub-controls | Modality-specific advanced controls | implemented | Lighting, Camera, Shaders, Signals, Nodes panels with contextual fields + GodotMcpPanelIntro |
 | F-API-001 | Endpoint parity | FastAPI-equivalent routes in DLL service | implemented | add endpoint-level contract hardening tests |
 | F-POL-001 | Policy | Single source for modality/provider/model/language precedence | partial | centralize through `EffectiveSelectionPolicy` |
 | F-ERR-001 | Error UX | Actionable, safe errors without secret leakage | partial | typed error taxonomy + consistent mapping |
 | F-A11Y-001 | Accessibility | keyboard flow + labeled controls + visible focus | missing | full pass across shell/config/generation views |
 | F-TST-001 | Verification | integration + smoke + a11y evidence | partial | feature-evidence matrix with passing gates |
 
-Last updated: exhaustive parity implementation pass (in-process only).
+| F-PNL-003 | Prompt-assist (AI enhance/sample) | AI-powered prompt improvement + sample generation | implemented | `PromptAssist.Enhance/v1` IPC command; `PromptAssistService` (SK, no tools); wand + mic buttons in `PromptInputSection` |
+| F-PNL-004 | Speech-to-text | Mic button in prompt textarea | implemented | `godotSpeech.start/stop` JS module; `MicRecord`/`MicPulse` icon; Blazor `[JSInvokable]` callback |
+
+Last updated: MCP plugin integration pass — 5 new Godot modalities, prompt-assist, speech-to-text redesign.

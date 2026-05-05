@@ -9,17 +9,22 @@
     <NoWarn>$(NoWarn);SKEXP0001</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="GodotGenerator.Infrastructure.Ai.Tests" />
+    <InternalsVisibleTo Include="GodotGenerator.Plugins.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\GodotGenerator.Infrastructure.Persistence\GodotGenerator.Infrastructure.Persistence.csproj" />
     <ProjectReference Include="..\GodotGenerator.Application\GodotGenerator.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="GodotMcp.SemanticKernel.Plugin" Version="1.4.1" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.5" />
+    <!-- Local source reference — picks up in-progress changes without a NuGet pack/publish cycle. -->
+    <PackageReference Include="GodotMcp.SemanticKernel.Plugin" Version="1.8.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.6" />
     <!-- NuGet package required by spec -->
     <PackageReference Include="Microsoft.SemanticKernel" Version="1.74.0" />
     <PackageReference Include="Microsoft.SemanticKernel.Connectors.OpenAI" Version="1.74.0" />
