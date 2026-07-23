@@ -15,7 +15,7 @@
     <ProjectReference Include="..\..\src\GodotGenerator.Infrastructure.Ai\GodotGenerator.Infrastructure.Ai.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Api\GodotGenerator.Api.csproj" />
     <ProjectReference Include="..\..\src\GodotGenerator.Desktop.Contracts\GodotGenerator.Desktop.Contracts.csproj" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.10" />
   </ItemGroup>
 
 </Project>
